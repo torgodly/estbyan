@@ -2,8 +2,350 @@
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
+@source '../views/**/*.blade.php';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: 'Tajawal', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --color-navy-950: #0a1628;
+    --color-navy-900: #0f2744;
+    --color-navy-800: #163660;
+    --color-navy-700: #1e4978;
+
+    --color-teal-400: #2dd4bf;
+    --color-teal-500: #14b8a6;
+    --color-teal-600: #0d9488;
+    --color-teal-700: #0f766e;
+
+    --color-brand-50: #f0fdfa;
+    --color-brand-100: #ccfbf1;
+    --color-brand-500: #14b8a6;
+    --color-brand-600: #0d9488;
+    --color-brand-700: #0f766e;
+
+    --color-surface: #ffffff;
+    --color-canvas: #eef2f6;
+    --color-canvas-soft: #f8fafc;
+}
+
+@layer base {
+    body {
+        @apply bg-canvas text-slate-800 antialiased;
+    }
+}
+
+@layer components {
+    /* ── Page shell ── */
+    .reg-page {
+        @apply relative min-h-dvh;
+        background:
+            radial-gradient(ellipse 80% 50% at 100% -10%, rgb(20 184 166 / 0.12), transparent 50%),
+            radial-gradient(ellipse 60% 40% at 0% 100%, rgb(30 73 120 / 0.08), transparent 50%),
+            var(--color-canvas);
+    }
+
+    .reg-container {
+        @apply mx-auto flex min-h-dvh w-full max-w-6xl flex-col lg:flex-row lg:gap-0;
+    }
+
+    /* ── Sidebar (desktop) / top bar (mobile) ── */
+    .reg-sidebar {
+        @apply shrink-0 border-b border-slate-200/80 bg-navy-900 text-white lg:w-72 lg:border-b-0 lg:border-s border-slate-700/50;
+    }
+
+    .reg-sidebar-inner {
+        @apply flex flex-col px-5 py-5 lg:sticky lg:top-0 lg:min-h-dvh lg:px-6 lg:py-8;
+        padding-top: max(1.25rem, env(safe-area-inset-top));
+    }
+
+    .reg-brand-mark {
+        @apply flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-400 to-teal-600 shadow-lg shadow-teal-500/30;
+    }
+
+    .reg-step-item {
+        @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition;
+    }
+
+    .reg-step-item-active {
+        @apply bg-white/15 font-bold text-white ring-1 ring-white/20;
+    }
+
+    .reg-step-item-done {
+        @apply text-teal-300/90;
+    }
+
+    .reg-step-item-pending {
+        @apply text-slate-400;
+    }
+
+    .reg-step-num {
+        @apply flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold;
+    }
+
+    /* ── Main content ── */
+    .reg-main {
+        @apply flex min-w-0 flex-1 flex-col;
+    }
+
+    .reg-main-inner {
+        @apply flex flex-1 flex-col px-4 py-5 pb-32 sm:px-6 sm:py-8 lg:px-10 lg:pb-10;
+    }
+
+    /* ── Mobile step strip ── */
+    .reg-mobile-progress {
+        @apply mb-5 lg:hidden;
+    }
+
+    /* ── Cards & sections ── */
+    .reg-card {
+        @apply rounded-3xl bg-white p-5 shadow-[0_4px_24px_-4px_rgba(15,39,68,0.08)] ring-1 ring-slate-200/60 sm:p-7;
+    }
+
+    .reg-card-header {
+        @apply mb-6 border-b border-slate-100 pb-5;
+    }
+
+    .reg-card-title {
+        @apply text-xl font-extrabold tracking-tight text-navy-900 sm:text-2xl;
+    }
+
+    .reg-card-subtitle {
+        @apply mt-1.5 text-sm leading-relaxed text-slate-500;
+    }
+
+    .reg-section-title {
+        @apply mb-4 flex items-center gap-2 text-sm font-extrabold uppercase tracking-wide text-teal-700;
+    }
+
+    /* ── Form controls ── */
+    .reg-label {
+        @apply mb-2 block text-sm font-bold text-slate-700;
+    }
+
+    .reg-required {
+        @apply text-red-500;
+    }
+
+    .reg-input {
+        @apply min-h-[3.25rem] w-full rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-base text-slate-900 transition placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10 focus:outline-none;
+    }
+
+    .reg-select {
+        @apply min-h-[3.25rem] w-full appearance-none rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 pe-4 ps-11 text-base text-slate-900 transition focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10 focus:outline-none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4.5 6.75 9 11.25l4.5-4.5'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: left 1rem center;
+        background-size: 18px;
+    }
+
+    .reg-field-error {
+        @apply mt-1.5 flex items-center gap-1.5 text-sm font-medium text-red-600;
+    }
+
+    .reg-grid-2 {
+        @apply grid grid-cols-1 gap-4 sm:grid-cols-2;
+    }
+
+    /* ── Identity badge ── */
+    .reg-identity-card {
+        @apply overflow-hidden rounded-2xl bg-gradient-to-br from-navy-900 to-navy-800 p-5 text-white shadow-lg;
+    }
+
+    /* ── Medical record step ── */
+    .reg-medical-block {
+        @apply overflow-hidden rounded-2xl border-2 border-slate-200 bg-white transition-all duration-200;
+    }
+
+    .reg-medical-block-yes {
+        @apply border-teal-400/60 bg-teal-50/30 shadow-sm shadow-teal-500/5;
+    }
+
+    .reg-medical-block-no {
+        @apply border-slate-200 bg-white;
+    }
+
+    .reg-medical-block-head {
+        @apply flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-5;
+    }
+
+    .reg-medical-question {
+        @apply text-sm font-bold leading-relaxed text-slate-800 sm:text-base sm:leading-snug;
+    }
+
+    .reg-segment {
+        @apply grid w-full grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 sm:w-auto sm:min-w-[11rem];
+    }
+
+    .reg-segment-btn {
+        @apply min-h-[2.75rem] rounded-lg px-4 text-sm font-bold text-slate-400 transition-all duration-200;
+    }
+
+    .reg-segment-btn-yes {
+        @apply bg-teal-600 text-white shadow-md shadow-teal-600/20;
+    }
+
+    .reg-segment-btn-no {
+        @apply bg-white text-slate-700 shadow-sm ring-1 ring-slate-200/80;
+    }
+
+    .reg-medical-expand {
+        @apply border-t border-teal-200/80 bg-white/80 px-4 pb-4 pt-3 sm:px-5 sm:pb-5;
+    }
+
+    .reg-medical-expand-title {
+        @apply mb-3 text-xs font-extrabold uppercase tracking-wide text-teal-800;
+    }
+
+    .reg-chronic-grid {
+        @apply grid grid-cols-1 gap-2 sm:grid-cols-2;
+    }
+
+    .reg-chronic-option {
+        @apply relative flex cursor-pointer items-center gap-3 rounded-xl border-2 border-slate-100 bg-slate-50 px-3 py-3 transition hover:border-teal-200 hover:bg-teal-50/50 has-checked:border-teal-500 has-checked:bg-teal-50;
+    }
+
+    .reg-chronic-checkbox {
+        @apply sr-only;
+    }
+
+    .reg-chronic-label {
+        @apply flex-1 text-sm font-medium text-slate-700;
+    }
+
+    .reg-chronic-check {
+        @apply flex size-6 shrink-0 items-center justify-center rounded-lg border-2 border-slate-200 bg-white text-transparent transition;
+    }
+
+    .reg-chronic-option:has(:checked) .reg-chronic-check {
+        @apply border-teal-600 bg-teal-600 text-white;
+    }
+
+    /* ── Consent box ── */
+    .reg-consent {
+        @apply flex cursor-pointer gap-4 rounded-2xl border border-slate-200 bg-slate-50/50 p-4 transition hover:border-teal-200 hover:bg-teal-50/30;
+    }
+
+    /* ── Yes / No pills (legacy) ── */
+    .reg-pill-group {
+        @apply inline-flex rounded-xl bg-slate-100 p-1;
+    }
+
+    .reg-pill {
+        @apply min-h-[2.75rem] min-w-[4.5rem] rounded-lg px-5 text-sm font-bold transition;
+    }
+
+    .reg-pill-yes-active {
+        @apply bg-teal-600 text-white shadow-sm;
+    }
+
+    .reg-pill-no-active {
+        @apply bg-white text-slate-700 shadow-sm ring-1 ring-slate-200;
+    }
+
+    .reg-pill-inactive {
+        @apply text-slate-400 hover:text-slate-600;
+    }
+
+    .reg-question-card {
+        @apply flex flex-col gap-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4 sm:flex-row sm:items-center sm:justify-between;
+    }
+
+    /* ── Beneficiary cards ── */
+    .reg-beneficiary-card {
+        @apply flex flex-col gap-4 rounded-3xl bg-white p-5 shadow-[0_4px_24px_-4px_rgba(15,39,68,0.08)] ring-1 ring-slate-200/60 transition hover:shadow-[0_8px_30px_-6px_rgba(15,39,68,0.12)] sm:p-7;
+    }
+
+    .reg-tag {
+        @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold;
+    }
+
+    .reg-tag-relation {
+        @apply bg-navy-900/10 text-navy-800;
+    }
+
+    .reg-tag-chronic {
+        @apply bg-amber-100 text-amber-800;
+    }
+
+    /* ── File upload ── */
+    .reg-upload {
+        @apply relative rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-6 text-center transition hover:border-teal-300 hover:bg-teal-50/20;
+    }
+
+    .reg-upload-done {
+        @apply border-teal-200 bg-teal-50/40;
+    }
+
+    /* ── Review blocks ── */
+    .reg-review-block {
+        @apply rounded-2xl border border-slate-100 bg-slate-50/60 p-4;
+    }
+
+    .reg-review-label {
+        @apply mb-3 text-xs font-extrabold uppercase tracking-wider text-teal-700;
+    }
+
+    /* ── Buttons ── */
+    .reg-btn {
+        @apply inline-flex min-h-[3.25rem] items-center justify-center gap-2 rounded-xl px-6 text-sm font-bold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+    }
+
+    .reg-btn-primary {
+        @apply inline-flex min-h-[3.25rem] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-teal-600 to-teal-500 px-6 text-sm font-bold text-white shadow-lg shadow-teal-600/25 transition hover:from-teal-700 hover:to-teal-600 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+    }
+
+    .reg-btn-secondary {
+        @apply inline-flex min-h-[3.25rem] w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-6 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+    }
+
+    .reg-btn-ghost {
+        @apply inline-flex min-h-[3.25rem] items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-6 text-sm font-bold text-white transition hover:bg-white/15 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+    }
+
+    .reg-btn-danger {
+        @apply inline-flex min-h-[3.25rem] items-center justify-center gap-2 rounded-xl border border-red-200/80 bg-red-500/10 px-6 text-sm font-bold text-red-200 transition hover:bg-red-500/20 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+    }
+
+    .reg-btn-icon {
+        @apply inline-flex size-11 shrink-0 items-center justify-center rounded-xl p-0 transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+    }
+
+    /* ── Action bar ── */
+    .reg-actions {
+        @apply fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur-xl lg:relative lg:inset-auto lg:mt-8 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none;
+        padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    }
+
+    .reg-actions-inner {
+        @apply mx-auto flex max-w-2xl flex-col gap-2.5 sm:flex-row-reverse lg:max-w-none lg:justify-start lg:gap-3;
+    }
+
+    .reg-actions-inner .reg-btn-primary,
+    .reg-actions-inner .reg-btn-secondary {
+        @apply lg:w-auto lg:min-w-[10rem];
+    }
+
+    /* ── Alerts ── */
+    .reg-alert {
+        @apply mb-4 flex items-start gap-3 rounded-2xl px-4 py-3.5 text-sm;
+    }
+
+    .reg-alert-info {
+        @apply mb-4 flex items-start gap-3 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3.5 text-sm text-teal-900;
+    }
+
+    .reg-alert-toast {
+        @apply fixed left-1/2 z-50 mb-4 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-start gap-3 rounded-2xl border-0 bg-navy-900 px-4 py-3.5 text-sm text-white shadow-2xl;
+        top: max(1rem, env(safe-area-inset-top));
+    }
+
+    /* ── Success screen ── */
+    .reg-success-icon {
+        @apply mx-auto mb-6 flex size-20 items-center justify-center text-teal-600;
+    }
+
+    .reg-empty {
+        @apply flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 py-12 text-center;
+    }
 }
