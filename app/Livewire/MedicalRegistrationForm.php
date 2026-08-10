@@ -200,7 +200,12 @@ class MedicalRegistrationForm extends Component
             $registration->delete();
         }
 
-        session()->forget(['registration_id', 'registration_step1', 'reference_download_id']);
+        session()->forget([
+            'registration_id',
+            'registration_step1',
+            'reference_download_id',
+            'registration_editing',
+        ]);
 
         $this->resetFormState();
         $this->toastMessage = 'تم مسح جميع البيانات. يمكنك البدء من جديد.';
@@ -263,6 +268,13 @@ class MedicalRegistrationForm extends Component
 
             if ($existing->isSubmitted()) {
                 $this->showSubmittedSuccess($existing, notify: true);
+
+                return;
+            }
+
+            if ($existing->isEditing()) {
+                $this->resumeEditingSubmittedRegistration($existing);
+                $this->notify('تم استعادة طلبك — أكمل التعديل ثم أعد الإرسال');
 
                 return;
             }
@@ -692,8 +704,11 @@ class MedicalRegistrationForm extends Component
         $registration = $registration->fresh();
         $this->referenceNumber = $registration->reference_number ?? '';
         $this->submitted = true;
-        session(['registration_id' => $registration->id, 'reference_download_id' => $registration->id]);
-        session()->forget('registration_step1');
+        session([
+            'registration_id' => $registration->id,
+            'reference_download_id' => $registration->id,
+        ]);
+        session()->forget(['registration_step1', 'registration_editing']);
     }
 
     public function editSubmittedRegistration(): void
@@ -704,11 +719,18 @@ class MedicalRegistrationForm extends Component
             return;
         }
 
+        $registration->update([
+            'status' => RegistrationStatus::Editing,
+        ]);
+
         $this->submitted = false;
-        $this->loadRegistration($registration->load('beneficiaries'));
+        $this->loadRegistration($registration->fresh()->load('beneficiaries'));
         $this->identityLocked = true;
         $this->goToStep(2);
-        session(['registration_id' => $registration->id]);
+        session([
+            'registration_id' => $registration->id,
+            'registration_editing' => true,
+        ]);
         $this->notify('يمكنك تعديل بياناتك ثم إعادة الإرسال مع الاحتفاظ برقم المرجع');
     }
 
@@ -780,10 +802,17 @@ class MedicalRegistrationForm extends Component
                 return;
             }
 
+            if ($registration?->isEditing()) {
+                $this->resumeEditingSubmittedRegistration($registration);
+
+                return;
+            }
+
             if ($registration && $registration->isEditableByEmployee()) {
                 $this->loadRegistration($registration);
                 $this->identityLocked = true;
                 $this->hasSavedDraft = true;
+                session()->forget('registration_editing');
 
                 return;
             }
@@ -1099,10 +1128,23 @@ class MedicalRegistrationForm extends Component
             'registration_id' => $registration->id,
             'reference_download_id' => $registration->id,
         ]);
+        session()->forget('registration_editing');
 
         if ($notify) {
             $this->notify('طلبك مُرسَل مسبقاً — يمكنك تحميل بطاقة المراجعة أو التعديل');
         }
+    }
+
+    protected function resumeEditingSubmittedRegistration(MedicalRegistration $registration): void
+    {
+        $this->loadRegistration($registration->loadMissing('beneficiaries'));
+        $this->submitted = false;
+        $this->identityLocked = true;
+        $this->hasSavedDraft = true;
+        session([
+            'registration_id' => $registration->id,
+            'registration_editing' => true,
+        ]);
     }
 
     protected function isFormLocked(): bool

@@ -1,11 +1,20 @@
 <?php
 
+use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\Employees\Pages\ListEmployees;
 use App\Filament\Resources\Employees\Pages\ViewEmployee;
 use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Models\User;
 use Livewire\Livewire;
+
+it('does not allow creating or editing employees from the admin panel', function () {
+    $employee = Employee::factory()->create();
+
+    expect(EmployeeResource::canCreate())->toBeFalse()
+        ->and(EmployeeResource::canEdit($employee))->toBeFalse()
+        ->and(EmployeeResource::getPages())->not->toHaveKeys(['create', 'edit']);
+});
 
 it('lists employees and supports search', function () {
     $admin = User::factory()->create();

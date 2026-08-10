@@ -497,6 +497,50 @@ it('starts editing a submitted registration from the first form step with data f
         ->assertSee('بيانات الموظف');
 });
 
+it('keeps edit mode after refresh instead of returning to the success page', function () {
+    $employee = Employee::factory()->create([
+        'national_id' => LibyanNationalId::generate(Gender::Male, 1982),
+    ]);
+
+    $registration = MedicalRegistration::factory()->submitted()->create([
+        'employee_id' => $employee->id,
+        'employee_number' => $employee->employee_number,
+        'national_id' => $employee->national_id,
+        'full_name' => $employee->full_name,
+        'reference_number' => 'SC26-00077',
+        'date_of_birth' => '1982-04-12',
+        'phone' => '0912345678',
+        'city' => 'tripoli',
+        'address' => 'طرابلس',
+        'beneficiaries_count' => 0,
+        'current_step' => 6,
+    ]);
+
+    $this->withSession(['registration_id' => $registration->id]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->assertSet('submitted', true)
+        ->call('editSubmittedRegistration')
+        ->assertSet('submitted', false)
+        ->assertSet('step', 2)
+        ->assertSee('بيانات الموظف')
+        ->assertDontSee('تم إرسال التسجيل بنجاح');
+
+    expect($registration->fresh()->status)->toBe(RegistrationStatus::Editing)
+        ->and($registration->fresh()->current_step)->toBe(2)
+        ->and(session('registration_editing'))->toBeTrue();
+
+    // Simulate a full page refresh with the same session.
+    Livewire::test(MedicalRegistrationForm::class)
+        ->assertSet('submitted', false)
+        ->assertSet('step', 2)
+        ->assertSet('referenceNumber', 'SC26-00077')
+        ->assertSee('بيانات الموظف')
+        ->assertDontSee('تم إرسال التسجيل بنجاح');
+
+    expect($registration->fresh()->status)->toBe(RegistrationStatus::Editing);
+});
+
 it('keeps the same reference number when resubmitting after edit', function () {
     Storage::fake('local');
 

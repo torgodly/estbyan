@@ -5,9 +5,6 @@ namespace App\Filament\Resources\MedicalRegistrations\Tables;
 use App\Enums\RegistrationStatus;
 use App\Models\MedicalRegistration;
 use App\Support\RegistrationDocuments;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\ImageColumn;
@@ -125,17 +122,7 @@ class MedicalRegistrationsTable
             ->recordActions([
                 ViewAction::make()
                     ->label('الملف'),
-                EditAction::make(),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make()
-                        ->label('حذف المحدد')
-                        ->requiresConfirmation()
-                        ->modalHeading('تأكيد حذف الطلبات')
-                        ->modalDescription('سيتم حذف الطلبات المحددة نهائياً. تجنّب حذف الطلبات المُرسلة أو المعتمدة إلا للضرورة.')
-                        ->modalSubmitActionLabel('نعم، احذف'),
-                ]),
-            ]);
+            ->toolbarActions([]);
     }
 }

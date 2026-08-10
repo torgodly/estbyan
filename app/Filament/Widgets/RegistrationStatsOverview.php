@@ -29,6 +29,10 @@ class RegistrationStatsOverview extends StatsOverviewWidget
                 ->description('طلبات مُرسلة تحتاج مراجعة')
                 ->color('info')
                 ->icon('heroicon-o-clock'),
+            Stat::make('قيد التعديل', (string) ($counts[RegistrationStatus::Editing->value] ?? 0))
+                ->description('الموظف يعدّل طلبه حالياً')
+                ->color('warning')
+                ->icon('heroicon-o-pencil-square'),
             Stat::make('مقبول', (string) ($counts[RegistrationStatus::Approved->value] ?? 0))
                 ->description('طلبات معتمدة')
                 ->color('success')
@@ -37,10 +41,6 @@ class RegistrationStatsOverview extends StatsOverviewWidget
                 ->description('تحتاج تعديلاً من الموظف')
                 ->color('danger')
                 ->icon('heroicon-o-x-circle'),
-            Stat::make('مسودة', (string) ($counts[RegistrationStatus::Draft->value] ?? 0))
-                ->description('لم تُرسل بعد')
-                ->color('gray')
-                ->icon('heroicon-o-document'),
         ];
     }
 }

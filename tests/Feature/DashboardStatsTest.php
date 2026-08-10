@@ -45,9 +45,9 @@ it('renders registration and employee stats overview content', function () {
     Livewire::test(RegistrationStatsOverview::class)
         ->assertSuccessful()
         ->assertSee('بانتظار المراجعة')
+        ->assertSee('قيد التعديل')
         ->assertSee('مقبول')
-        ->assertSee('مرفوض')
-        ->assertSee('مسودة');
+        ->assertSee('مرفوض');
 
     Livewire::test(EmployeeStatsOverview::class)
         ->assertSuccessful()

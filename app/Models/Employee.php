@@ -32,6 +32,7 @@ class Employee extends Model
     {
         return [
             RegistrationStatus::Submitted->value,
+            RegistrationStatus::Editing->value,
             RegistrationStatus::Approved->value,
             RegistrationStatus::Declined->value,
         ];

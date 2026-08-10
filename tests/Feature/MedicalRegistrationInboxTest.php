@@ -1,10 +1,19 @@
 <?php
 
 use App\Enums\RegistrationStatus;
+use App\Filament\Resources\MedicalRegistrations\MedicalRegistrationResource;
 use App\Filament\Resources\MedicalRegistrations\Pages\ListMedicalRegistrations;
 use App\Models\MedicalRegistration;
 use App\Models\User;
 use Livewire\Livewire;
+
+it('does not allow creating or editing registrations from the admin panel', function () {
+    $registration = MedicalRegistration::factory()->submitted()->create();
+
+    expect(MedicalRegistrationResource::canCreate())->toBeFalse()
+        ->and(MedicalRegistrationResource::canEdit($registration))->toBeFalse()
+        ->and(MedicalRegistrationResource::getPages())->not->toHaveKeys(['create', 'edit']);
+});
 
 it('defaults to the pending review tab and filters records', function () {
     $admin = User::factory()->create();

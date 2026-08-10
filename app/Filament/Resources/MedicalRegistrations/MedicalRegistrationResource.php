@@ -2,10 +2,8 @@
 
 namespace App\Filament\Resources\MedicalRegistrations;
 
-use App\Filament\Resources\MedicalRegistrations\Pages\EditMedicalRegistration;
 use App\Filament\Resources\MedicalRegistrations\Pages\ListMedicalRegistrations;
 use App\Filament\Resources\MedicalRegistrations\Pages\ViewMedicalRegistration;
-use App\Filament\Resources\MedicalRegistrations\RelationManagers\BeneficiariesRelationManager;
 use App\Filament\Resources\MedicalRegistrations\Schemas\MedicalRegistrationForm;
 use App\Filament\Resources\MedicalRegistrations\Tables\MedicalRegistrationsTable;
 use App\Filament\Widgets\RegistrationStatsOverview;
@@ -16,6 +14,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class MedicalRegistrationResource extends Resource
 {
@@ -33,6 +32,8 @@ class MedicalRegistrationResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
+    protected static ?string $recordTitleAttribute = 'full_name';
+
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
@@ -46,8 +47,6 @@ class MedicalRegistrationResource extends Resource
         ];
     }
 
-    protected static ?string $recordTitleAttribute = 'full_name';
-
     public static function form(Schema $schema): Schema
     {
         return MedicalRegistrationForm::configure($schema);
@@ -60,9 +59,7 @@ class MedicalRegistrationResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            BeneficiariesRelationManager::class,
-        ];
+        return [];
     }
 
     public static function getPages(): array
@@ -70,7 +67,16 @@ class MedicalRegistrationResource extends Resource
         return [
             'index' => ListMedicalRegistrations::route('/'),
             'view' => ViewMedicalRegistration::route('/{record}'),
-            'edit' => EditMedicalRegistration::route('/{record}/edit'),
         ];
+    }
+
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
     }
 }

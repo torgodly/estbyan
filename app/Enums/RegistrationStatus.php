@@ -6,6 +6,7 @@ enum RegistrationStatus: string
 {
     case Draft = 'draft';
     case Submitted = 'submitted';
+    case Editing = 'editing';
     case Approved = 'approved';
     case Declined = 'declined';
 
@@ -14,6 +15,7 @@ enum RegistrationStatus: string
         return match ($this) {
             self::Draft => 'مسودة',
             self::Submitted => 'مُرسَل',
+            self::Editing => 'قيد التعديل',
             self::Approved => 'مقبول',
             self::Declined => 'مرفوض',
         };
@@ -24,6 +26,7 @@ enum RegistrationStatus: string
         return match ($this) {
             self::Draft => 'gray',
             self::Submitted => 'info',
+            self::Editing => 'warning',
             self::Approved => 'success',
             self::Declined => 'danger',
         };
@@ -32,7 +35,7 @@ enum RegistrationStatus: string
     public function isEditableByEmployee(): bool
     {
         return match ($this) {
-            self::Draft, self::Submitted, self::Declined => true,
+            self::Draft, self::Submitted, self::Editing, self::Declined => true,
             self::Approved => false,
         };
     }

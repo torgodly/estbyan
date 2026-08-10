@@ -113,6 +113,11 @@ class MedicalRegistration extends Model
         return $this->status === RegistrationStatus::Declined;
     }
 
+    public function isEditing(): bool
+    {
+        return $this->status === RegistrationStatus::Editing;
+    }
+
     public function isPendingReview(): bool
     {
         return $this->status === RegistrationStatus::Submitted;

@@ -51,6 +51,10 @@ class ListMedicalRegistrations extends ListRecords
                 ->badge((string) ($counts[RegistrationStatus::Submitted->value] ?? 0))
                 ->badgeColor('info')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', RegistrationStatus::Submitted)),
+            'editing' => Tab::make('قيد التعديل')
+                ->badge((string) ($counts[RegistrationStatus::Editing->value] ?? 0))
+                ->badgeColor('warning')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', RegistrationStatus::Editing)),
             'approved' => Tab::make('مقبول')
                 ->badge((string) ($counts[RegistrationStatus::Approved->value] ?? 0))
                 ->badgeColor('success')

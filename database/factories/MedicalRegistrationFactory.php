@@ -77,4 +77,12 @@ class MedicalRegistrationFactory extends Factory
             'reviewed_at' => now(),
         ]);
     }
+
+    public function editing(): static
+    {
+        return $this->submitted()->state(fn (): array => [
+            'status' => RegistrationStatus::Editing,
+            'current_step' => 2,
+        ]);
+    }
 }

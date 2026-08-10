@@ -193,6 +193,12 @@
     border-color: #7dd3fc;
 }
 
+.hr-chip--editing {
+    background: #ffedd5;
+    color: #9a3412;
+    border-color: #fdba74;
+}
+
 .hr-chip--approved {
     background: #d1fae5;
     color: #065f46;
@@ -215,6 +221,12 @@
     background: #0c4a6e;
     color: #bae6fd;
     border-color: #0284c7;
+}
+
+.dark .hr-chip--editing {
+    background: #7c2d12;
+    color: #ffedd5;
+    border-color: #ea580c;
 }
 
 .dark .hr-chip--approved {

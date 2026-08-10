@@ -8,8 +8,6 @@ use App\Models\User;
 use App\Services\ReferenceCardGenerator;
 use App\Services\RegistrationReviewService;
 use Filament\Actions\Action;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
@@ -138,9 +136,6 @@ class ViewMedicalRegistration extends ViewRecord
                         ['Content-Type' => 'image/png'],
                     );
                 }),
-            EditAction::make()
-                ->label('تعديل'),
-            DeleteAction::make(),
         ];
     }
 }
