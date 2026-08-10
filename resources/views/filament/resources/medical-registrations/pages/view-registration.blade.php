@@ -13,25 +13,21 @@
         ->filter()
         ->values();
     $medicalFlags = [
-        ['label' => 'أمراض مزمنة', 'value' => (bool) $registration->has_chronic_conditions],
-        ['label' => 'أورام', 'value' => (bool) $registration->has_tumor],
-        ['label' => 'عمليات سابقة', 'value' => (bool) $registration->has_surgery_history],
-        ['label' => 'أجهزة طبية', 'value' => (bool) $registration->uses_medical_devices],
-        ['label' => 'إقامة مستشفى', 'value' => (bool) $registration->hospitalized_recently],
-        ['label' => 'علاج بالخارج', 'value' => (bool) $registration->traveled_for_treatment],
+        ['label' => 'هل يعاني من أمراض مزمنة؟', 'value' => (bool) $registration->has_chronic_conditions, 'key' => 'chronic'],
+        ['label' => 'هل يوجد تاريخ أورام؟', 'value' => (bool) $registration->has_tumor, 'key' => 'tumor'],
+        ['label' => 'هل أجرى عمليات جراحية؟', 'value' => (bool) $registration->has_surgery_history, 'key' => 'surgery'],
+        ['label' => 'هل يستخدم أجهزة طبية؟', 'value' => (bool) $registration->uses_medical_devices, 'key' => 'devices'],
+        ['label' => 'هل أقام في مستشفى مؤخراً؟', 'value' => (bool) $registration->hospitalized_recently, 'key' => 'hospital'],
+        ['label' => 'هل سافر للعلاج بالخارج؟', 'value' => (bool) $registration->traveled_for_treatment, 'key' => 'abroad'],
     ];
-    $statusColor = match ($registration->status->value) {
-        'submitted' => 'bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-200',
-        'approved' => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200',
-        'declined' => 'bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-200',
-        default => 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-200',
-    };
+    $positiveFlags = collect($medicalFlags)->where('value', true)->values();
+    $familyDocType = filled($familyDocUrl) && preg_match('/\.(jpe?g|png|webp|gif)(\?|$)/i', $familyDocUrl) ? 'image' : 'pdf';
 @endphp
 
 <x-filament-panels::page>
     <div
         dir="rtl"
-        class="space-y-8"
+        class="hr-review"
         x-data="{
             previewOpen: false,
             previewUrl: null,
@@ -50,287 +46,398 @@
         }"
         @keydown.escape.window="closePreview()"
     >
-        {{-- Identity header --}}
-        <section class="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-white/10 dark:bg-gray-900">
-            <div class="flex flex-col gap-6 p-5 sm:flex-row sm:items-center sm:p-6">
-                <div class="shrink-0">
-                    @if ($photoUrl)
-                        <button
-                            type="button"
-                            @click="openPreview(@js($photoUrl), 'image', 'صورة الموظف')"
-                            class="block overflow-hidden rounded-2xl ring-1 ring-gray-200 transition hover:ring-primary-400 dark:ring-white/10"
-                        >
-                            <img src="{{ $photoUrl }}" alt="" class="h-36 w-32 object-cover sm:h-40 sm:w-36">
-                        </button>
-                    @else
-                        <div class="flex h-36 w-32 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-gray-300 bg-gray-50 text-gray-400 dark:border-white/15 dark:bg-white/5 sm:h-40 sm:w-36">
-                            <x-filament::icon icon="heroicon-o-user" class="h-8 w-8" />
-                            <span class="text-xs font-bold">لا توجد صورة</span>
-                        </div>
-                    @endif
-                </div>
-
-                <div class="min-w-0 flex-1 space-y-3">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span @class(['inline-flex rounded-full px-2.5 py-1 text-xs font-bold', $statusColor])>
-                            {{ $registration->status->label() }}
-                        </span>
-                        @if (filled($registration->reference_number))
-                            <span class="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-700 dark:bg-white/10 dark:text-gray-200">
-                                {{ $registration->reference_number }}
-                            </span>
-                        @endif
-                    </div>
-
-                    <div>
-                        <h2 class="truncate text-2xl font-extrabold tracking-tight text-gray-950 dark:text-white">
-                            {{ $registration->full_name ?: 'بدون اسم' }}
-                        </h2>
-                        <p class="mt-1 text-sm font-medium text-gray-500 dark:text-gray-400">
-                            {{ $registration->workplaceLabel() ?? 'مكان العمل غير محدد' }}
-                            @if ($registration->jobTitleLabel())
-                                · {{ $registration->jobTitleLabel() }}
-                            @endif
-                        </p>
-                    </div>
-
-                    <dl class="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
+        <div class="hr-review__layout">
+            <div class="hr-review__main">
+                {{-- Hero identity --}}
+                <section class="hr-panel">
+                    <div class="hr-hero">
                         <div>
-                            <dt class="text-[11px] font-bold text-gray-500 dark:text-gray-400">الرقم الوظيفي</dt>
-                            <dd class="mt-0.5 text-sm font-bold text-gray-950 dark:text-white">{{ $registration->employee_number ?: '—' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-[11px] font-bold text-gray-500 dark:text-gray-400">الرقم الوطني</dt>
-                            <dd class="mt-0.5 text-sm font-bold text-gray-950 dark:text-white">{{ $registration->national_id ?: '—' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-[11px] font-bold text-gray-500 dark:text-gray-400">تاريخ الإرسال</dt>
-                            <dd class="mt-0.5 text-sm font-bold text-gray-950 dark:text-white">
-                                {{ $registration->submitted_at?->format('Y-m-d H:i') ?: '—' }}
-                            </dd>
-                        </div>
-                    </dl>
-                </div>
-            </div>
-        </section>
-
-        {{-- Details --}}
-        <section class="space-y-4">
-            <h3 class="text-sm font-extrabold text-gray-950 dark:text-white">البيانات الشخصية والتواصل</h3>
-            <div class="overflow-hidden rounded-2xl border border-gray-200 dark:border-white/10">
-                <dl class="divide-y divide-gray-100 dark:divide-white/10">
-                    @foreach ([
-                        'تاريخ الميلاد' => $registration->date_of_birth?->format('Y-m-d') ?: '—',
-                        'الجنس' => $registration->gender?->label() ?? '—',
-                        'الحالة الاجتماعية' => $registration->marital_status?->label() ?? '—',
-                        'الهاتف' => $registration->phone ?: '—',
-                        'واتساب' => $registration->whatsapp ?: '—',
-                        'البريد' => $registration->email ?: '—',
-                        'المدينة' => $registration->cityLabel() ?? '—',
-                        'العنوان' => $registration->address ?: '—',
-                    ] as $label => $value)
-                        <div class="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-[10rem_1fr] sm:items-center sm:gap-6">
-                            <dt class="text-xs font-bold text-gray-500 dark:text-gray-400">{{ $label }}</dt>
-                            <dd class="text-sm font-semibold text-gray-950 dark:text-white">{{ $value }}</dd>
-                        </div>
-                    @endforeach
-                </dl>
-            </div>
-        </section>
-
-        {{-- Medical --}}
-        <section class="space-y-4">
-            <h3 class="text-sm font-extrabold text-gray-950 dark:text-white">السجل الطبي</h3>
-            <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                @foreach ($medicalFlags as $flag)
-                    <div @class([
-                        'rounded-xl border px-3 py-3',
-                        'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200' => $flag['value'],
-                        'border-gray-200 bg-white text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-300' => ! $flag['value'],
-                    ])>
-                        <div class="text-[11px] font-bold opacity-80">{{ $flag['label'] }}</div>
-                        <div class="mt-1 text-sm font-extrabold">{{ $flag['value'] ? 'نعم' : 'لا' }}</div>
-                    </div>
-                @endforeach
-            </div>
-            @if ($chronicLabels->isNotEmpty())
-                <div class="flex flex-wrap gap-2">
-                    @foreach ($chronicLabels as $label)
-                        <span class="rounded-lg bg-teal-50 px-2.5 py-1 text-xs font-bold text-teal-800 dark:bg-teal-500/15 dark:text-teal-200">
-                            {{ $label }}
-                        </span>
-                    @endforeach
-                </div>
-            @else
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">لا توجد أمراض مزمنة محددة.</p>
-            @endif
-        </section>
-
-        {{-- Documents --}}
-        <section class="space-y-4">
-            <h3 class="text-sm font-extrabold text-gray-950 dark:text-white">المستندات</h3>
-            <div class="grid gap-3 md:grid-cols-2">
-                <x-filament.document-preview
-                    :url="$familyDocUrl"
-                    title="شهادة الوضع العائلي"
-                    empty-label="لم يُرفق هذا المستند"
-                />
-                <x-filament.document-preview
-                    :url="$photoUrl"
-                    title="صورة الموظف"
-                    type="image"
-                    empty-label="لم تُرفع صورة الموظف"
-                />
-            </div>
-        </section>
-
-        {{-- Beneficiaries --}}
-        <section class="space-y-4">
-            <div class="flex items-center justify-between gap-3">
-                <h3 class="text-sm font-extrabold text-gray-950 dark:text-white">المستفيدون</h3>
-                <span class="text-xs font-bold text-gray-500 dark:text-gray-400">{{ $registration->beneficiaries->count() }} مستفيد</span>
-            </div>
-
-            @forelse ($registration->beneficiaries as $beneficiary)
-                @php
-                    $beneficiaryPhoto = filled($beneficiary->photo_path)
-                        ? Storage::disk('public')->url($beneficiary->photo_path)
-                        : null;
-                    $beneficiaryChronic = collect($beneficiary->chronic_conditions ?? [])
-                        ->map(fn (string $key) => config('registration.chronic_conditions.'.$key) ?? $key)
-                        ->filter()
-                        ->values();
-                @endphp
-                <article class="rounded-2xl border border-gray-200 p-4 dark:border-white/10">
-                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
-                        <div class="shrink-0">
-                            @if ($beneficiaryPhoto)
+                            @if ($photoUrl)
                                 <button
                                     type="button"
-                                    @click="openPreview(@js($beneficiaryPhoto), 'image', @js($beneficiary->full_name))"
-                                    class="overflow-hidden rounded-xl ring-1 ring-gray-200 dark:ring-white/10"
+                                    class="hr-hero__photo-btn"
+                                    @click="openPreview(@js($photoUrl), 'image', 'صورة الموظف')"
                                 >
-                                    <img src="{{ $beneficiaryPhoto }}" alt="" class="h-20 w-20 object-cover">
+                                    <img src="{{ $photoUrl }}" alt="صورة {{ $registration->full_name }}" class="hr-hero__photo">
                                 </button>
                             @else
-                                <div class="flex h-20 w-20 flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 text-gray-400 dark:border-white/15 dark:bg-white/5">
-                                    <x-filament::icon icon="heroicon-o-user" class="h-6 w-6" />
-                                    <span class="mt-1 text-[10px] font-bold">بدون صورة</span>
+                                <div class="hr-hero__photo-empty">
+                                    <x-filament::icon icon="heroicon-o-user" class="h-8 w-8" />
+                                    <span>لا توجد صورة</span>
                                 </div>
                             @endif
                         </div>
 
-                        <div class="min-w-0 flex-1 space-y-3">
-                            <div>
-                                <div class="text-base font-extrabold text-gray-950 dark:text-white">{{ $beneficiary->full_name }}</div>
-                                <div class="text-xs font-bold text-gray-500 dark:text-gray-400">
-                                    {{ $beneficiary->relationship?->label() ?? '—' }}
-                                </div>
+                        <div>
+                            <div class="hr-chips">
+                                <span class="hr-chip hr-chip--{{ $registration->status->value }}">
+                                    {{ $registration->status->label() }}
+                                </span>
+                                @if (filled($registration->reference_number))
+                                    <span class="hr-chip">{{ $registration->reference_number }}</span>
+                                @endif
+                                <span class="hr-chip">{{ $registration->beneficiaries->count() }} مستفيد</span>
                             </div>
 
-                            <dl class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                                <div>
-                                    <dt class="text-[11px] font-bold text-gray-500">الرقم الوطني</dt>
-                                    <dd class="text-sm font-semibold text-gray-950 dark:text-white">{{ $beneficiary->national_id ?: '—' }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-[11px] font-bold text-gray-500">تاريخ الميلاد</dt>
-                                    <dd class="text-sm font-semibold text-gray-950 dark:text-white">{{ $beneficiary->date_of_birth?->format('Y-m-d') ?: '—' }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="text-[11px] font-bold text-gray-500">فصيلة الدم</dt>
-                                    <dd class="text-sm font-semibold text-gray-950 dark:text-white">{{ $beneficiary->blood_type?->label() ?? '—' }}</dd>
-                                </div>
-                            </dl>
+                            <h2 class="hr-hero__name">{{ $registration->full_name ?: 'بدون اسم' }}</h2>
+                            <p class="hr-hero__sub">
+                                {{ $registration->workplaceLabel() ?? 'مكان العمل غير محدد' }}
+                                @if ($registration->jobTitleLabel())
+                                    · {{ $registration->jobTitleLabel() }}
+                                @endif
+                            </p>
 
-                            <div class="flex flex-wrap gap-1.5">
-                                @foreach ([
-                                    'مزمن' => (bool) $beneficiary->has_chronic_conditions,
-                                    'ورم' => (bool) $beneficiary->has_tumor,
-                                    'عملية' => (bool) $beneficiary->has_surgery_history,
-                                    'جهاز' => (bool) $beneficiary->uses_medical_devices,
-                                ] as $label => $value)
-                                    <span @class([
-                                        'rounded-full px-2 py-0.5 text-[11px] font-bold',
-                                        'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200' => $value,
-                                        'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-gray-400' => ! $value,
-                                    ])>
-                                        {{ $label }}: {{ $value ? 'نعم' : 'لا' }}
-                                    </span>
-                                @endforeach
+                            <div class="hr-kpis">
+                                <div class="hr-kpi">
+                                    <span class="hr-kpi__label">الرقم الوظيفي</span>
+                                    <div class="hr-kpi__value">{{ $registration->employee_number ?: '—' }}</div>
+                                </div>
+                                <div class="hr-kpi">
+                                    <span class="hr-kpi__label">الرقم الوطني</span>
+                                    <div class="hr-kpi__value">{{ $registration->national_id ?: '—' }}</div>
+                                </div>
+                                <div class="hr-kpi">
+                                    <span class="hr-kpi__label">تاريخ الإرسال</span>
+                                    <div class="hr-kpi__value">{{ $registration->submitted_at?->format('Y-m-d H:i') ?: '—' }}</div>
+                                </div>
                             </div>
-
-                            @if ($beneficiaryChronic->isNotEmpty())
-                                <div class="flex flex-wrap gap-1.5">
-                                    @foreach ($beneficiaryChronic as $label)
-                                        <span class="rounded-md bg-teal-50 px-2 py-0.5 text-[11px] font-bold text-teal-800 dark:bg-teal-500/15 dark:text-teal-200">
-                                            {{ $label }}
-                                        </span>
-                                    @endforeach
-                                </div>
-                            @endif
                         </div>
                     </div>
-                </article>
-            @empty
-                <div class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-gray-300 px-4 py-10 text-center dark:border-white/15">
-                    <x-filament::icon icon="heroicon-o-user-group" class="h-8 w-8 text-gray-400" />
-                    <p class="text-sm font-bold text-gray-700 dark:text-gray-200">لا يوجد مستفيدون على هذا الطلب</p>
-                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">سيظهرون هنا عند إضافتهم من النموذج.</p>
-                </div>
-            @endforelse
-        </section>
+                </section>
 
-        {{-- Review --}}
-        <section class="space-y-4">
-            <h3 class="text-sm font-extrabold text-gray-950 dark:text-white">سجل المراجعة</h3>
-            <div class="overflow-hidden rounded-2xl border border-gray-200 dark:border-white/10">
-                <dl class="divide-y divide-gray-100 dark:divide-white/10">
-                    @foreach ([
-                        'تاريخ الإنشاء' => $registration->created_at?->format('Y-m-d H:i') ?: '—',
-                        'تاريخ الإرسال' => $registration->submitted_at?->format('Y-m-d H:i') ?: '—',
-                        'راجع بواسطة' => $registration->reviewer?->name ?: '—',
-                        'تاريخ المراجعة' => $registration->reviewed_at?->format('Y-m-d H:i') ?: '—',
-                        'ملاحظة المراجعة' => $registration->review_note ?: 'لا توجد ملاحظة',
-                    ] as $label => $value)
-                        <div class="grid grid-cols-1 gap-1 px-4 py-3 sm:grid-cols-[10rem_1fr] sm:items-center sm:gap-6">
-                            <dt class="text-xs font-bold text-gray-500 dark:text-gray-400">{{ $label }}</dt>
-                            <dd class="text-sm font-semibold text-gray-950 dark:text-white">{{ $value }}</dd>
+                @if ($positiveFlags->isNotEmpty())
+                    <div class="hr-alert {{ $registration->has_tumor ? 'hr-alert--danger' : '' }}">
+                        <x-filament::icon icon="heroicon-o-exclamation-triangle" class="h-5 w-5 shrink-0" />
+                        <div>
+                            <p class="hr-alert__title">تنبيه طبي — يوجد {{ $positiveFlags->count() }} إجابة بـ «نعم»</p>
+                            <p class="hr-alert__text">
+                                {{ $positiveFlags->pluck('label')->map(fn ($label) => str_replace(['هل ', '؟'], '', $label))->implode(' · ') }}
+                            </p>
                         </div>
-                    @endforeach
-                </dl>
-            </div>
-        </section>
+                    </div>
+                @endif
 
-        {{-- Inline preview modal --}}
+                {{-- Personal + contact --}}
+                <section class="hr-panel">
+                    <div class="hr-panel__head">
+                        <h3 class="hr-panel__title">البيانات الشخصية والتواصل</h3>
+                    </div>
+                    <div class="hr-panel__body">
+                        <div class="hr-rows">
+                            @foreach ([
+                                'تاريخ الميلاد' => $registration->date_of_birth?->format('Y-m-d') ?: '—',
+                                'الجنس' => $registration->gender?->label() ?? '—',
+                                'الحالة الاجتماعية' => $registration->marital_status?->label() ?? '—',
+                                'الهاتف' => $registration->phone ?: '—',
+                                'واتساب' => $registration->whatsapp ?: '—',
+                                'البريد الإلكتروني' => $registration->email ?: '—',
+                                'المدينة' => $registration->cityLabel() ?? '—',
+                                'العنوان' => $registration->address ?: '—',
+                            ] as $label => $value)
+                                <div class="hr-row">
+                                    <div class="hr-row__label">{{ $label }}</div>
+                                    <div class="hr-row__value">{{ $value }}</div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </section>
+
+                {{-- Medical record: full checklist --}}
+                <section class="hr-panel" id="medical-record">
+                    <div class="hr-panel__head">
+                        <h3 class="hr-panel__title">السجل الطبي للموظف</h3>
+                        <span class="hr-panel__meta">
+                            {{ $positiveFlags->isEmpty() ? 'لا توجد مؤشرات إيجابية' : $positiveFlags->count().' مؤشرات إيجابية' }}
+                        </span>
+                    </div>
+                    <div class="hr-panel__body">
+                        <table class="hr-med-table">
+                            <tbody>
+                                @foreach ($medicalFlags as $flag)
+                                    <tr>
+                                        <th scope="row">{{ $flag['label'] }}</th>
+                                        <td>
+                                            <span @class([
+                                                'hr-answer',
+                                                'hr-answer--yes' => $flag['value'],
+                                                'hr-answer--no' => ! $flag['value'],
+                                            ])>
+                                                {{ $flag['value'] ? 'نعم' : 'لا' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                                <tr>
+                                    <th scope="row">الأمراض المزمنة المحددة</th>
+                                    <td>
+                                        @if ($chronicLabels->isNotEmpty())
+                                            <div class="hr-tags" style="margin-top: 0;">
+                                                @foreach ($chronicLabels as $label)
+                                                    <span class="hr-tag">{{ $label }}</span>
+                                                @endforeach
+                                            </div>
+                                        @elseif ($registration->has_chronic_conditions)
+                                            <span class="hr-answer hr-answer--yes">نعم — بدون تفصيل محفوظ</span>
+                                        @else
+                                            <span class="hr-answer hr-answer--no">لا يوجد</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                {{-- Documents with inline preview --}}
+                <section class="hr-panel">
+                    <div class="hr-panel__head">
+                        <h3 class="hr-panel__title">المستندات</h3>
+                        <span class="hr-panel__meta">معاينة مباشرة داخل الصفحة</span>
+                    </div>
+                    <div class="hr-panel__body">
+                        <div class="hr-docs">
+                            <div class="hr-doc">
+                                <div class="hr-doc__bar">
+                                    <div class="hr-doc__title">شهادة الوضع العائلي</div>
+                                    @if ($familyDocUrl)
+                                        <button
+                                            type="button"
+                                            class="hr-doc__action"
+                                            @click="openPreview(@js($familyDocUrl), @js($familyDocType), 'شهادة الوضع العائلي')"
+                                        >
+                                            تكبير
+                                        </button>
+                                    @endif
+                                </div>
+                                <div class="hr-doc__frame">
+                                    @if ($familyDocUrl)
+                                        @if ($familyDocType === 'image')
+                                            <img src="{{ $familyDocUrl }}" alt="شهادة الوضع العائلي">
+                                        @else
+                                            <iframe src="{{ $familyDocUrl }}#toolbar=0" title="شهادة الوضع العائلي"></iframe>
+                                        @endif
+                                    @else
+                                        <div class="hr-doc__missing">
+                                            <x-filament::icon icon="heroicon-o-document" class="h-7 w-7" />
+                                            <span>لم يُرفق هذا المستند</span>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+
+                            <div class="hr-doc">
+                                <div class="hr-doc__bar">
+                                    <div class="hr-doc__title">صورة الموظف</div>
+                                    @if ($photoUrl)
+                                        <button
+                                            type="button"
+                                            class="hr-doc__action"
+                                            @click="openPreview(@js($photoUrl), 'image', 'صورة الموظف')"
+                                        >
+                                            تكبير
+                                        </button>
+                                    @endif
+                                </div>
+                                <div class="hr-doc__frame">
+                                    @if ($photoUrl)
+                                        <img src="{{ $photoUrl }}" alt="صورة الموظف">
+                                    @else
+                                        <div class="hr-doc__missing">
+                                            <x-filament::icon icon="heroicon-o-photo" class="h-7 w-7" />
+                                            <span>لم تُرفع صورة الموظف</span>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {{-- Beneficiaries --}}
+                <section class="hr-panel">
+                    <div class="hr-panel__head">
+                        <h3 class="hr-panel__title">المستفيدون</h3>
+                        <span class="hr-panel__meta">{{ $registration->beneficiaries->count() }} مستفيد</span>
+                    </div>
+                    <div class="hr-panel__body">
+                        @forelse ($registration->beneficiaries as $index => $beneficiary)
+                            @php
+                                $beneficiaryPhoto = filled($beneficiary->photo_path)
+                                    ? Storage::disk('public')->url($beneficiary->photo_path)
+                                    : null;
+                                $beneficiaryChronic = collect($beneficiary->chronic_conditions ?? [])
+                                    ->map(fn (string $key) => config('registration.chronic_conditions.'.$key) ?? $key)
+                                    ->filter()
+                                    ->values();
+                                $beneficiaryFlags = [
+                                    ['label' => 'أمراض مزمنة', 'value' => (bool) $beneficiary->has_chronic_conditions],
+                                    ['label' => 'أورام', 'value' => (bool) $beneficiary->has_tumor],
+                                    ['label' => 'عمليات', 'value' => (bool) $beneficiary->has_surgery_history],
+                                    ['label' => 'أجهزة طبية', 'value' => (bool) $beneficiary->uses_medical_devices],
+                                    ['label' => 'إقامة مستشفى', 'value' => (bool) $beneficiary->hospitalized_recently],
+                                    ['label' => 'علاج بالخارج', 'value' => (bool) $beneficiary->traveled_for_treatment],
+                                ];
+                            @endphp
+                            <article class="hr-ben__item" style="{{ $index > 0 ? 'margin-top: 0.75rem;' : '' }}">
+                                <div>
+                                    @if ($beneficiaryPhoto)
+                                        <button
+                                            type="button"
+                                            class="hr-hero__photo-btn"
+                                            @click="openPreview(@js($beneficiaryPhoto), 'image', @js($beneficiary->full_name))"
+                                        >
+                                            <img src="{{ $beneficiaryPhoto }}" alt="" class="hr-ben__photo">
+                                        </button>
+                                    @else
+                                        <div class="hr-ben__photo-empty">بدون صورة</div>
+                                    @endif
+                                </div>
+                                <div>
+                                    <h4 class="hr-ben__name">{{ $index + 1 }}. {{ $beneficiary->full_name }}</h4>
+                                    <p class="hr-ben__rel">{{ $beneficiary->relationship?->label() ?? '—' }}</p>
+
+                                    <div class="hr-kpis" style="margin-top: 0;">
+                                        <div class="hr-kpi">
+                                            <span class="hr-kpi__label">الرقم الوطني</span>
+                                            <div class="hr-kpi__value">{{ $beneficiary->national_id ?: '—' }}</div>
+                                        </div>
+                                        <div class="hr-kpi">
+                                            <span class="hr-kpi__label">تاريخ الميلاد</span>
+                                            <div class="hr-kpi__value">{{ $beneficiary->date_of_birth?->format('Y-m-d') ?: '—' }}</div>
+                                        </div>
+                                        <div class="hr-kpi">
+                                            <span class="hr-kpi__label">فصيلة الدم</span>
+                                            <div class="hr-kpi__value">{{ $beneficiary->blood_type?->label() ?? '—' }}</div>
+                                        </div>
+                                    </div>
+
+                                    <table class="hr-med-table" style="margin-top: 0.85rem;">
+                                        <tbody>
+                                            @foreach ($beneficiaryFlags as $flag)
+                                                <tr>
+                                                    <th scope="row">{{ $flag['label'] }}</th>
+                                                    <td>
+                                                        <span @class([
+                                                            'hr-answer',
+                                                            'hr-answer--yes' => $flag['value'],
+                                                            'hr-answer--no' => ! $flag['value'],
+                                                        ])>
+                                                            {{ $flag['value'] ? 'نعم' : 'لا' }}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                            <tr>
+                                                <th scope="row">الأمراض المزمنة</th>
+                                                <td>
+                                                    @if ($beneficiaryChronic->isNotEmpty())
+                                                        <div class="hr-tags" style="margin-top: 0;">
+                                                            @foreach ($beneficiaryChronic as $label)
+                                                                <span class="hr-tag">{{ $label }}</span>
+                                                            @endforeach
+                                                        </div>
+                                                    @else
+                                                        <span class="hr-answer hr-answer--no">لا يوجد</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </article>
+                        @empty
+                            <div class="hr-empty">
+                                <x-filament::icon icon="heroicon-o-user-group" class="h-7 w-7" />
+                                <p class="hr-empty__title">لا يوجد مستفيدون على هذا الطلب</p>
+                                <p class="hr-empty__text">سيظهرون هنا عند إضافتهم من النموذج العام.</p>
+                            </div>
+                        @endforelse
+                    </div>
+                </section>
+            </div>
+
+            {{-- Sticky review rail --}}
+            <aside class="hr-review__aside">
+                <section class="hr-panel">
+                    <div class="hr-panel__head">
+                        <h3 class="hr-panel__title">ملخص المراجعة</h3>
+                    </div>
+                    <div class="hr-panel__body" style="display: grid; gap: 0.65rem;">
+                        <div class="hr-side-stat">
+                            <span class="hr-side-stat__label">الحالة الحالية</span>
+                            <div class="hr-side-stat__value">{{ $registration->status->label() }}</div>
+                        </div>
+                        <div class="hr-side-stat">
+                            <span class="hr-side-stat__label">رقم المرجع</span>
+                            <div class="hr-side-stat__value">{{ $registration->reference_number ?: '—' }}</div>
+                        </div>
+                        <div class="hr-side-stat">
+                            <span class="hr-side-stat__label">المؤشرات الطبية الإيجابية</span>
+                            <div class="hr-side-stat__value">{{ $positiveFlags->count() }}</div>
+                        </div>
+                        <div class="hr-side-stat">
+                            <span class="hr-side-stat__label">اكتمال المستندات</span>
+                            <div class="hr-side-stat__value">
+                                {{ $registration->hasDocuments() ? 'مكتملة' : 'ناقصة' }}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="hr-panel">
+                    <div class="hr-panel__head">
+                        <h3 class="hr-panel__title">سجل القرار</h3>
+                    </div>
+                    <div class="hr-panel__body">
+                        <div class="hr-rows">
+                            <div class="hr-row">
+                                <div class="hr-row__label">راجع بواسطة</div>
+                                <div class="hr-row__value">{{ $registration->reviewer?->name ?: 'لم تُراجع بعد' }}</div>
+                            </div>
+                            <div class="hr-row">
+                                <div class="hr-row__label">تاريخ المراجعة</div>
+                                <div class="hr-row__value">{{ $registration->reviewed_at?->format('Y-m-d H:i') ?: '—' }}</div>
+                            </div>
+                            <div class="hr-row">
+                                <div class="hr-row__label">الملاحظة</div>
+                                <div class="hr-row__value">{{ $registration->review_note ?: 'لا توجد ملاحظة' }}</div>
+                            </div>
+                            <div class="hr-row">
+                                <div class="hr-row__label">تاريخ الإنشاء</div>
+                                <div class="hr-row__value">{{ $registration->created_at?->format('Y-m-d H:i') ?: '—' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="hr-panel">
+                    <div class="hr-panel__body">
+                        <p class="hr-empty__text" style="margin: 0;">
+                            استخدم أزرار <strong>اعتماد</strong> أو <strong>رفض</strong> أعلى الصفحة بعد مراجعة السجل الطبي والمستندات.
+                        </p>
+                    </div>
+                </section>
+            </aside>
+        </div>
+
         <div
             x-cloak
             x-show="previewOpen"
-            x-transition.opacity
-            class="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/70 p-4 backdrop-blur-sm"
+            class="hr-modal"
             @click.self="closePreview()"
         >
-            <div
-                class="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-900"
-                @click.stop
-            >
-                <div class="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-white/10">
-                    <div class="truncate text-sm font-extrabold text-gray-950 dark:text-white" x-text="previewTitle"></div>
-                    <button
-                        type="button"
-                        class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-bold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10"
-                        @click="closePreview()"
-                    >
-                        إغلاق
-                        <x-filament::icon icon="heroicon-m-x-mark" class="h-5 w-5" />
-                    </button>
+            <div class="hr-modal__card" @click.stop>
+                <div class="hr-modal__head">
+                    <div class="hr-modal__title" x-text="previewTitle"></div>
+                    <button type="button" class="hr-modal__close" @click="closePreview()">إغلاق</button>
                 </div>
-                <div class="min-h-0 flex-1 bg-gray-50 p-3 dark:bg-black/20">
+                <div class="hr-modal__body">
                     <template x-if="previewType === 'image'">
-                        <img :src="previewUrl" alt="" class="mx-auto max-h-[75vh] rounded-xl object-contain">
+                        <img :src="previewUrl" alt="">
                     </template>
                     <template x-if="previewType !== 'image'">
-                        <iframe :src="previewUrl" class="h-[75vh] w-full rounded-xl bg-white" title="معاينة المستند"></iframe>
+                        <iframe :src="previewUrl" title="معاينة المستند"></iframe>
                     </template>
                 </div>
             </div>
