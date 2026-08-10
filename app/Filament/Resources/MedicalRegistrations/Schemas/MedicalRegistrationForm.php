@@ -5,6 +5,7 @@ namespace App\Filament\Resources\MedicalRegistrations\Schemas;
 use App\Enums\Gender;
 use App\Enums\MaritalStatus;
 use App\Enums\RegistrationStatus;
+use App\Support\RegistrationDocuments;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -85,15 +86,17 @@ class MedicalRegistrationForm
                     ->schema([
                         FileUpload::make('family_status_document_path')
                             ->label('شهادة الوضع العائلي')
-                            ->disk('public')
+                            ->disk(RegistrationDocuments::diskName())
                             ->directory('registrations')
+                            ->visibility('private')
                             ->acceptedFileTypes(['application/pdf'])
                             ->downloadable()
                             ->openable(),
                         FileUpload::make('employee_photo_path')
                             ->label('صورة الموظف')
-                            ->disk('public')
+                            ->disk(RegistrationDocuments::diskName())
                             ->directory('registrations')
+                            ->visibility('private')
                             ->image()
                             ->downloadable()
                             ->openable(),

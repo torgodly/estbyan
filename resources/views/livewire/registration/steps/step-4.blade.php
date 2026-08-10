@@ -96,8 +96,8 @@
                         ])>
                             @if ($beneficiaryPhoto)
                                 <img src="{{ $beneficiaryPhoto->temporaryUrl() }}" alt="معاينة صورة المستفيد" class="size-full object-cover">
-                            @elseif ($beneficiaryExistingPhotoPath)
-                                <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($beneficiaryExistingPhotoPath) }}" alt="صورة المستفيد" class="size-full object-cover">
+                            @elseif ($beneficiaryExistingPhotoPath && $editingBeneficiaryIndex !== null)
+                                <img src="{{ $this->beneficiaryPhotoUrl($beneficiaries[$editingBeneficiaryIndex] ?? null) }}" alt="صورة المستفيد" class="size-full object-cover">
                             @else
                                 <div class="flex flex-col items-center gap-2 px-4 text-center">
                                     <svg class="size-9 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"/></svg>
@@ -196,8 +196,8 @@
                             @endif
                         </div>
                     </div>
-                    @if (! empty($beneficiary['photo_path']))
-                        <img src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($beneficiary['photo_path']) }}" alt="" class="size-14 shrink-0 rounded-2xl object-cover">
+                    @if (! empty($beneficiary['photo_path']) && $this->beneficiaryPhotoUrl($beneficiary))
+                        <img src="{{ $this->beneficiaryPhotoUrl($beneficiary) }}" alt="" class="size-14 shrink-0 rounded-2xl object-cover">
                     @else
                         <div class="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-2xl">{{ $rel->icon() }}</div>
                     @endif

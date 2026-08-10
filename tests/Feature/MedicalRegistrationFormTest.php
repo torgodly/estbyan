@@ -205,7 +205,7 @@ it('clears all form data and session', function () {
 });
 
 it('saves a beneficiary with photo medical record and validated national id', function () {
-    Storage::fake('public');
+    Storage::fake('local');
 
     Employee::factory()->create([
         'employee_number' => '5001',
@@ -246,11 +246,11 @@ it('saves a beneficiary with photo medical record and validated national id', fu
         ->and($beneficiary->chronic_conditions)->toBe(['heart_disease'])
         ->and($beneficiary->photo_path)->not->toBeNull();
 
-    Storage::disk('public')->assertExists($beneficiary->photo_path);
+    Storage::disk('local')->assertExists($beneficiary->photo_path);
 });
 
 it('hides the beneficiary card while its edit form is open', function () {
-    Storage::fake('public');
+    Storage::fake('local');
 
     $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1975);
     $beneficiaryNationalId = LibyanNationalId::generate(Gender::Female, 2000);
@@ -357,7 +357,7 @@ it('reserves scroll space under the fixed mobile action sheet on the final repor
 });
 
 it('renders a readable beneficiaries review section on the final report', function () {
-    Storage::fake('public');
+    Storage::fake('local');
 
     $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1978);
     $beneficiaryNationalId = LibyanNationalId::generate(Gender::Female, 1985);
@@ -498,7 +498,7 @@ it('starts editing a submitted registration from the first form step with data f
 });
 
 it('keeps the same reference number when resubmitting after edit', function () {
-    Storage::fake('public');
+    Storage::fake('local');
 
     $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1988);
 

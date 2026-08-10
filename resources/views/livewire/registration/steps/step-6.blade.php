@@ -1,9 +1,9 @@
 @php
     $genderLabel = \App\Enums\Gender::tryFrom($gender)?->label() ?? '—';
     $maritalLabel = \App\Enums\MaritalStatus::tryFrom($maritalStatus)?->label() ?? '—';
-    $employeePhotoPath = $this->registration()?->employee_photo_path;
-    $employeePhotoUrl = $employeePhotoPath
-        ? \Illuminate\Support\Facades\Storage::disk('public')->url($employeePhotoPath)
+    $registration = $this->registration();
+    $employeePhotoUrl = $registration
+        ? \App\Support\RegistrationDocuments::url($registration, \App\Support\RegistrationDocuments::EMPLOYEE_PHOTO)
         : null;
 @endphp
 
@@ -121,9 +121,7 @@
             @php
                 $rel = \App\Enums\BeneficiaryRelationship::from($beneficiary['relationship']);
                 $blood = \App\Enums\BloodType::tryFrom($beneficiary['blood_type'] ?? '');
-                $photo = ! empty($beneficiary['photo_path'])
-                    ? \Illuminate\Support\Facades\Storage::disk('public')->url($beneficiary['photo_path'])
-                    : null;
+                $photo = $this->beneficiaryPhotoUrl($beneficiary);
                 $hasChronic = (bool) ($beneficiary['has_chronic_conditions'] ?? $beneficiary['has_chronic_condition'] ?? false);
                 $medicalAnswers = [
                     ['label' => 'أمراض مزمنة', 'yes' => $hasChronic],

@@ -4,7 +4,6 @@ namespace App\Filament\Resources\Employees\Pages;
 
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Models\Employee;
-use Filament\Actions\Action;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,14 +14,7 @@ class ListEmployees extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
-            Action::make('importHint')
-                ->label('استيراد عبر الأمر')
-                ->icon('heroicon-o-arrow-up-tray')
-                ->color('gray')
-                ->disabled()
-                ->tooltip('php artisan employees:import database/data/employees.xlsx'),
-        ];
+        return [];
     }
 
     public function getDefaultActiveTab(): string|int|null

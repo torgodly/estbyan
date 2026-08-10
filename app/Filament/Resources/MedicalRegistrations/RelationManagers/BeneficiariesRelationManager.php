@@ -4,6 +4,7 @@ namespace App\Filament\Resources\MedicalRegistrations\RelationManagers;
 
 use App\Enums\BeneficiaryRelationship;
 use App\Enums\BloodType;
+use App\Support\RegistrationDocuments;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -47,10 +48,10 @@ class BeneficiariesRelationManager extends RelationManager
                 )),
             FileUpload::make('photo_path')
                 ->label('الصورة')
-                ->disk('public')
+                ->disk(RegistrationDocuments::diskName())
                 ->directory('registrations/beneficiaries')
                 ->image()
-                ->visibility('public'),
+                ->visibility('private'),
             Section::make('السجل الطبي')
                 ->schema([
                     Toggle::make('has_chronic_conditions')
@@ -75,7 +76,12 @@ class BeneficiariesRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('full_name')
             ->columns([
-                ImageColumn::make('photo_path')->label('الصورة')->disk('public')->circular(),
+                ImageColumn::make('photo_path')
+                    ->label('الصورة')
+                    ->circular()
+                    ->getStateUsing(fn ($record): ?string => $record->medicalRegistration
+                        ? RegistrationDocuments::beneficiaryUrl($record->medicalRegistration, $record)
+                        : null),
                 TextColumn::make('full_name')->label('الاسم')->searchable(),
                 TextColumn::make('relationship')
                     ->label('القرابة')

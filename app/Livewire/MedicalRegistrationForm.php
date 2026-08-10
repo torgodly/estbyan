@@ -12,8 +12,8 @@ use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Rules\LibyanNationalId;
 use App\Support\LibyanNationalId as LibyanNationalIdSupport;
+use App\Support\RegistrationDocuments;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -182,20 +182,20 @@ class MedicalRegistrationForm extends Component
 
         if ($registration && $registration->isEditableByEmployee()) {
             if ($registration->family_status_document_path) {
-                Storage::disk('public')->delete($registration->family_status_document_path);
+                RegistrationDocuments::disk()->delete($registration->family_status_document_path);
             }
 
             if ($registration->employee_photo_path) {
-                Storage::disk('public')->delete($registration->employee_photo_path);
+                RegistrationDocuments::disk()->delete($registration->employee_photo_path);
             }
 
             foreach ($registration->beneficiaries as $beneficiary) {
                 if ($beneficiary->photo_path) {
-                    Storage::disk('public')->delete($beneficiary->photo_path);
+                    RegistrationDocuments::disk()->delete($beneficiary->photo_path);
                 }
             }
 
-            Storage::disk('public')->deleteDirectory("registrations/{$registration->uuid}");
+            RegistrationDocuments::disk()->deleteDirectory("registrations/{$registration->uuid}");
             $registration->beneficiaries()->delete();
             $registration->delete();
         }
@@ -443,7 +443,10 @@ class MedicalRegistrationForm extends Component
         $photoPath = $this->beneficiaryExistingPhotoPath;
 
         if ($this->beneficiaryPhoto instanceof TemporaryUploadedFile) {
-            $photoPath = $this->beneficiaryPhoto->store("registrations/{$registration->uuid}/beneficiaries", 'public');
+            $photoPath = $this->beneficiaryPhoto->store(
+                "registrations/{$registration->uuid}/beneficiaries",
+                RegistrationDocuments::diskName(),
+            );
         }
 
         if (blank($photoPath)) {
@@ -523,7 +526,7 @@ class MedicalRegistrationForm extends Component
         $beneficiary = $this->beneficiaries[$index] ?? null;
 
         if ($beneficiary && ! empty($beneficiary['photo_path'])) {
-            Storage::disk('public')->delete($beneficiary['photo_path']);
+            RegistrationDocuments::disk()->delete($beneficiary['photo_path']);
         }
 
         unset($this->beneficiaries[$index]);
@@ -592,11 +595,17 @@ class MedicalRegistrationForm extends Component
         $path = "registrations/{$registration->uuid}";
 
         if ($this->familyStatusDocument) {
-            $registration->family_status_document_path = $this->familyStatusDocument->store($path, 'public');
+            $registration->family_status_document_path = $this->familyStatusDocument->store(
+                $path,
+                RegistrationDocuments::diskName(),
+            );
         }
 
         if ($this->employeePhoto) {
-            $registration->employee_photo_path = $this->employeePhoto->store($path, 'public');
+            $registration->employee_photo_path = $this->employeePhoto->store(
+                $path,
+                RegistrationDocuments::diskName(),
+            );
         }
 
         if (blank($registration->family_status_document_path)) {
@@ -866,6 +875,19 @@ class MedicalRegistrationForm extends Component
         return MedicalRegistration::query()->find($this->registrationId);
     }
 
+    public function beneficiaryPhotoUrl(?array $beneficiary): ?string
+    {
+        $registration = $this->registration();
+
+        if (! $registration || blank($beneficiary['photo_path'] ?? null) || blank($beneficiary['id'] ?? null)) {
+            return null;
+        }
+
+        $model = $registration->beneficiaries->firstWhere('id', $beneficiary['id']);
+
+        return $model ? RegistrationDocuments::beneficiaryUrl($registration, $model) : null;
+    }
+
     protected function syncBeneficiariesToDatabase(): void
     {
         $registration = $this->registration();
@@ -895,6 +917,25 @@ class MedicalRegistrationForm extends Component
                 'photo_path' => $beneficiary['photo_path'] ?? null,
             ]);
         }
+
+        $registration->unsetRelation('beneficiaries');
+        $this->beneficiaries = $registration->beneficiaries()->get()->map(fn (Beneficiary $b) => [
+            'id' => $b->id,
+            'full_name' => $b->full_name,
+            'relationship' => $b->relationship->value,
+            'national_id' => $b->national_id,
+            'date_of_birth' => $b->date_of_birth?->format('Y-m-d'),
+            'blood_type' => $b->blood_type?->value,
+            'has_chronic_condition' => $b->has_chronic_condition || $b->has_chronic_conditions,
+            'has_chronic_conditions' => $b->has_chronic_conditions || $b->has_chronic_condition,
+            'chronic_conditions' => $b->chronic_conditions ?? [],
+            'has_tumor' => $b->has_tumor,
+            'has_surgery_history' => $b->has_surgery_history,
+            'uses_medical_devices' => $b->uses_medical_devices,
+            'hospitalized_recently' => $b->hospitalized_recently,
+            'traveled_for_treatment' => $b->traveled_for_treatment,
+            'photo_path' => $b->photo_path,
+        ])->all();
 
         $registration->update(['current_step' => $this->step]);
         $this->hasSavedDraft = true;
@@ -929,6 +970,7 @@ class MedicalRegistrationForm extends Component
         $this->referenceNumber = $registration->reference_number ?? '';
 
         $this->beneficiaries = $registration->beneficiaries->map(fn (Beneficiary $b) => [
+            'id' => $b->id,
             'full_name' => $b->full_name,
             'relationship' => $b->relationship->value,
             'national_id' => $b->national_id,

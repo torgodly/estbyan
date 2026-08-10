@@ -76,7 +76,7 @@ it('renders the custom registration dossier with key sections', function () {
         ->assertSee($registration->reference_number)
         ->assertSee('السجل الطبي للموظف')
         ->assertSee('هل يعاني من أمراض مزمنة؟')
-        ->assertSee('الأمراض المزمنة المحددة')
+        ->assertSee('اضغط لعرض التفاصيل المحددة')
         ->assertSee('تنبيه طبي')
         ->assertSee('المستندات')
         ->assertSee('لم يُرفق هذا المستند')
@@ -89,6 +89,22 @@ it('renders the custom registration dossier with key sections', function () {
         ->assertSee('سجل القرار')
         ->assertActionVisible('approve')
         ->assertActionVisible('decline');
+});
+
+it('shows selected chronic conditions inside the medical accordion details', function () {
+    $admin = User::factory()->create();
+    $registration = MedicalRegistration::factory()->submitted()->create([
+        'has_chronic_conditions' => true,
+        'chronic_conditions' => ['heart_disease', 'epilepsy'],
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ViewMedicalRegistration::class, ['record' => $registration->getRouteKey()])
+        ->assertSuccessful()
+        ->assertSee('الأمراض المزمنة المحددة')
+        ->assertSee('أمراض القلب')
+        ->assertSee('الصرع');
 });
 
 it('hides approve action for already approved registrations', function () {

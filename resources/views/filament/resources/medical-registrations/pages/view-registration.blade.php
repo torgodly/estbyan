@@ -1,27 +1,75 @@
 @php
-    use Illuminate\Support\Facades\Storage;
+    use App\Support\RegistrationDocuments;
 
     $registration = $this->getRecord();
-    $photoUrl = filled($registration->employee_photo_path)
-        ? Storage::disk('public')->url($registration->employee_photo_path)
-        : null;
-    $familyDocUrl = filled($registration->family_status_document_path)
-        ? Storage::disk('public')->url($registration->family_status_document_path)
-        : null;
+    $photoUrl = RegistrationDocuments::url($registration, RegistrationDocuments::EMPLOYEE_PHOTO);
+    $familyDocUrl = RegistrationDocuments::url($registration, RegistrationDocuments::FAMILY_STATUS);
     $chronicLabels = collect($registration->chronic_conditions ?? [])
         ->map(fn (string $key) => config('registration.chronic_conditions.'.$key) ?? $key)
         ->filter()
         ->values();
     $medicalFlags = [
-        ['label' => 'هل يعاني من أمراض مزمنة؟', 'value' => (bool) $registration->has_chronic_conditions, 'key' => 'chronic'],
-        ['label' => 'هل يوجد تاريخ أورام؟', 'value' => (bool) $registration->has_tumor, 'key' => 'tumor'],
-        ['label' => 'هل أجرى عمليات جراحية؟', 'value' => (bool) $registration->has_surgery_history, 'key' => 'surgery'],
-        ['label' => 'هل يستخدم أجهزة طبية؟', 'value' => (bool) $registration->uses_medical_devices, 'key' => 'devices'],
-        ['label' => 'هل أقام في مستشفى مؤخراً؟', 'value' => (bool) $registration->hospitalized_recently, 'key' => 'hospital'],
-        ['label' => 'هل سافر للعلاج بالخارج؟', 'value' => (bool) $registration->traveled_for_treatment, 'key' => 'abroad'],
+        [
+            'label' => 'هل يعاني من أمراض مزمنة؟',
+            'value' => (bool) $registration->has_chronic_conditions,
+            'key' => 'chronic',
+            'details' => $chronicLabels,
+            'detail_title' => 'الأمراض المزمنة المحددة',
+            'empty_yes' => 'تم التحديد بنعم دون حفظ تفاصيل إضافية.',
+            'empty_no' => 'لا يعاني من أمراض مزمنة.',
+        ],
+        [
+            'label' => 'هل يوجد تاريخ أورام؟',
+            'value' => (bool) $registration->has_tumor,
+            'key' => 'tumor',
+            'details' => collect(),
+            'detail_title' => 'التفاصيل',
+            'empty_yes' => 'تم التحديد بنعم. لا توجد خيارات تفصيلية إضافية في النموذج.',
+            'empty_no' => 'لا يوجد تاريخ أورام.',
+        ],
+        [
+            'label' => 'هل أجرى عمليات جراحية؟',
+            'value' => (bool) $registration->has_surgery_history,
+            'key' => 'surgery',
+            'details' => collect(),
+            'detail_title' => 'التفاصيل',
+            'empty_yes' => 'تم التحديد بنعم. لا توجد خيارات تفصيلية إضافية في النموذج.',
+            'empty_no' => 'لا توجد عمليات جراحية.',
+        ],
+        [
+            'label' => 'هل يستخدم أجهزة طبية؟',
+            'value' => (bool) $registration->uses_medical_devices,
+            'key' => 'devices',
+            'details' => collect(),
+            'detail_title' => 'التفاصيل',
+            'empty_yes' => 'تم التحديد بنعم. لا توجد خيارات تفصيلية إضافية في النموذج.',
+            'empty_no' => 'لا يستخدم أجهزة طبية.',
+        ],
+        [
+            'label' => 'هل أقام في مستشفى مؤخراً؟',
+            'value' => (bool) $registration->hospitalized_recently,
+            'key' => 'hospital',
+            'details' => collect(),
+            'detail_title' => 'التفاصيل',
+            'empty_yes' => 'تم التحديد بنعم. لا توجد خيارات تفصيلية إضافية في النموذج.',
+            'empty_no' => 'لا توجد إقامة مستشفى حديثة.',
+        ],
+        [
+            'label' => 'هل سافر للعلاج بالخارج؟',
+            'value' => (bool) $registration->traveled_for_treatment,
+            'key' => 'abroad',
+            'details' => collect(),
+            'detail_title' => 'التفاصيل',
+            'empty_yes' => 'تم التحديد بنعم. لا توجد خيارات تفصيلية إضافية في النموذج.',
+            'empty_no' => 'لم يسافر للعلاج بالخارج.',
+        ],
     ];
     $positiveFlags = collect($medicalFlags)->where('value', true)->values();
-    $familyDocType = filled($familyDocUrl) && preg_match('/\.(jpe?g|png|webp|gif)(\?|$)/i', $familyDocUrl) ? 'image' : 'pdf';
+    $defaultOpen = $positiveFlags->first()['key'] ?? 'chronic';
+    $familyDocType = filled($registration->family_status_document_path)
+        && preg_match('/\.(jpe?g|png|webp|gif)$/i', $registration->family_status_document_path)
+        ? 'image'
+        : 'pdf';
 @endphp
 
 <x-filament-panels::page>
@@ -33,6 +81,8 @@
             previewUrl: null,
             previewType: null,
             previewTitle: '',
+            openMedical: @js($defaultOpen),
+            openBeneficiary: {},
             openPreview(url, type, title) {
                 this.previewUrl = url
                 this.previewType = type
@@ -42,6 +92,13 @@
             closePreview() {
                 this.previewOpen = false
                 this.previewUrl = null
+            },
+            toggleMedical(key) {
+                this.openMedical = this.openMedical === key ? null : key
+            },
+            toggleBeneficiary(id, key) {
+                const current = this.openBeneficiary[id] ?? null
+                this.openBeneficiary[id] = current === key ? null : key
             },
         }"
         @keydown.escape.window="closePreview()"
@@ -143,7 +200,7 @@
                     </div>
                 </section>
 
-                {{-- Medical record: full checklist --}}
+                {{-- Medical record accordion --}}
                 <section class="hr-panel" id="medical-record">
                     <div class="hr-panel__head">
                         <h3 class="hr-panel__title">السجل الطبي للموظف</h3>
@@ -152,12 +209,21 @@
                         </span>
                     </div>
                     <div class="hr-panel__body">
-                        <table class="hr-med-table">
-                            <tbody>
-                                @foreach ($medicalFlags as $flag)
-                                    <tr>
-                                        <th scope="row">{{ $flag['label'] }}</th>
-                                        <td>
+                        <div class="hr-accordion">
+                            @foreach ($medicalFlags as $flag)
+                                <div class="hr-accordion__item" :class="{ 'is-open': openMedical === @js($flag['key']) }">
+                                    <button
+                                        type="button"
+                                        class="hr-accordion__trigger"
+                                        @click="toggleMedical(@js($flag['key']))"
+                                    >
+                                        <span class="hr-accordion__question">
+                                            <strong>{{ $flag['label'] }}</strong>
+                                            <span class="hr-accordion__hint">
+                                                {{ $flag['value'] ? 'اضغط لعرض التفاصيل المحددة' : 'اضغط لعرض تفاصيل الإجابة' }}
+                                            </span>
+                                        </span>
+                                        <span class="hr-accordion__aside">
                                             <span @class([
                                                 'hr-answer',
                                                 'hr-answer--yes' => $flag['value'],
@@ -165,27 +231,26 @@
                                             ])>
                                                 {{ $flag['value'] ? 'نعم' : 'لا' }}
                                             </span>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                                <tr>
-                                    <th scope="row">الأمراض المزمنة المحددة</th>
-                                    <td>
-                                        @if ($chronicLabels->isNotEmpty())
+                                            <x-filament::icon icon="heroicon-m-chevron-down" class="hr-accordion__chevron" />
+                                        </span>
+                                    </button>
+                                    <div class="hr-accordion__panel" x-show="openMedical === @js($flag['key'])" x-cloak>
+                                        <p class="hr-accordion__panel-title">{{ $flag['detail_title'] }}</p>
+                                        @if ($flag['value'] && $flag['details']->isNotEmpty())
                                             <div class="hr-tags" style="margin-top: 0;">
-                                                @foreach ($chronicLabels as $label)
+                                                @foreach ($flag['details'] as $label)
                                                     <span class="hr-tag">{{ $label }}</span>
                                                 @endforeach
                                             </div>
-                                        @elseif ($registration->has_chronic_conditions)
-                                            <span class="hr-answer hr-answer--yes">نعم — بدون تفصيل محفوظ</span>
                                         @else
-                                            <span class="hr-answer hr-answer--no">لا يوجد</span>
+                                            <p class="hr-accordion__empty">
+                                                {{ $flag['value'] ? $flag['empty_yes'] : $flag['empty_no'] }}
+                                            </p>
                                         @endif
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
                     </div>
                 </section>
 
@@ -263,9 +328,7 @@
                     <div class="hr-panel__body">
                         @forelse ($registration->beneficiaries as $index => $beneficiary)
                             @php
-                                $beneficiaryPhoto = filled($beneficiary->photo_path)
-                                    ? Storage::disk('public')->url($beneficiary->photo_path)
-                                    : null;
+                                $beneficiaryPhoto = RegistrationDocuments::beneficiaryUrl($registration, $beneficiary);
                                 $beneficiaryChronic = collect($beneficiary->chronic_conditions ?? [])
                                     ->map(fn (string $key) => config('registration.chronic_conditions.'.$key) ?? $key)
                                     ->filter()

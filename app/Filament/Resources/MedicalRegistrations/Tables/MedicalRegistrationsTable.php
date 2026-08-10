@@ -4,6 +4,7 @@ namespace App\Filament\Resources\MedicalRegistrations\Tables;
 
 use App\Enums\RegistrationStatus;
 use App\Models\MedicalRegistration;
+use App\Support\RegistrationDocuments;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -25,10 +26,13 @@ class MedicalRegistrationsTable
             ->columns([
                 ImageColumn::make('employee_photo_path')
                     ->label('الصورة')
-                    ->disk('public')
                     ->circular()
                     ->imageSize(40)
-                    ->defaultImageUrl(url('/images/brand/smart-care.png')),
+                    ->getStateUsing(fn (MedicalRegistration $record): ?string => RegistrationDocuments::url(
+                        $record,
+                        RegistrationDocuments::EMPLOYEE_PHOTO,
+                    ))
+                    ->defaultImageUrl(url('/images/brand/audit-bureau.png')),
                 TextColumn::make('reference_number')
                     ->label('رقم المرجع')
                     ->searchable()
