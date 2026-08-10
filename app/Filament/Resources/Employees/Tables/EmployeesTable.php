@@ -24,35 +24,54 @@ class EmployeesTable
                 TextColumn::make('full_name')
                     ->label('الاسم')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->description(fn (Employee $record): string => $record->employee_number),
                 TextColumn::make('employee_number')
                     ->label('الرقم الوظيفي')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('national_id')
                     ->label('الرقم الوطني')
-                    ->searchable(),
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('workplace')
                     ->label('مكان العمل')
                     ->formatStateUsing(fn (?string $state, Employee $record): string => $record->workplaceLabel() ?? '—')
                     ->sortable()
                     ->searchable(),
-                IconColumn::make('is_active')
-                    ->label('نشط')
-                    ->boolean(),
-                TextColumn::make('medical_registrations_count')
-                    ->label('الطلبات')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('latestMedicalRegistration.status')
-                    ->label('آخر حالة')
+                TextColumn::make('has_submitted_form')
+                    ->label('تعبئة النموذج')
+                    ->badge()
+                    ->getStateUsing(fn (Employee $record): bool => $record->hasSubmittedForm())
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'أرسل النموذج' : 'لم يرسل')
+                    ->color(fn (bool $state): string => $state ? 'success' : 'warning')
+                    ->sortable(query: function ($query, string $direction) {
+                        return $query->orderBy('has_submitted_form', $direction);
+                    }),
+                TextColumn::make('latestSubmittedRegistration.status')
+                    ->label('حالة الطلب')
                     ->badge()
                     ->formatStateUsing(fn (?RegistrationStatus $state): string => $state?->label() ?? '—')
                     ->color(fn (?RegistrationStatus $state): string => $state?->color() ?? 'gray')
                     ->placeholder('—'),
-                TextColumn::make('created_at')
-                    ->label('تاريخ الإنشاء')
+                TextColumn::make('latestSubmittedRegistration.submitted_at')
+                    ->label('تاريخ الإرسال')
                     ->dateTime('Y-m-d H:i')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(),
+                TextColumn::make('latestSubmittedRegistration.reference_number')
+                    ->label('المرجع')
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
+                IconColumn::make('is_active')
+                    ->label('نشط')
+                    ->boolean()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('medical_registrations_count')
+                    ->label('عدد الطلبات')
+                    ->numeric()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -60,6 +79,16 @@ class EmployeesTable
                 SelectFilter::make('workplace')
                     ->label('مكان العمل')
                     ->options(fn (): array => config('registration.workplaces', [])),
+                TernaryFilter::make('has_submitted_form')
+                    ->label('تعبئة النموذج')
+                    ->placeholder('الكل')
+                    ->trueLabel('أرسلوا النموذج')
+                    ->falseLabel('لم يرسلوا')
+                    ->queries(
+                        true: fn ($query) => $query->submittedForm(),
+                        false: fn ($query) => $query->notSubmittedForm(),
+                        blank: fn ($query) => $query,
+                    ),
                 TernaryFilter::make('is_active')
                     ->label('الحالة')
                     ->trueLabel('نشط')

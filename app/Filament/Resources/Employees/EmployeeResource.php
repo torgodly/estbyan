@@ -36,8 +36,12 @@ class EmployeeResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->with(['latestMedicalRegistration'])
-            ->withCount('medicalRegistrations');
+            ->with(['latestMedicalRegistration', 'latestSubmittedRegistration'])
+            ->withCount('medicalRegistrations')
+            ->withExists([
+                'medicalRegistrations as has_submitted_form' => fn (Builder $query) => $query
+                    ->whereIn('status', Employee::submittedFormStatuses()),
+            ]);
     }
 
     public static function form(Schema $schema): Schema

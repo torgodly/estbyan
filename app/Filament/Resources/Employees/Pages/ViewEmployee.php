@@ -30,6 +30,7 @@ class ViewEmployee extends ViewRecord
         parent::mount($record);
 
         $this->record->loadMissing([
+            'latestSubmittedRegistration',
             'medicalRegistrations' => fn ($query) => $query->latest('created_at'),
         ]);
     }
@@ -50,6 +51,11 @@ class ViewEmployee extends ViewRecord
             EditAction::make()
                 ->label('تعديل البيانات'),
         ];
+    }
+
+    public function hasSubmittedForm(): bool
+    {
+        return $this->record->hasSubmittedForm();
     }
 
     public function hasPendingRegistration(): bool

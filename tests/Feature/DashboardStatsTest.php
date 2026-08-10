@@ -20,6 +20,12 @@ it('registers custom stats widgets on the dashboard and removes defaults', funct
         ->and($widgets)->not->toContain(FilamentInfoWidget::class);
 });
 
+it('brands the admin panel for audit bureau hr', function () {
+    expect(Filament::getBrandName())->toBe('ديوان المحاسبة · الموارد البشرية')
+        ->and((string) Filament::getBrandLogo())->toContain('images/brand/audit-bureau-hd.png')
+        ->and(Filament::getFavicon())->toContain('images/brand/audit-bureau.png');
+});
+
 it('renders registration and employee stats overview content', function () {
     $admin = User::factory()->create();
 

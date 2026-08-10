@@ -59,10 +59,13 @@ it('renders the custom registration dossier with key sections', function () {
         'phone' => '0910000000',
         'has_chronic_conditions' => true,
         'chronic_conditions' => ['diabetes'],
+        'family_status_document_path' => null,
+        'employee_photo_path' => null,
     ]);
     Beneficiary::factory()->create([
         'medical_registration_id' => $registration->id,
         'full_name' => 'سارة علي',
+        'photo_path' => null,
     ]);
 
     $this->actingAs($admin);
@@ -73,8 +76,12 @@ it('renders the custom registration dossier with key sections', function () {
         ->assertSee($registration->reference_number)
         ->assertSee('السجل الطبي')
         ->assertSee('المستندات')
+        ->assertSee('لم يُرفق هذا المستند')
+        ->assertSee('لا توجد صورة')
+        ->assertDontSee('معاينة داخل الصفحة')
         ->assertSee('المستفيدون')
         ->assertSee('سارة علي')
+        ->assertSee('بدون صورة')
         ->assertSee('سجل المراجعة')
         ->assertActionVisible('approve')
         ->assertActionVisible('decline');

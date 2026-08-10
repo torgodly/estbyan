@@ -17,21 +17,30 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
+        $auditLogoUrl = asset('images/brand/audit-bureau-hd.png');
+
         return $panel
             ->default()
             ->id('admin')
             ->path('admin')
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->login()
-            ->brandName('SMART CARE')
+            ->brandName('ديوان المحاسبة · الموارد البشرية')
+            ->brandLogo(fn (): HtmlString => new HtmlString(
+                '<img src="'.e($auditLogoUrl).'" alt="ديوان المحاسبة" class="fi-logo audit-admin-logo">'
+            ))
+            ->darkModeBrandLogo($auditLogoUrl)
+            ->brandLogoHeight('2.75rem')
+            ->favicon(asset('images/brand/audit-bureau.png'))
             ->colors([
-                'primary' => Color::Blue,
+                'primary' => Color::hex('#0f2744'),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')

@@ -32,7 +32,49 @@ it('lists employees and supports search', function () {
         );
 });
 
-it('shows the employee dossier with registration history', function () {
+it('filters employees who submitted the form versus those who have not', function () {
+    $admin = User::factory()->create();
+
+    $submittedEmployee = Employee::factory()->create([
+        'full_name' => 'موظف مرسل',
+    ]);
+    $notSubmittedEmployee = Employee::factory()->create([
+        'full_name' => 'موظف لم يرسل',
+    ]);
+    $draftOnlyEmployee = Employee::factory()->create([
+        'full_name' => 'موظف مسودة فقط',
+    ]);
+
+    MedicalRegistration::factory()->submitted()->create([
+        'employee_id' => $submittedEmployee->id,
+        'full_name' => $submittedEmployee->full_name,
+        'employee_number' => $submittedEmployee->employee_number,
+        'national_id' => $submittedEmployee->national_id,
+    ]);
+    MedicalRegistration::factory()->create([
+        'employee_id' => $draftOnlyEmployee->id,
+        'full_name' => $draftOnlyEmployee->full_name,
+        'employee_number' => $draftOnlyEmployee->employee_number,
+        'national_id' => $draftOnlyEmployee->national_id,
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ListEmployees::class)
+        ->assertSuccessful()
+        ->assertSee('أرسلوا النموذج')
+        ->assertSee('لم يرسلوا')
+        ->assertSee('أرسل النموذج')
+        ->assertSee('لم يرسل')
+        ->set('activeTab', 'submitted')
+        ->assertCanSeeTableRecords([$submittedEmployee])
+        ->assertCanNotSeeTableRecords([$notSubmittedEmployee, $draftOnlyEmployee])
+        ->set('activeTab', 'not_submitted')
+        ->assertCanSeeTableRecords([$notSubmittedEmployee, $draftOnlyEmployee])
+        ->assertCanNotSeeTableRecords([$submittedEmployee]);
+});
+
+it('shows the employee dossier with registration history and submission state', function () {
     $admin = User::factory()->create();
     $employee = Employee::factory()->create([
         'full_name' => 'نادية الملف',
@@ -52,10 +94,26 @@ it('shows the employee dossier with registration history', function () {
         ->assertSuccessful()
         ->assertSee('نادية الملف')
         ->assertSee('33445')
+        ->assertSee('أرسل النموذج')
         ->assertSee('سجل طلبات التسجيل')
         ->assertSee('SC26-12345')
-        ->assertSee('بانتظار المراجعة')
         ->assertSee('فتح الملف');
 
-    expect($registration->employee_id)->toBe($employee->id);
+    expect($registration->employee_id)->toBe($employee->id)
+        ->and($employee->fresh()->hasSubmittedForm())->toBeTrue();
+});
+
+it('shows an empty state when the employee has not submitted', function () {
+    $admin = User::factory()->create();
+    $employee = Employee::factory()->create([
+        'full_name' => 'موظف بلا طلب',
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ViewEmployee::class, ['record' => $employee->getRouteKey()])
+        ->assertSuccessful()
+        ->assertSee('لم يرسل النموذج')
+        ->assertSee('هذا الموظف لم يرسل النموذج بعد')
+        ->assertSee('لا توجد طلبات لهذا الموظف');
 });
