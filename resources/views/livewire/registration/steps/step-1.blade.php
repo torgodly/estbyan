@@ -56,7 +56,7 @@
                             inputmode="numeric"
                             autocomplete="username"
                             class="reg-input reg-login-input"
-                            placeholder="مثال: 1001"
+                            placeholder="مثال: 0000"
                         >
                     </div>
                     @error('employeeNumber') <p class="reg-field-error">{{ $message }}</p> @enderror
@@ -75,7 +75,7 @@
                             inputmode="numeric"
                             autocomplete="off"
                             class="reg-input reg-login-input"
-                            placeholder="120020129499"
+                            placeholder="119990000000"
                             maxlength="12"
                             dir="rtl"
                         >
