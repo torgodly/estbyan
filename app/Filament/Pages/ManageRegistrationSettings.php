@@ -13,6 +13,7 @@ use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\EmbeddedSchema;
 use Filament\Schemas\Components\Form;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 
@@ -50,9 +51,9 @@ class ManageRegistrationSettings extends Page
         $data = $this->form->getState();
         $settings = app(RegistrationSettings::class);
 
-        $settings->form_enabled = (bool) $data['form_enabled'];
-        $settings->disabled_message_ar = $data['disabled_message_ar'];
-        $settings->disabled_message_en = $data['disabled_message_en'];
+        $settings->form_enabled = (bool) ($data['form_enabled'] ?? false);
+        $settings->disabled_message_ar = $data['disabled_message_ar'] ?? $settings->disabled_message_ar;
+        $settings->disabled_message_en = $data['disabled_message_en'] ?? $settings->disabled_message_en;
         $settings->save();
 
         Notification::make()
@@ -71,26 +72,39 @@ class ManageRegistrationSettings extends Page
     {
         return $schema->components([
             Section::make('حالة النموذج')
-                ->description('فعّل أو عطّل نموذج التسجيل الطبي العام للموظفين.')
+                ->description('تحكّم في إتاحة نموذج التسجيل العام للموظفين.')
+                ->icon(Heroicon::OutlinedPower)
                 ->schema([
                     Toggle::make('form_enabled')
-                        ->label('تفعيل نموذج التسجيل')
-                        ->helperText('عند التعطيل، يرى الزوار رسالة إغلاق بدلاً من النموذج.')
+                        ->label(fn (Get $get): string => $get('form_enabled')
+                            ? 'النموذج مفعّل الآن'
+                            : 'النموذج معطّل الآن')
+                        ->helperText(fn (Get $get): string => $get('form_enabled')
+                            ? 'الموظفون يمكنهم فتح الرابط وتعبئة الاستبيان.'
+                            : 'الزوّار سيرون صفحة الإغلاق مع الرسائل أدناه بدلاً من النموذج.')
+                        ->onColor('success')
+                        ->offColor('warning')
+                        ->inline(false)
                         ->live(),
                 ]),
-            Section::make('رسالة الإغلاق')
-                ->description('تُعرض عندما يكون النموذج معطّلاً.')
+            Section::make('رسائل صفحة الإغلاق')
+                ->description('تظهر هذه الرسائل في صفحة «التسجيل مغلق» عندما يكون النموذج معطّلاً. العربية تظهر أولاً، والإنجليزية تحتها.')
+                ->icon(Heroicon::OutlinedChatBubbleBottomCenterText)
                 ->schema([
                     Textarea::make('disabled_message_ar')
                         ->label('الرسالة بالعربية')
-                        ->rows(3)
-                        ->required(),
+                        ->placeholder('مثال: التسجيل الطبي مغلق حالياً. يرجى المحاولة لاحقاً أو التواصل مع إدارة الرعاية الذكية.')
+                        ->rows(4)
+                        ->required()
+                        ->helperText('هذه الرسالة الرئيسية التي يقرأها الموظف.'),
                     Textarea::make('disabled_message_en')
                         ->label('الرسالة بالإنجليزية')
-                        ->rows(2)
-                        ->required(),
-                ])
-                ->visible(fn (callable $get): bool => ! $get('form_enabled')),
+                        ->placeholder('Example: Medical registration is currently closed. Please try again later.')
+                        ->rows(3)
+                        ->required()
+                        ->helperText('تظهر تحت الرسالة العربية بخط أصغر.')
+                        ->extraInputAttributes(['dir' => 'ltr']),
+                ]),
         ]);
     }
 

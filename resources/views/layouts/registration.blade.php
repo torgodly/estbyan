@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#0f2744">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>{{ $title ?? 'التسجيل الطبي — SMART CARE' }}</title>
+    @include('partials.seo', [
+        'seoTitle' => $title ?? 'التسجيل الطبي — ديوان المحاسبة × SMART CARE',
+        'seoDescription' => 'منظومة استبيان التسجيل الطبي لموظفي ديوان المحاسبة الليبي بالشراكة مع الرعاية الذكية (Smart Care). أدخل بياناتك وبيانات عائلتك بسهولة.',
+        'seoUrl' => route('registration.form'),
+    ])
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">

@@ -35,9 +35,30 @@ it('shows registration form when enabled', function () {
 it('shows closed page when form is disabled', function () {
     $settings = app(RegistrationSettings::class);
     $settings->form_enabled = false;
+    $settings->disabled_message_ar = 'التسجيل مغلق للصيانة';
+    $settings->disabled_message_en = 'Registration closed for maintenance';
     $settings->save();
 
-    $this->get('/register')->assertStatus(503);
+    $this->get('/register')
+        ->assertSuccessful()
+        ->assertSee('التسجيل غير متاح حالياً', false)
+        ->assertSee('التسجيل مغلق للصيانة', false)
+        ->assertSee('Registration closed for maintenance', false)
+        ->assertSee('og:image', false)
+        ->assertSee('images/og-registration.png', false)
+        ->assertSee('favicon-32x32.png', false)
+        ->assertSee('images/brand/smart-care.png', false);
+});
+
+it('exposes open graph tags on the registration form for share previews', function () {
+    $this->get('/register')
+        ->assertSuccessful()
+        ->assertSee('og:title', false)
+        ->assertSee('og:description', false)
+        ->assertSee('og:image', false)
+        ->assertSee('images/og-registration.png', false)
+        ->assertSee('twitter:card', false)
+        ->assertSee('apple-touch-icon', false);
 });
 
 it('rejects invalid national id format at the gate', function () {

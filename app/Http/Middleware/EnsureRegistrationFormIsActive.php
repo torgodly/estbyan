@@ -17,9 +17,10 @@ class EnsureRegistrationFormIsActive
             return $next($request);
         }
 
+        // Return 200 so WhatsApp/Telegram can scrape Open Graph preview tags.
         return response()->view('registration.closed', [
             'messageAr' => $settings->disabled_message_ar,
             'messageEn' => $settings->disabled_message_en,
-        ], 503);
+        ]);
     }
 }
