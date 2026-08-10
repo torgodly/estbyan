@@ -6,8 +6,30 @@
     </div>
     <h2 class="text-2xl font-extrabold text-navy-900 sm:text-3xl">تم إرسال التسجيل بنجاح</h2>
     <p class="mt-3 max-w-md text-sm leading-relaxed text-slate-500">شكراً لك. تم استلام طلبك وسيتم مراجعته من قبل فريق الرعاية الذكية. احتفظ برقم المرجع للمتابعة.</p>
-    <div class="mt-8 w-full max-w-sm rounded-2xl border border-teal-200 bg-teal-50/50 p-5">
-        <p class="text-xs font-bold uppercase tracking-wider text-teal-700">رقم المرجع</p>
-        <p class="mt-2 font-mono text-xl font-extrabold tracking-wide text-navy-900" dir="ltr">{{ $referenceNumber }}</p>
+    <div class="mt-8 flex w-full justify-center">
+        @include('livewire.registration.partials.reference-summary', [
+            'referenceNumber' => $referenceNumber,
+            'fullName' => $verifiedFullName ?: $fullName,
+            'nationalId' => $nationalId,
+            'employeeNumber' => $employeeNumber,
+        ])
+    </div>
+
+    <div class="mt-8 flex w-full max-w-md flex-col gap-3 sm:flex-row sm:justify-center">
+        <a
+            href="{{ route('registration.reference-card', $registrationId) }}"
+            class="reg-btn-primary inline-flex items-center justify-center gap-2 sm:!w-auto sm:min-w-[14rem]"
+        >
+            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+            تحميل بطاقة المراجعة
+        </a>
+        <button
+            type="button"
+            wire:click="editSubmittedRegistration"
+            class="reg-btn-secondary inline-flex items-center justify-center gap-2 sm:!w-auto sm:min-w-[12rem]"
+        >
+            <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
+            تعديل الطلب
+        </button>
     </div>
 </section>

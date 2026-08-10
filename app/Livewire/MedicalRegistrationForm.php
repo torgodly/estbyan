@@ -8,13 +8,18 @@ use App\Enums\Gender;
 use App\Enums\MaritalStatus;
 use App\Enums\RegistrationStatus;
 use App\Models\Beneficiary;
+use App\Models\Employee;
 use App\Models\MedicalRegistration;
+use App\Rules\LibyanNationalId;
+use App\Support\LibyanNationalId as LibyanNationalIdSupport;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 #[Layout('layouts.registration')]
@@ -89,7 +94,24 @@ class MedicalRegistrationForm extends Component
 
     public string $beneficiaryBloodType = 'a_positive';
 
-    public bool $beneficiaryHasChronic = false;
+    public bool $beneficiaryHasChronicConditions = false;
+
+    /** @var array<int, string> */
+    public array $beneficiaryChronicConditions = [];
+
+    public bool $beneficiaryHasTumor = false;
+
+    public bool $beneficiaryHasSurgeryHistory = false;
+
+    public bool $beneficiaryUsesMedicalDevices = false;
+
+    public bool $beneficiaryHospitalizedRecently = false;
+
+    public bool $beneficiaryTraveledForTreatment = false;
+
+    public $beneficiaryPhoto = null;
+
+    public ?string $beneficiaryExistingPhotoPath = null;
 
     public ?int $editingBeneficiaryIndex = null;
 
@@ -109,6 +131,12 @@ class MedicalRegistrationForm extends Component
 
     public bool $hasSavedDraft = false;
 
+    public bool $identityLocked = false;
+
+    public bool $approvedLocked = false;
+
+    public string $approvedMessage = '';
+
     public function mount(): void
     {
         $this->restoreFromSession();
@@ -116,12 +144,20 @@ class MedicalRegistrationForm extends Component
 
     public function updated(mixed $property): void
     {
-        if ($this->submitted) {
+        if ($this->submitted || $this->approvedLocked) {
             return;
         }
 
         if ($property === 'hasChronicConditions' && ! $this->hasChronicConditions) {
             $this->chronicConditions = [];
+        }
+
+        if ($property === 'beneficiaryHasChronicConditions' && ! $this->beneficiaryHasChronicConditions) {
+            $this->beneficiaryChronicConditions = [];
+        }
+
+        if ($property === 'maritalStatus') {
+            $this->syncBeneficiaryRelationshipToMaritalStatus();
         }
 
         if ($this->isStepOneField($property) && ! $this->registrationId) {
@@ -144,7 +180,7 @@ class MedicalRegistrationForm extends Component
     {
         $registration = $this->registration();
 
-        if ($registration) {
+        if ($registration && $registration->isEditableByEmployee()) {
             if ($registration->family_status_document_path) {
                 Storage::disk('public')->delete($registration->family_status_document_path);
             }
@@ -153,12 +189,18 @@ class MedicalRegistrationForm extends Component
                 Storage::disk('public')->delete($registration->employee_photo_path);
             }
 
+            foreach ($registration->beneficiaries as $beneficiary) {
+                if ($beneficiary->photo_path) {
+                    Storage::disk('public')->delete($beneficiary->photo_path);
+                }
+            }
+
             Storage::disk('public')->deleteDirectory("registrations/{$registration->uuid}");
             $registration->beneficiaries()->delete();
             $registration->delete();
         }
 
-        session()->forget(['registration_id', 'registration_step1']);
+        session()->forget(['registration_id', 'registration_step1', 'reference_download_id']);
 
         $this->resetFormState();
         $this->toastMessage = 'تم مسح جميع البيانات. يمكنك البدء من جديد.';
@@ -166,47 +208,120 @@ class MedicalRegistrationForm extends Component
 
     public function verifyIdentity(): void
     {
-        $this->validate([
-            'fullName' => ['required', 'string', 'min:3', 'max:255'],
+        $this->validateRules([
             'employeeNumber' => ['required', 'string', 'max:20'],
-            'nationalId' => ['required', 'string', 'digits_between:10,15'],
-            'dateOfBirth' => ['required', 'date', 'before:today'],
+            'nationalId' => ['required', 'string', new LibyanNationalId],
             'consent' => ['accepted'],
         ], [
-            'fullName.required' => 'الاسم الكامل مطلوب',
-            'fullName.min' => 'الاسم الكامل قصير جداً',
             'employeeNumber.required' => 'الرقم الوظيفي مطلوب',
             'nationalId.required' => 'الرقم الوطني مطلوب',
-            'dateOfBirth.required' => 'تاريخ الميلاد مطلوب',
             'consent.accepted' => 'يجب الموافقة على سياسة الخصوصية للمتابعة',
         ]);
 
-        $this->verifiedFullName = trim($this->fullName);
+        $employee = Employee::findForVerification($this->employeeNumber, $this->nationalId);
 
-        $registration = MedicalRegistration::query()->updateOrCreate(
-            [
-                'employee_number' => $this->employeeNumber,
-                'national_id' => $this->nationalId,
-                'status' => RegistrationStatus::Draft,
-            ],
-            [
-                'employee_id' => null,
-                'date_of_birth' => $this->dateOfBirth,
-                'full_name' => $this->verifiedFullName,
-                'consent_at' => now(),
-            ],
-        );
+        if (! $employee) {
+            $this->addError('employeeNumber', 'لم يتم العثور على موظف بهذه البيانات. تأكد من الرقم الوظيفي والرقم الوطني.');
 
-        $this->registrationId = $registration->id;
+            return;
+        }
+
+        $genderFromNid = LibyanNationalIdSupport::gender($employee->national_id)->value;
+
+        $existing = MedicalRegistration::query()
+            ->with('beneficiaries')
+            ->where('employee_id', $employee->id)
+            ->latest('id')
+            ->first();
+
+        if ($existing?->isApproved()) {
+            $this->approvedLocked = true;
+            $this->approvedMessage = 'تم اعتماد طلبك مسبقاً ولا يمكن تعديله.'.($existing->reference_number ? ' رقم المرجع: '.$existing->reference_number : '');
+            $this->referenceNumber = $existing->reference_number ?? '';
+            $this->registrationId = $existing->id;
+            session(['registration_id' => $existing->id, 'reference_download_id' => $existing->id]);
+
+            return;
+        }
+
+        if ($existing) {
+            $existing->update([
+                'full_name' => $employee->full_name,
+                'employee_number' => $employee->employee_number,
+                'national_id' => $employee->national_id,
+                'workplace' => $employee->workplace,
+                'gender' => $genderFromNid,
+                'consent_at' => $existing->consent_at ?? now(),
+            ]);
+
+            $existing = $existing->fresh('beneficiaries');
+            $this->loadRegistration($existing);
+            $this->identityLocked = true;
+            $this->gender = $genderFromNid;
+            session(['registration_id' => $existing->id]);
+            session()->forget('registration_step1');
+
+            if ($existing->isSubmitted()) {
+                $this->showSubmittedSuccess($existing, notify: true);
+
+                return;
+            }
+
+            if (filled($existing->reference_number)) {
+                session(['reference_download_id' => $existing->id]);
+                $this->notify('تم استعادة طلبك السابق — يمكنك التعديل مع الاحتفاظ برقم المرجع');
+            } else {
+                $this->notify('تم التحقق من بياناتك — تابع إكمال التسجيل');
+            }
+
+            return;
+        }
+
+        $registration = MedicalRegistration::query()->create([
+            'employee_id' => $employee->id,
+            'employee_number' => $employee->employee_number,
+            'national_id' => $employee->national_id,
+            'full_name' => $employee->full_name,
+            'workplace' => $employee->workplace,
+            'gender' => $genderFromNid,
+            'status' => RegistrationStatus::Draft,
+            'consent_at' => now(),
+            'current_step' => 2,
+        ]);
+
+        $this->loadRegistration($registration);
+        $this->identityLocked = true;
+        $this->gender = $genderFromNid;
+        $this->step = 2;
         session(['registration_id' => $registration->id]);
         session()->forget('registration_step1');
-        $this->goToStep(2);
-        $this->notify('تم حفظ بياناتك — تابع إكمال التسجيل');
+        $this->notify('تم التحقق من بياناتك — تابع إكمال التسجيل');
     }
 
     public function saveEmployeeDetails(): void
     {
-        $this->validate([
+        if ($this->isFormLocked()) {
+            return;
+        }
+
+        $this->gender = LibyanNationalIdSupport::isValid($this->nationalId)
+            ? LibyanNationalIdSupport::gender($this->nationalId)->value
+            : $this->gender;
+
+        $this->validateRules([
+            'dateOfBirth' => [
+                'required',
+                'date',
+                'before:today',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! is_string($value) || ! LibyanNationalIdSupport::matchesDateOfBirth($this->nationalId, $value)) {
+                        $year = LibyanNationalIdSupport::isValid($this->nationalId)
+                            ? (string) LibyanNationalIdSupport::birthYear($this->nationalId)
+                            : '—';
+                        $fail('سنة تاريخ الميلاد يجب أن تطابق السنة في الرقم الوطني ('.$year.').');
+                    }
+                },
+            ],
             'workplace' => ['required', Rule::in(array_keys(config('registration.workplaces')))],
             'jobTitle' => ['nullable', Rule::in(array_keys(config('registration.job_titles')))],
             'gender' => ['required', Rule::in(array_map(fn (Gender $g) => $g->value, Gender::cases()))],
@@ -218,6 +333,7 @@ class MedicalRegistrationForm extends Component
             'city' => ['required', Rule::in(array_keys(config('registration.cities')))],
             'address' => ['required', 'string', 'max:500'],
         ], [
+            'dateOfBirth.required' => 'تاريخ الميلاد مطلوب',
             'workplace.required' => 'مكان العمل مطلوب',
             'phone.required' => 'رقم الهاتف مطلوب',
             'city.required' => 'المدينة مطلوبة',
@@ -230,7 +346,11 @@ class MedicalRegistrationForm extends Component
 
     public function saveMedicalRecord(): void
     {
-        $this->validate([
+        if ($this->isFormLocked()) {
+            return;
+        }
+
+        $this->validateRules([
             'chronicConditions' => [Rule::requiredIf($this->hasChronicConditions), 'array'],
         ], [
             'chronicConditions.required' => 'يرجى تحديد الأمراض المزمنة على الأقل',
@@ -242,29 +362,111 @@ class MedicalRegistrationForm extends Component
 
     public function toggleBeneficiaryForm(): void
     {
+        if ($this->isFormLocked()) {
+            return;
+        }
+
         $this->showBeneficiaryForm = ! $this->showBeneficiaryForm;
         $this->resetBeneficiaryForm();
     }
 
     public function saveBeneficiary(): void
     {
-        $this->validate([
+        if ($this->isFormLocked()) {
+            return;
+        }
+
+        $rules = [
             'beneficiaryName' => ['required', 'string', 'max:255'],
-            'beneficiaryRelationship' => ['required', Rule::in(array_map(fn (BeneficiaryRelationship $r) => $r->value, BeneficiaryRelationship::cases()))],
-            'beneficiaryNationalId' => ['nullable', 'string', 'digits_between:10,15'],
-            'beneficiaryDateOfBirth' => ['nullable', 'date', 'before:today'],
+            'beneficiaryRelationship' => [
+                'required',
+                Rule::in(array_map(
+                    fn (BeneficiaryRelationship $r) => $r->value,
+                    BeneficiaryRelationship::availableFor($this->maritalStatus),
+                )),
+            ],
+            'beneficiaryNationalId' => ['required', 'string', new LibyanNationalId],
+            'beneficiaryDateOfBirth' => [
+                'required',
+                'date',
+                'before:today',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! is_string($value) || ! LibyanNationalIdSupport::matchesDateOfBirth($this->beneficiaryNationalId, $value)) {
+                        $fail('سنة ميلاد المستفيد يجب أن تطابق السنة في رقمه الوطني.');
+                    }
+                },
+            ],
             'beneficiaryBloodType' => ['required', Rule::in(array_map(fn (BloodType $b) => $b->value, BloodType::cases()))],
-        ], [
+            'beneficiaryChronicConditions' => [Rule::requiredIf($this->beneficiaryHasChronicConditions), 'array'],
+            'beneficiaryPhoto' => [
+                Rule::requiredIf($this->editingBeneficiaryIndex === null && blank($this->beneficiaryExistingPhotoPath)),
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png',
+                'max:5120',
+            ],
+        ];
+
+        $this->validateRules($rules, [
             'beneficiaryName.required' => 'اسم المستفيد مطلوب',
+            'beneficiaryRelationship.in' => $this->maritalStatus === MaritalStatus::Single->value
+                ? 'الأعزب يمكنه إضافة الوالدين فقط'
+                : 'صلة القرابة غير صالحة',
+            'beneficiaryNationalId.required' => 'الرقم الوطني للمستفيد مطلوب',
+            'beneficiaryDateOfBirth.required' => 'تاريخ ميلاد المستفيد مطلوب',
+            'beneficiaryPhoto.required' => 'صورة المستفيد مطلوبة',
+            'beneficiaryChronicConditions.required' => 'يرجى تحديد الأمراض المزمنة على الأقل',
         ]);
+
+        $relationship = BeneficiaryRelationship::from($this->beneficiaryRelationship);
+        $expectedGender = $relationship->expectedGender();
+
+        if (
+            $expectedGender !== null
+            && LibyanNationalIdSupport::isValid($this->beneficiaryNationalId)
+            && ! LibyanNationalIdSupport::matchesGender($this->beneficiaryNationalId, $expectedGender)
+        ) {
+            $digit = $expectedGender === Gender::Male ? '1' : '2';
+            $genderLabel = $expectedGender === Gender::Male ? 'ذكر' : 'أنثى';
+
+            throw ValidationException::withMessages([
+                'beneficiaryNationalId' => "الرقم الوطني لـ{$relationship->label()} يجب أن يبدأ بـ {$digit} ({$genderLabel}).",
+            ]);
+        }
+
+        $registration = $this->registration();
+
+        if (! $registration) {
+            return;
+        }
+
+        $photoPath = $this->beneficiaryExistingPhotoPath;
+
+        if ($this->beneficiaryPhoto instanceof TemporaryUploadedFile) {
+            $photoPath = $this->beneficiaryPhoto->store("registrations/{$registration->uuid}/beneficiaries", 'public');
+        }
+
+        if (blank($photoPath)) {
+            throw ValidationException::withMessages([
+                'beneficiaryPhoto' => 'صورة المستفيد مطلوبة',
+            ]);
+        }
 
         $data = [
             'full_name' => $this->beneficiaryName,
             'relationship' => $this->beneficiaryRelationship,
-            'national_id' => $this->beneficiaryNationalId ?: null,
+            'national_id' => $this->beneficiaryNationalId,
             'date_of_birth' => $this->beneficiaryDateOfBirth ?: null,
             'blood_type' => $this->beneficiaryBloodType,
-            'has_chronic_condition' => $this->beneficiaryHasChronic,
+            'has_chronic_condition' => $this->beneficiaryHasChronicConditions,
+            'has_chronic_conditions' => $this->beneficiaryHasChronicConditions,
+            'chronic_conditions' => $this->beneficiaryHasChronicConditions ? $this->beneficiaryChronicConditions : [],
+            'has_tumor' => $this->beneficiaryHasTumor,
+            'has_surgery_history' => $this->beneficiaryHasSurgeryHistory,
+            'uses_medical_devices' => $this->beneficiaryUsesMedicalDevices,
+            'hospitalized_recently' => $this->beneficiaryHospitalizedRecently,
+            'traveled_for_treatment' => $this->beneficiaryTraveledForTreatment,
+            'photo_path' => $photoPath,
         ];
 
         if ($this->editingBeneficiaryIndex !== null) {
@@ -284,6 +486,10 @@ class MedicalRegistrationForm extends Component
 
     public function editBeneficiary(int $index): void
     {
+        if ($this->isFormLocked()) {
+            return;
+        }
+
         $beneficiary = $this->beneficiaries[$index] ?? null;
 
         if (! $beneficiary) {
@@ -296,12 +502,30 @@ class MedicalRegistrationForm extends Component
         $this->beneficiaryNationalId = $beneficiary['national_id'] ?? '';
         $this->beneficiaryDateOfBirth = $beneficiary['date_of_birth'] ?? '';
         $this->beneficiaryBloodType = $beneficiary['blood_type'];
-        $this->beneficiaryHasChronic = (bool) ($beneficiary['has_chronic_condition'] ?? false);
+        $this->beneficiaryHasChronicConditions = (bool) ($beneficiary['has_chronic_conditions'] ?? $beneficiary['has_chronic_condition'] ?? false);
+        $this->beneficiaryChronicConditions = $beneficiary['chronic_conditions'] ?? [];
+        $this->beneficiaryHasTumor = (bool) ($beneficiary['has_tumor'] ?? false);
+        $this->beneficiaryHasSurgeryHistory = (bool) ($beneficiary['has_surgery_history'] ?? false);
+        $this->beneficiaryUsesMedicalDevices = (bool) ($beneficiary['uses_medical_devices'] ?? false);
+        $this->beneficiaryHospitalizedRecently = (bool) ($beneficiary['hospitalized_recently'] ?? false);
+        $this->beneficiaryTraveledForTreatment = (bool) ($beneficiary['traveled_for_treatment'] ?? false);
+        $this->beneficiaryExistingPhotoPath = $beneficiary['photo_path'] ?? null;
+        $this->beneficiaryPhoto = null;
         $this->showBeneficiaryForm = true;
     }
 
     public function deleteBeneficiary(int $index): void
     {
+        if ($this->isFormLocked()) {
+            return;
+        }
+
+        $beneficiary = $this->beneficiaries[$index] ?? null;
+
+        if ($beneficiary && ! empty($beneficiary['photo_path'])) {
+            Storage::disk('public')->delete($beneficiary['photo_path']);
+        }
+
         unset($this->beneficiaries[$index]);
         $this->beneficiaries = array_values($this->beneficiaries);
         $this->syncBeneficiariesToDatabase();
@@ -309,24 +533,38 @@ class MedicalRegistrationForm extends Component
 
     public function continueFromBeneficiaries(): void
     {
+        if ($this->isFormLocked()) {
+            return;
+        }
+
+        $allowed = array_map(
+            fn (BeneficiaryRelationship $relationship): string => $relationship->value,
+            BeneficiaryRelationship::availableFor($this->maritalStatus),
+        );
+
+        $hasInvalid = collect($this->beneficiaries)->contains(
+            fn (array $beneficiary): bool => ! in_array($beneficiary['relationship'] ?? '', $allowed, true),
+        );
+
+        if ($hasInvalid) {
+            $this->addError(
+                'beneficiaries',
+                $this->maritalStatus === MaritalStatus::Single->value
+                    ? 'الحالة أعزب — يرجى حذف المستفيدين من غير الوالدين قبل المتابعة'
+                    : 'يوجد مستفيدون بصلة قرابة غير صالحة',
+            );
+
+            return;
+        }
+
         $this->goToStep(5);
     }
 
     public function saveDocuments(): void
     {
-        $rules = [
-            'familyStatusDocument' => ['required', 'file', 'mimes:pdf', 'max:5120'],
-            'employeePhoto' => ['nullable', 'file', 'mimes:jpg,jpeg,png', 'max:5120'],
-        ];
-
-        if ($this->familyStatusDocument === null && $this->registration()?->family_status_document_path) {
-            unset($rules['familyStatusDocument']);
+        if ($this->isFormLocked()) {
+            return;
         }
-
-        $this->validate($rules, [
-            'familyStatusDocument.required' => 'شهادة الوضع العائلي مطلوبة (PDF)',
-            'familyStatusDocument.mimes' => 'يجب أن تكون شهادة الوضع العائلي بصيغة PDF',
-        ]);
 
         $registration = $this->registration();
 
@@ -334,26 +572,57 @@ class MedicalRegistrationForm extends Component
             return;
         }
 
+        $rules = [];
+
+        if ($this->familyStatusDocument !== null || blank($registration->family_status_document_path)) {
+            $rules['familyStatusDocument'] = ['required', 'file', 'mimes:pdf', 'max:5120'];
+        }
+
+        if ($this->employeePhoto !== null || blank($registration->employee_photo_path)) {
+            $rules['employeePhoto'] = ['required', 'file', 'mimes:jpg,jpeg,png', 'max:5120'];
+        }
+
+        $this->validateRules($rules, [
+            'familyStatusDocument.required' => 'شهادة الوضع العائلي مطلوبة (PDF)',
+            'familyStatusDocument.mimes' => 'يجب أن تكون شهادة الوضع العائلي بصيغة PDF',
+            'employeePhoto.required' => 'الصورة الشخصية للموظف مطلوبة',
+            'employeePhoto.mimes' => 'يجب أن تكون صورة الموظف بصيغة JPG أو PNG',
+        ]);
+
         $path = "registrations/{$registration->uuid}";
 
         if ($this->familyStatusDocument) {
-            $familyPath = $this->familyStatusDocument->store($path, 'public');
-            $registration->family_status_document_path = $familyPath;
+            $registration->family_status_document_path = $this->familyStatusDocument->store($path, 'public');
         }
 
         if ($this->employeePhoto) {
-            $photoPath = $this->employeePhoto->store($path, 'public');
-            $registration->employee_photo_path = $photoPath;
+            $registration->employee_photo_path = $this->employeePhoto->store($path, 'public');
+        }
+
+        if (blank($registration->family_status_document_path)) {
+            $this->addError('familyStatusDocument', 'شهادة الوضع العائلي مطلوبة (PDF)');
+
+            return;
+        }
+
+        if (blank($registration->employee_photo_path)) {
+            $this->addError('employeePhoto', 'الصورة الشخصية للموظف مطلوبة');
+
+            return;
         }
 
         $registration->save();
-        $this->hasFamilyDocument = (bool) $registration->family_status_document_path;
-        $this->hasEmployeePhoto = (bool) $registration->employee_photo_path;
+        $this->hasFamilyDocument = true;
+        $this->hasEmployeePhoto = true;
         $this->goToStep(6);
     }
 
     public function saveDraft(): void
     {
+        if ($this->isFormLocked()) {
+            return;
+        }
+
         if ($this->registrationId) {
             $this->autoPersistToDatabase();
         } elseif ($this->step === 1) {
@@ -366,29 +635,80 @@ class MedicalRegistrationForm extends Component
 
     public function submitRegistration(): void
     {
+        if ($this->submitted || $this->approvedLocked) {
+            return;
+        }
+
         $registration = $this->registration();
 
-        if (! $registration || (! $registration->family_status_document_path && ! $this->hasFamilyDocument)) {
-            $this->addError('submit', 'يرجى إرفاق جميع المستندات المطلوبة قبل الإرسال');
+        if (
+            ! $registration
+            || (! $registration->family_status_document_path && ! $this->hasFamilyDocument)
+            || (! $registration->employee_photo_path && ! $this->hasEmployeePhoto)
+        ) {
+            $this->addError('submit', 'يرجى إرفاق شهادة الوضع العائلي والصورة الشخصية قبل الإرسال');
+
+            return;
+        }
+
+        $missingBeneficiaryPhoto = collect($this->beneficiaries)->contains(
+            fn (array $beneficiary): bool => blank($beneficiary['photo_path'] ?? null),
+        );
+
+        if ($missingBeneficiaryPhoto) {
+            $this->addError('submit', 'يجب إرفاق صورة لكل مستفيد قبل الإرسال');
+
+            return;
+        }
+
+        if (! $registration->isEditableByEmployee()) {
+            $this->addError('submit', 'لا يمكن تعديل طلب معتمد');
 
             return;
         }
 
         DB::transaction(function () use ($registration): void {
+            $reference = $registration->reference_number ?: MedicalRegistration::generateReferenceNumber();
+
             $registration->update([
                 'status' => RegistrationStatus::Submitted,
                 'submitted_at' => now(),
-                'reference_number' => MedicalRegistration::generateReferenceNumber(),
+                'reference_number' => $reference,
+                'review_note' => null,
+                'reviewed_at' => null,
+                'reviewed_by' => null,
             ]);
         });
 
-        session()->forget(['registration_id', 'registration_step1']);
-        $this->referenceNumber = $registration->fresh()->reference_number ?? '';
+        $registration = $registration->fresh();
+        $this->referenceNumber = $registration->reference_number ?? '';
         $this->submitted = true;
+        session(['registration_id' => $registration->id, 'reference_download_id' => $registration->id]);
+        session()->forget('registration_step1');
+    }
+
+    public function editSubmittedRegistration(): void
+    {
+        $registration = $this->registration();
+
+        if (! $registration || ! $registration->isEditableByEmployee()) {
+            return;
+        }
+
+        $this->submitted = false;
+        $this->loadRegistration($registration->load('beneficiaries'));
+        $this->identityLocked = true;
+        $this->goToStep(2);
+        session(['registration_id' => $registration->id]);
+        $this->notify('يمكنك تعديل بياناتك ثم إعادة الإرسال مع الاحتفاظ برقم المرجع');
     }
 
     public function goBack(): void
     {
+        if ($this->isFormLocked()) {
+            return;
+        }
+
         if ($this->step > 1) {
             $this->goToStep($this->step - 1);
         }
@@ -403,7 +723,7 @@ class MedicalRegistrationForm extends Component
             'chronicConditionOptions' => config('registration.chronic_conditions'),
             'totalSteps' => 6,
             'stepLabels' => [
-                1 => 'بيانات الهوية',
+                1 => 'التحقق',
                 2 => 'بيانات الموظف',
                 3 => 'السجل الطبي',
                 4 => 'المستفيدون',
@@ -431,8 +751,29 @@ class MedicalRegistrationForm extends Component
                 ->with('beneficiaries')
                 ->find($id);
 
-            if ($registration && ! $registration->isSubmitted()) {
+            if ($registration?->isApproved()) {
+                $this->approvedLocked = true;
+                $this->approvedMessage = 'تم اعتماد طلبك مسبقاً ولا يمكن تعديله.'.($registration->reference_number ? ' رقم المرجع: '.$registration->reference_number : '');
+                $this->referenceNumber = $registration->reference_number ?? '';
+                $this->registrationId = $registration->id;
+                $this->verifiedFullName = $registration->full_name;
+                $this->fullName = $registration->full_name;
+                $this->nationalId = $registration->national_id;
+                $this->employeeNumber = $registration->employee_number;
+
+                return;
+            }
+
+            if ($registration?->isSubmitted()) {
                 $this->loadRegistration($registration);
+                $this->showSubmittedSuccess($registration, notify: false);
+
+                return;
+            }
+
+            if ($registration && $registration->isEditableByEmployee()) {
+                $this->loadRegistration($registration);
+                $this->identityLocked = true;
                 $this->hasSavedDraft = true;
 
                 return;
@@ -440,10 +781,8 @@ class MedicalRegistrationForm extends Component
         }
 
         if ($draft = session('registration_step1')) {
-            $this->fullName = $draft['full_name'] ?? '';
             $this->employeeNumber = $draft['employee_number'] ?? '';
             $this->nationalId = $draft['national_id'] ?? '';
-            $this->dateOfBirth = $draft['date_of_birth'] ?? '';
             $this->consent = (bool) ($draft['consent'] ?? false);
             $this->step = 1;
             $this->hasSavedDraft = true;
@@ -454,10 +793,8 @@ class MedicalRegistrationForm extends Component
     {
         session([
             'registration_step1' => [
-                'full_name' => $this->fullName,
                 'employee_number' => $this->employeeNumber,
                 'national_id' => $this->nationalId,
-                'date_of_birth' => $this->dateOfBirth,
                 'consent' => $this->consent,
             ],
         ]);
@@ -467,13 +804,13 @@ class MedicalRegistrationForm extends Component
 
     protected function isStepOneField(string $property): bool
     {
-        return in_array($property, ['fullName', 'employeeNumber', 'nationalId', 'dateOfBirth', 'consent'], true);
+        return in_array($property, ['employeeNumber', 'nationalId', 'consent'], true);
     }
 
     protected function isAutoPersistField(string $property): bool
     {
         return in_array($property, [
-            'workplace', 'jobTitle', 'gender', 'maritalStatus', 'beneficiariesCount',
+            'dateOfBirth', 'workplace', 'jobTitle', 'gender', 'maritalStatus', 'beneficiariesCount',
             'phone', 'whatsapp', 'email', 'city', 'address',
             'hasChronicConditions', 'chronicConditions', 'hasTumor', 'hasSurgeryHistory',
             'usesMedicalDevices', 'hospitalizedRecently', 'traveledForTreatment',
@@ -488,8 +825,16 @@ class MedicalRegistrationForm extends Component
             return;
         }
 
+        if (LibyanNationalIdSupport::isValid($this->nationalId)) {
+            $this->gender = LibyanNationalIdSupport::gender($this->nationalId)->value;
+        }
+
         $registration->update([
             'current_step' => $this->step,
+            'full_name' => $this->verifiedFullName ?: $registration->full_name,
+            'national_id' => $this->nationalId ?: $registration->national_id,
+            'employee_number' => $this->employeeNumber ?: $registration->employee_number,
+            'date_of_birth' => $this->dateOfBirth ?: null,
             'workplace' => $this->workplace ?: null,
             'job_title' => $this->jobTitle ?: null,
             'gender' => $this->gender ?: null,
@@ -539,7 +884,15 @@ class MedicalRegistrationForm extends Component
                 'national_id' => $beneficiary['national_id'] ?? null,
                 'date_of_birth' => $beneficiary['date_of_birth'] ?: null,
                 'blood_type' => $beneficiary['blood_type'],
-                'has_chronic_condition' => (bool) ($beneficiary['has_chronic_condition'] ?? false),
+                'has_chronic_condition' => (bool) ($beneficiary['has_chronic_conditions'] ?? $beneficiary['has_chronic_condition'] ?? false),
+                'has_chronic_conditions' => (bool) ($beneficiary['has_chronic_conditions'] ?? false),
+                'chronic_conditions' => $beneficiary['chronic_conditions'] ?? null,
+                'has_tumor' => (bool) ($beneficiary['has_tumor'] ?? false),
+                'has_surgery_history' => (bool) ($beneficiary['has_surgery_history'] ?? false),
+                'uses_medical_devices' => (bool) ($beneficiary['uses_medical_devices'] ?? false),
+                'hospitalized_recently' => (bool) ($beneficiary['hospitalized_recently'] ?? false),
+                'traveled_for_treatment' => (bool) ($beneficiary['traveled_for_treatment'] ?? false),
+                'photo_path' => $beneficiary['photo_path'] ?? null,
             ]);
         }
 
@@ -552,7 +905,7 @@ class MedicalRegistrationForm extends Component
         $this->registrationId = $registration->id;
         $this->employeeNumber = $registration->employee_number;
         $this->nationalId = $registration->national_id;
-        $this->dateOfBirth = $registration->date_of_birth->format('Y-m-d');
+        $this->dateOfBirth = $registration->date_of_birth?->format('Y-m-d') ?? '';
         $this->consent = (bool) $registration->consent_at;
         $this->fullName = $registration->full_name;
         $this->verifiedFullName = $registration->full_name;
@@ -566,13 +919,14 @@ class MedicalRegistrationForm extends Component
         $this->email = $registration->email ?? '';
         $this->city = $registration->city ?? '';
         $this->address = $registration->address ?? '';
-        $this->hasChronicConditions = $registration->has_chronic_conditions;
+        $this->hasChronicConditions = (bool) $registration->has_chronic_conditions;
         $this->chronicConditions = $registration->chronic_conditions ?? [];
-        $this->hasTumor = $registration->has_tumor;
-        $this->hasSurgeryHistory = $registration->has_surgery_history;
-        $this->usesMedicalDevices = $registration->uses_medical_devices;
-        $this->hospitalizedRecently = $registration->hospitalized_recently;
-        $this->traveledForTreatment = $registration->traveled_for_treatment;
+        $this->hasTumor = (bool) $registration->has_tumor;
+        $this->hasSurgeryHistory = (bool) $registration->has_surgery_history;
+        $this->usesMedicalDevices = (bool) $registration->uses_medical_devices;
+        $this->hospitalizedRecently = (bool) $registration->hospitalized_recently;
+        $this->traveledForTreatment = (bool) $registration->traveled_for_treatment;
+        $this->referenceNumber = $registration->reference_number ?? '';
 
         $this->beneficiaries = $registration->beneficiaries->map(fn (Beneficiary $b) => [
             'full_name' => $b->full_name,
@@ -580,12 +934,21 @@ class MedicalRegistrationForm extends Component
             'national_id' => $b->national_id,
             'date_of_birth' => $b->date_of_birth?->format('Y-m-d'),
             'blood_type' => $b->blood_type?->value,
-            'has_chronic_condition' => $b->has_chronic_condition,
+            'has_chronic_condition' => $b->has_chronic_condition || $b->has_chronic_conditions,
+            'has_chronic_conditions' => $b->has_chronic_conditions || $b->has_chronic_condition,
+            'chronic_conditions' => $b->chronic_conditions ?? [],
+            'has_tumor' => $b->has_tumor,
+            'has_surgery_history' => $b->has_surgery_history,
+            'uses_medical_devices' => $b->uses_medical_devices,
+            'hospitalized_recently' => $b->hospitalized_recently,
+            'traveled_for_treatment' => $b->traveled_for_treatment,
+            'photo_path' => $b->photo_path,
         ])->all();
 
         $this->hasFamilyDocument = (bool) $registration->family_status_document_path;
         $this->hasEmployeePhoto = (bool) $registration->employee_photo_path;
         $this->step = $registration->current_step ?: max(2, $this->determineResumeStep($registration));
+        $this->identityLocked = true;
     }
 
     protected function determineResumeStep(MedicalRegistration $registration): int
@@ -598,7 +961,7 @@ class MedicalRegistrationForm extends Component
             return 5;
         }
 
-        if ($registration->workplace) {
+        if ($registration->workplace && $registration->date_of_birth) {
             return 3;
         }
 
@@ -615,16 +978,20 @@ class MedicalRegistrationForm extends Component
             'usesMedicalDevices', 'hospitalizedRecently', 'traveledForTreatment',
             'beneficiaries', 'showBeneficiaryForm', 'beneficiaryName', 'beneficiaryRelationship',
             'beneficiaryNationalId', 'beneficiaryDateOfBirth', 'beneficiaryBloodType',
-            'beneficiaryHasChronic', 'editingBeneficiaryIndex', 'familyStatusDocument',
-            'employeePhoto', 'submitted', 'referenceNumber', 'hasFamilyDocument',
-            'hasEmployeePhoto', 'hasSavedDraft',
+            'beneficiaryHasChronicConditions', 'beneficiaryChronicConditions', 'beneficiaryHasTumor',
+            'beneficiaryHasSurgeryHistory', 'beneficiaryUsesMedicalDevices',
+            'beneficiaryHospitalizedRecently', 'beneficiaryTraveledForTreatment',
+            'beneficiaryPhoto', 'beneficiaryExistingPhotoPath', 'editingBeneficiaryIndex',
+            'familyStatusDocument', 'employeePhoto', 'submitted', 'referenceNumber',
+            'hasFamilyDocument', 'hasEmployeePhoto', 'hasSavedDraft', 'identityLocked',
+            'approvedLocked', 'approvedMessage',
         ]);
 
         $this->step = 1;
         $this->jobTitle = 'employee';
         $this->gender = 'male';
         $this->maritalStatus = 'married';
-        $this->beneficiaryRelationship = 'spouse';
+        $this->beneficiaryRelationship = BeneficiaryRelationship::Spouse->value;
         $this->beneficiaryBloodType = 'a_positive';
     }
 
@@ -632,22 +999,88 @@ class MedicalRegistrationForm extends Component
     {
         $this->editingBeneficiaryIndex = null;
         $this->beneficiaryName = '';
-        $this->beneficiaryRelationship = 'spouse';
+        $this->beneficiaryRelationship = $this->defaultBeneficiaryRelationship();
         $this->beneficiaryNationalId = '';
         $this->beneficiaryDateOfBirth = '';
         $this->beneficiaryBloodType = 'a_positive';
-        $this->beneficiaryHasChronic = false;
+        $this->beneficiaryHasChronicConditions = false;
+        $this->beneficiaryChronicConditions = [];
+        $this->beneficiaryHasTumor = false;
+        $this->beneficiaryHasSurgeryHistory = false;
+        $this->beneficiaryUsesMedicalDevices = false;
+        $this->beneficiaryHospitalizedRecently = false;
+        $this->beneficiaryTraveledForTreatment = false;
+        $this->beneficiaryPhoto = null;
+        $this->beneficiaryExistingPhotoPath = null;
         $this->resetValidation([
             'beneficiaryName',
             'beneficiaryRelationship',
             'beneficiaryNationalId',
             'beneficiaryDateOfBirth',
             'beneficiaryBloodType',
+            'beneficiaryChronicConditions',
+            'beneficiaryPhoto',
         ]);
+    }
+
+    protected function syncBeneficiaryRelationshipToMaritalStatus(): void
+    {
+        $allowed = array_map(
+            fn (BeneficiaryRelationship $relationship): string => $relationship->value,
+            BeneficiaryRelationship::availableFor($this->maritalStatus),
+        );
+
+        if (! in_array($this->beneficiaryRelationship, $allowed, true)) {
+            $this->beneficiaryRelationship = $this->defaultBeneficiaryRelationship();
+        }
+    }
+
+    protected function defaultBeneficiaryRelationship(): string
+    {
+        $available = BeneficiaryRelationship::availableFor($this->maritalStatus);
+
+        return ($available[0] ?? BeneficiaryRelationship::Father)->value;
     }
 
     protected function notify(string $message): void
     {
         $this->toastMessage = $message;
+    }
+
+    protected function showSubmittedSuccess(MedicalRegistration $registration, bool $notify = false): void
+    {
+        $this->submitted = true;
+        $this->identityLocked = true;
+        $this->referenceNumber = $registration->reference_number ?? '';
+        $this->registrationId = $registration->id;
+        session([
+            'registration_id' => $registration->id,
+            'reference_download_id' => $registration->id,
+        ]);
+
+        if ($notify) {
+            $this->notify('طلبك مُرسَل مسبقاً — يمكنك تحميل بطاقة المراجعة أو التعديل');
+        }
+    }
+
+    protected function isFormLocked(): bool
+    {
+        return $this->submitted || $this->approvedLocked;
+    }
+
+    /**
+     * Livewire throws MissingRulesException when validate() receives an empty rules array
+     * (e.g. documents already on file and no new uploads). Skip safely in that case.
+     *
+     * @param  array<string, mixed>  $rules
+     * @param  array<string, string>  $messages
+     */
+    protected function validateRules(array $rules, array $messages = []): void
+    {
+        if ($rules === []) {
+            return;
+        }
+
+        $this->validate($rules, $messages);
     }
 }

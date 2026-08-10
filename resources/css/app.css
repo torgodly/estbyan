@@ -33,6 +33,10 @@
     body {
         @apply bg-canvas text-slate-800 antialiased;
     }
+
+    [x-cloak] {
+        display: none !important;
+    }
 }
 
 @layer components {
@@ -89,7 +93,7 @@
     }
 
     .reg-main-inner {
-        @apply flex flex-1 flex-col px-4 py-5 pb-32 sm:px-6 sm:py-8 lg:px-10 lg:pb-10;
+        @apply flex flex-1 flex-col px-4 py-5 pb-5 sm:px-6 sm:py-8 lg:px-10 lg:pb-10;
     }
 
     /* ── Mobile step strip ── */
@@ -311,9 +315,30 @@
         @apply inline-flex size-11 shrink-0 items-center justify-center rounded-xl p-0 transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
     }
 
-    /* ── Action bar ── */
+    /* ── Action bar ──
+       Outer wrapper stays in document flow and reserves clearance equal to the
+       tallest mobile sheet (3 stacked buttons). The dock is fixed on small
+       screens so content can scroll fully above it. */
     .reg-actions {
-        @apply fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur-xl lg:relative lg:inset-auto lg:mt-8 lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none;
+        @apply relative mt-8;
+        --reg-actions-clearance: 13.5rem;
+        padding-bottom: calc(var(--reg-actions-clearance) + env(safe-area-inset-bottom, 0px));
+    }
+
+    @media (min-width: 640px) {
+        .reg-actions {
+            --reg-actions-clearance: 5.75rem;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .reg-actions {
+            padding-bottom: 0;
+        }
+    }
+
+    .reg-actions-dock {
+        @apply fixed inset-x-0 bottom-0 z-30 border-t border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur-xl lg:relative lg:inset-auto lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none;
         padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
     }
 
@@ -335,9 +360,41 @@
         @apply mb-4 flex items-start gap-3 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3.5 text-sm text-teal-900;
     }
 
-    .reg-alert-toast {
-        @apply fixed left-1/2 z-50 mb-4 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-start gap-3 rounded-2xl border-0 bg-navy-900 px-4 py-3.5 text-sm text-white shadow-2xl;
+    .reg-toast-host {
+        @apply fixed left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2;
         top: max(1rem, env(safe-area-inset-top));
+    }
+
+    .reg-toast {
+        @apply relative flex items-start gap-3 overflow-hidden rounded-2xl border border-white/10 bg-navy-900/95 px-4 py-3.5 text-sm text-white shadow-[0_18px_50px_-18px_rgba(15,39,68,0.65)] backdrop-blur-xl;
+    }
+
+    .reg-toast-icon {
+        @apply mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-teal-400/15 text-teal-300 ring-1 ring-teal-300/30;
+    }
+
+    .reg-toast-message {
+        @apply flex-1 pt-1.5 text-sm font-medium leading-relaxed text-slate-100;
+    }
+
+    .reg-toast-close {
+        @apply mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-300 transition hover:bg-white/10 hover:text-white;
+    }
+
+    .reg-toast-progress {
+        @apply absolute inset-x-0 bottom-0 h-0.5 bg-teal-400/90;
+        transform-origin: left center;
+        animation: reg-toast-progress 4.2s linear forwards;
+    }
+
+    @keyframes reg-toast-progress {
+        from {
+            transform: scaleX(1);
+        }
+
+        to {
+            transform: scaleX(0);
+        }
     }
 
     /* ── Success screen ── */
@@ -347,5 +404,256 @@
 
     .reg-empty {
         @apply flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-slate-200 py-12 text-center;
+    }
+
+    /* ── Employee login / verification gate ── */
+    .reg-login-shell {
+        @apply mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col items-center justify-center gap-4 py-6 sm:py-10;
+    }
+
+    .reg-login-partners {
+        @apply flex w-full items-stretch justify-center gap-3 sm:gap-4;
+    }
+
+    .reg-login-partner {
+        @apply flex h-[7.5rem] w-[calc(50%-0.75rem)] max-w-[13.5rem] flex-none items-center justify-center rounded-2xl p-3 sm:h-32 sm:w-[13.5rem] sm:p-4;
+    }
+
+    .reg-login-partner-audit {
+        @apply bg-white/90 ring-1 ring-slate-200/80;
+    }
+
+    .reg-login-partner-smart {
+        /* Only Smart Care needs a dark plate (white text in the asset) */
+        @apply bg-navy-900 shadow-lg shadow-navy-900/15 ring-1 ring-navy-800;
+    }
+
+    .reg-login-partner-divider {
+        @apply w-px shrink-0 self-stretch bg-gradient-to-b from-transparent via-slate-300 to-transparent;
+    }
+
+    .reg-login-logo-audit,
+    .reg-login-logo-smart {
+        @apply max-h-full max-w-full object-contain;
+    }
+
+    .reg-login-logo-audit {
+        @apply h-[4.75rem] w-auto origin-center;
+        transform: scale(1.28);
+        /* Transparent cream artwork → solid navy for light UI */
+        filter: brightness(0) saturate(100%) invert(14%) sepia(28%) saturate(1400%) hue-rotate(185deg) brightness(92%) contrast(96%);
+    }
+
+    .reg-login-logo-smart {
+        @apply h-auto w-[11rem] sm:w-[11.5rem];
+    }
+
+    .reg-login-card {
+        @apply w-full rounded-[1.75rem] bg-white p-6 shadow-[0_20px_50px_-20px_rgba(15,39,68,0.25)] ring-1 ring-slate-200/70 sm:p-8;
+        background-image:
+            radial-gradient(ellipse 90% 60% at 100% 0%, rgb(20 184 166 / 0.08), transparent 55%),
+            radial-gradient(ellipse 70% 50% at 0% 100%, rgb(15 39 68 / 0.04), transparent 50%);
+    }
+
+    .reg-login-heading {
+        @apply mb-5 text-center;
+    }
+
+    .reg-login-kicker {
+        @apply mb-2 text-[11px] font-bold tracking-wide text-teal-700;
+    }
+
+    .reg-login-title {
+        @apply text-2xl font-extrabold tracking-tight text-navy-900 sm:text-[1.75rem];
+    }
+
+    .reg-login-subtitle {
+        @apply mx-auto mt-2 max-w-sm text-sm font-medium leading-relaxed text-slate-500;
+    }
+
+    .reg-login-field {
+        @apply relative;
+    }
+
+    .reg-login-field-icon {
+        @apply pointer-events-none absolute start-3.5 top-1/2 z-10 -translate-y-1/2 text-slate-400;
+    }
+
+    .reg-login-input {
+        @apply ps-11;
+    }
+
+    .reg-login-contact {
+        @apply w-full px-3 pt-1 text-center;
+    }
+
+    .reg-login-contact-title {
+        @apply text-sm font-bold text-slate-600;
+    }
+
+    .reg-login-contact-text {
+        @apply mt-1.5 text-[13px] leading-7 text-slate-500;
+    }
+
+    .reg-login-contact-sep {
+        @apply mx-1 text-slate-300;
+    }
+
+    .reg-login-contact-note {
+        @apply mt-2 text-[12px] leading-relaxed text-slate-400;
+    }
+
+    .reg-login-contact-link {
+        @apply font-semibold text-teal-700 underline decoration-teal-700/25 underline-offset-2 transition hover:text-teal-800;
+    }
+
+    /* ── Photo picker ── */
+    .reg-photo-picker {
+        @apply flex flex-col items-center sm:items-start;
+    }
+
+    .reg-photo-preview {
+        @apply relative flex aspect-square w-40 max-w-full items-center justify-center overflow-hidden rounded-2xl border border-dashed border-slate-200 bg-slate-50 sm:w-44;
+    }
+
+    .reg-photo-preview-filled {
+        @apply border-solid border-teal-200 bg-white shadow-sm;
+    }
+
+    .reg-photo-badge {
+        @apply absolute bottom-2 start-2 rounded-full bg-navy-900/85 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-sm;
+    }
+
+    /* ── Final review report ── */
+    .reg-report-card {
+        @apply rounded-3xl bg-white p-5 shadow-[0_4px_24px_-4px_rgba(15,39,68,0.08)] ring-1 ring-slate-200/60 sm:p-6;
+    }
+
+    .reg-report-head {
+        @apply mb-5 flex items-start justify-between gap-4 border-b border-slate-100 pb-5;
+    }
+
+    .reg-report-kicker {
+        @apply mb-1 text-xs font-extrabold tracking-wide text-teal-700;
+    }
+
+    .reg-report-name {
+        @apply text-xl font-extrabold text-navy-900;
+    }
+
+    .reg-report-avatar {
+        @apply size-20 shrink-0 rounded-2xl object-cover ring-2 ring-teal-100;
+    }
+
+    .reg-report-avatar-fallback {
+        @apply flex size-20 shrink-0 items-center justify-center rounded-2xl bg-navy-900 text-2xl font-extrabold text-white;
+    }
+
+    .reg-report-grid {
+        @apply grid grid-cols-1 gap-3 sm:grid-cols-2;
+    }
+
+    .reg-report-item {
+        @apply rounded-2xl bg-slate-50 px-3.5 py-3;
+    }
+
+    .reg-report-item dt {
+        @apply text-xs text-slate-400;
+    }
+
+    .reg-report-item dd {
+        @apply mt-0.5 text-sm font-bold text-slate-800;
+    }
+
+    .reg-report-item-full {
+        @apply sm:col-span-2;
+    }
+
+    .reg-report-flags {
+        @apply flex flex-wrap gap-2;
+    }
+
+    .reg-report-flag {
+        @apply rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600;
+    }
+
+    .reg-report-flag-yes {
+        @apply bg-amber-50 text-amber-700;
+    }
+
+    .reg-report-count {
+        @apply flex items-baseline gap-1.5 rounded-2xl bg-teal-50 px-3.5 py-2 text-teal-800 ring-1 ring-teal-100;
+    }
+
+    .reg-report-count-value {
+        @apply text-2xl font-extrabold leading-none;
+    }
+
+    .reg-report-count-label {
+        @apply text-xs font-bold;
+    }
+
+    .reg-report-member {
+        @apply overflow-hidden rounded-3xl bg-white shadow-[0_4px_24px_-4px_rgba(15,39,68,0.08)] ring-1 ring-slate-200/60;
+    }
+
+    .reg-report-member-head {
+        @apply flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-4 sm:px-6;
+    }
+
+    .reg-report-member-index {
+        @apply mt-1 flex size-7 shrink-0 items-center justify-center rounded-full bg-navy-900 text-xs font-extrabold text-white;
+    }
+
+    .reg-report-member-photo {
+        @apply size-16 shrink-0 rounded-2xl object-cover ring-2 ring-white;
+    }
+
+    .reg-report-member-photo-fallback {
+        @apply flex size-16 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-2xl ring-2 ring-white;
+    }
+
+    .reg-report-health-badge {
+        @apply rounded-full bg-teal-50 px-3 py-1.5 text-xs font-extrabold text-teal-700 ring-1 ring-teal-100;
+    }
+
+    .reg-report-health-badge-alert {
+        @apply bg-amber-50 text-amber-800 ring-amber-100;
+    }
+
+    .reg-report-member-body {
+        @apply grid gap-5 p-5 sm:p-6 lg:grid-cols-2;
+    }
+
+    .reg-report-section-label {
+        @apply mb-3 text-xs font-extrabold tracking-wide text-slate-400;
+    }
+
+    .reg-report-checklist {
+        @apply divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100 bg-white;
+    }
+
+    .reg-report-check {
+        @apply flex items-center justify-between gap-3 px-3.5 py-2.5 text-sm;
+    }
+
+    .reg-report-check-label {
+        @apply font-medium text-slate-600;
+    }
+
+    .reg-report-check-value {
+        @apply rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-extrabold text-slate-500;
+    }
+
+    .reg-report-check-yes {
+        @apply bg-amber-50/60;
+    }
+
+    .reg-report-check-yes .reg-report-check-label {
+        @apply font-bold text-amber-900;
+    }
+
+    .reg-report-check-yes .reg-report-check-value {
+        @apply bg-amber-100 text-amber-800;
     }
 }

@@ -1,6 +1,6 @@
 @php
     $stepsMeta = [
-        1 => ['label' => 'الهوية', 'desc' => 'البيانات الأساسية'],
+        1 => ['label' => 'التحقق', 'desc' => 'الرقم الوظيفي والوطني'],
         2 => ['label' => 'البيانات', 'desc' => 'معلومات الموظف'],
         3 => ['label' => 'الطبي', 'desc' => 'السجل الصحي'],
         4 => ['label' => 'العائلة', 'desc' => 'المستفيدون'],
@@ -77,7 +77,7 @@
                 <div class="h-full rounded-full bg-gradient-to-l from-teal-400 to-teal-500 transition-all duration-500" style="width: {{ $progress }}%"></div>
             </div>
 
-            @if (! $submitted)
+            @if (! $submitted && ! $approvedLocked)
                 <button
                     type="button"
                     wire:click="clearForm"

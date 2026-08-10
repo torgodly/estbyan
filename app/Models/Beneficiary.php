@@ -18,6 +18,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'date_of_birth',
     'blood_type',
     'has_chronic_condition',
+    'has_chronic_conditions',
+    'chronic_conditions',
+    'has_tumor',
+    'has_surgery_history',
+    'uses_medical_devices',
+    'hospitalized_recently',
+    'traveled_for_treatment',
     'photo_path',
 ])]
 class Beneficiary extends Model
@@ -32,11 +39,25 @@ class Beneficiary extends Model
             'relationship' => BeneficiaryRelationship::class,
             'blood_type' => BloodType::class,
             'has_chronic_condition' => 'boolean',
+            'has_chronic_conditions' => 'boolean',
+            'chronic_conditions' => 'array',
+            'has_tumor' => 'boolean',
+            'has_surgery_history' => 'boolean',
+            'uses_medical_devices' => 'boolean',
+            'hospitalized_recently' => 'boolean',
+            'traveled_for_treatment' => 'boolean',
         ];
     }
 
     public function medicalRegistration(): BelongsTo
     {
         return $this->belongsTo(MedicalRegistration::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (Beneficiary $beneficiary): void {
+            $beneficiary->has_chronic_condition = (bool) $beneficiary->has_chronic_conditions;
+        });
     }
 }

@@ -7,13 +7,18 @@ use App\Enums\BloodType;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -40,7 +45,28 @@ class BeneficiariesRelationManager extends RelationManager
                 ->options(collect(BloodType::cases())->mapWithKeys(
                     fn (BloodType $b) => [$b->value => $b->label()]
                 )),
-            Toggle::make('has_chronic_condition')->label('مرض مزمن'),
+            FileUpload::make('photo_path')
+                ->label('الصورة')
+                ->disk('public')
+                ->directory('registrations/beneficiaries')
+                ->image()
+                ->visibility('public'),
+            Section::make('السجل الطبي')
+                ->schema([
+                    Toggle::make('has_chronic_conditions')
+                        ->label('أمراض مزمنة')
+                        ->live(),
+                    CheckboxList::make('chronic_conditions')
+                        ->label('تفاصيل الأمراض')
+                        ->options(config('registration.chronic_conditions'))
+                        ->columns(2)
+                        ->visible(fn (Get $get): bool => (bool) $get('has_chronic_conditions')),
+                    Toggle::make('has_tumor')->label('أورام'),
+                    Toggle::make('has_surgery_history')->label('عمليات جراحية'),
+                    Toggle::make('uses_medical_devices')->label('أجهزة طبية'),
+                    Toggle::make('hospitalized_recently')->label('إقامة مستشفى'),
+                    Toggle::make('traveled_for_treatment')->label('علاج بالخارج'),
+                ]),
         ]);
     }
 
@@ -49,6 +75,7 @@ class BeneficiariesRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('full_name')
             ->columns([
+                ImageColumn::make('photo_path')->label('الصورة')->disk('public')->circular(),
                 TextColumn::make('full_name')->label('الاسم')->searchable(),
                 TextColumn::make('relationship')
                     ->label('القرابة')
@@ -58,7 +85,7 @@ class BeneficiariesRelationManager extends RelationManager
                 TextColumn::make('blood_type')
                     ->label('فصيلة الدم')
                     ->formatStateUsing(fn (?BloodType $state): string => $state?->label() ?? '—'),
-                IconColumn::make('has_chronic_condition')->label('مزمن')->boolean(),
+                IconColumn::make('has_chronic_conditions')->label('مزمن')->boolean(),
             ])
             ->headerActions([
                 CreateAction::make(),

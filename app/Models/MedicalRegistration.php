@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\Gender;
 use App\Enums\MaritalStatus;
 use App\Enums\RegistrationStatus;
+use App\Support\WorkplaceOptions;
 use Database\Factories\MedicalRegistrationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,6 +19,9 @@ use Illuminate\Support\Str;
     'reference_number',
     'employee_id',
     'status',
+    'review_note',
+    'reviewed_at',
+    'reviewed_by',
     'current_step',
     'employee_number',
     'national_id',
@@ -56,6 +60,7 @@ class MedicalRegistration extends Model
             'date_of_birth' => 'date',
             'consent_at' => 'datetime',
             'submitted_at' => 'datetime',
+            'reviewed_at' => 'datetime',
             'status' => RegistrationStatus::class,
             'gender' => Gender::class,
             'marital_status' => MaritalStatus::class,
@@ -83,6 +88,11 @@ class MedicalRegistration extends Model
         return $this->belongsTo(Employee::class);
     }
 
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
     public function beneficiaries(): HasMany
     {
         return $this->hasMany(Beneficiary::class);
@@ -91,6 +101,16 @@ class MedicalRegistration extends Model
     public function isSubmitted(): bool
     {
         return $this->status === RegistrationStatus::Submitted;
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->status === RegistrationStatus::Approved;
+    }
+
+    public function isEditableByEmployee(): bool
+    {
+        return $this->status->isEditableByEmployee();
     }
 
     public static function generateReferenceNumber(): string
@@ -115,9 +135,7 @@ class MedicalRegistration extends Model
 
     public function workplaceLabel(): ?string
     {
-        return $this->workplace
-            ? (config('registration.workplaces')[$this->workplace] ?? $this->workplace)
-            : null;
+        return WorkplaceOptions::labelForKey($this->workplace);
     }
 
     public function jobTitleLabel(): ?string

@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'national_id',
     'date_of_birth',
     'full_name',
+    'workplace',
     'is_active',
 ])]
 class Employee extends Model
@@ -33,13 +34,12 @@ class Employee extends Model
         return $this->hasMany(MedicalRegistration::class);
     }
 
-    public static function findForVerification(string $employeeNumber, string $nationalId, string $dateOfBirth): ?self
+    public static function findForVerification(string $employeeNumber, string $nationalId): ?self
     {
         return self::query()
             ->where('is_active', true)
             ->where('employee_number', $employeeNumber)
             ->where('national_id', $nationalId)
-            ->whereDate('date_of_birth', $dateOfBirth)
             ->first();
     }
 }

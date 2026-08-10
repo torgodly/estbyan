@@ -26,13 +26,19 @@ class MedicalRegistrationForm
                         TextInput::make('full_name')->label('الاسم')->required(),
                         TextInput::make('employee_number')->label('الرقم الوظيفي')->required(),
                         TextInput::make('national_id')->label('الرقم الوطني')->required(),
-                        DatePicker::make('date_of_birth')->label('تاريخ الميلاد')->required(),
+                        DatePicker::make('date_of_birth')->label('تاريخ الميلاد'),
                         Select::make('status')
                             ->label('الحالة')
                             ->options(collect(RegistrationStatus::cases())->mapWithKeys(
                                 fn (RegistrationStatus $s) => [$s->value => $s->label()]
                             ))
+                            ->disabled()
+                            ->dehydrated()
                             ->required(),
+                        TextInput::make('review_note')
+                            ->label('ملاحظة المراجعة')
+                            ->disabled()
+                            ->columnSpanFull(),
                     ]),
                 Section::make('بيانات الموظف')
                     ->columns(2)

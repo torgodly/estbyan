@@ -1,19 +1,15 @@
 <section class="reg-card">
     <div class="reg-identity-card mb-6">
-        <p class="text-center text-xs font-bold uppercase tracking-widest text-teal-300/80">بيانات الهوية</p>
-        <p class="mt-1 text-center text-xl font-extrabold">{{ $verifiedFullName }}</p>
-        <dl class="mt-4 grid grid-cols-3 gap-3 text-center text-sm">
-            <div class="rounded-xl bg-white/10 px-2 py-2.5">
-                <dt class="text-[10px] uppercase text-slate-300">وظيفي</dt>
-                <dd class="mt-0.5 font-bold">{{ $employeeNumber }}</dd>
+        <p class="text-center text-[11px] font-bold tracking-wide text-teal-300/90">بيانات الهوية</p>
+        <p class="mt-2 text-center text-lg font-extrabold leading-snug sm:text-xl">{{ $verifiedFullName }}</p>
+        <dl class="mt-4 grid grid-cols-2 gap-2.5 text-center sm:gap-3">
+            <div class="rounded-xl bg-white/10 px-2.5 py-3">
+                <dt class="text-[11px] font-medium text-slate-300">الرقم الوظيفي</dt>
+                <dd class="mt-1 text-sm font-bold tracking-wide sm:text-base" dir="ltr">{{ $employeeNumber }}</dd>
             </div>
-            <div class="rounded-xl bg-white/10 px-2 py-2.5">
-                <dt class="text-[10px] uppercase text-slate-300">وطني</dt>
-                <dd class="mt-0.5 truncate font-bold">{{ $nationalId }}</dd>
-            </div>
-            <div class="rounded-xl bg-white/10 px-2 py-2.5">
-                <dt class="text-[10px] uppercase text-slate-300">الميلاد</dt>
-                <dd class="mt-0.5 font-bold">{{ $dateOfBirth }}</dd>
+            <div class="rounded-xl bg-white/10 px-2.5 py-3">
+                <dt class="text-[11px] font-medium text-slate-300">الرقم الوطني</dt>
+                <dd class="mt-1 truncate text-sm font-bold tracking-wide sm:text-base" dir="ltr">{{ $nationalId }}</dd>
             </div>
         </dl>
     </div>
@@ -27,12 +23,18 @@
         <div class="reg-grid-2">
             <div>
                 <label class="reg-label">مكان العمل <span class="reg-required">*</span></label>
-                <select wire:model.live="workplace" class="reg-select">
-                    <option value="">— اختر —</option>
-                    @foreach ($workplaces as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
-                    @endforeach
-                </select>
+                @if ($identityLocked)
+                    <div class="reg-input bg-slate-50 font-bold text-navy-900">
+                        {{ $workplaces[$workplace] ?? $workplace }}
+                    </div>
+                @else
+                    <select wire:model.live="workplace" class="reg-select">
+                        <option value="">— اختر —</option>
+                        @foreach ($workplaces as $key => $label)
+                            <option value="{{ $key }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                @endif
                 @error('workplace') <p class="reg-field-error">{{ $message }}</p> @enderror
             </div>
             <div>
@@ -47,12 +49,23 @@
 
         <div class="reg-grid-2">
             <div>
-                <label class="reg-label">الجنس <span class="reg-required">*</span></label>
-                <select wire:model.live="gender" class="reg-select">
-                    <option value="male">ذكر</option>
-                    <option value="female">أنثى</option>
-                </select>
+                <label class="reg-label">تاريخ الميلاد <span class="reg-required">*</span></label>
+                <input wire:model.blur="dateOfBirth" type="date" class="reg-input">
+                @if (\App\Support\LibyanNationalId::isValid($nationalId))
+                    <p class="mt-1 text-xs text-slate-400">يجب أن تكون سنة الميلاد {{ \App\Support\LibyanNationalId::birthYear($nationalId) }} حسب الرقم الوطني</p>
+                @endif
+                @error('dateOfBirth') <p class="reg-field-error">{{ $message }}</p> @enderror
             </div>
+            <div>
+                <label class="reg-label">الجنس <span class="reg-required">*</span></label>
+                <div class="reg-input bg-slate-50 font-bold text-navy-900">
+                    {{ $gender === 'female' ? 'أنثى' : 'ذكر' }}
+                </div>
+                <p class="mt-1 text-xs text-slate-400">يُستخرج تلقائياً من الرقم الوطني ولا يمكن تعديله</p>
+            </div>
+        </div>
+
+        <div class="reg-grid-2">
             <div>
                 <label class="reg-label">الحالة الاجتماعية <span class="reg-required">*</span></label>
                 <select wire:model.live="maritalStatus" class="reg-select">
@@ -60,12 +73,18 @@
                     <option value="married">متزوج / متزوجة</option>
                 </select>
             </div>
-        </div>
-
-        <div class="sm:max-w-xs">
-            <label class="reg-label">عدد المستفيدين <span class="reg-required">*</span></label>
-            <input wire:model.blur="beneficiariesCount" type="number" inputmode="numeric" min="0" max="20" class="reg-input" placeholder="0">
-            @error('beneficiariesCount') <p class="reg-field-error">{{ $message }}</p> @enderror
+            <div>
+                <label class="reg-label">عدد المستفيدين <span class="reg-required">*</span></label>
+                <input wire:model.blur="beneficiariesCount" type="number" inputmode="numeric" min="0" max="20" class="reg-input" placeholder="0">
+                <p class="mt-1 text-xs text-slate-400">
+                    @if ($maritalStatus === 'married')
+                        يمكن إضافة الزوج/الزوجة والأبناء والوالدين
+                    @else
+                        يمكن إضافة الوالدين
+                    @endif
+                </p>
+                @error('beneficiariesCount') <p class="reg-field-error">{{ $message }}</p> @enderror
+            </div>
         </div>
     </div>
 
@@ -93,12 +112,12 @@
             <div class="reg-grid-2">
                 <div>
                     <label class="reg-label">المدينة <span class="reg-required">*</span></label>
-                    <select wire:model.live="city" class="reg-select">
-                        <option value="">— اختر —</option>
-                        @foreach ($cities as $key => $label)
-                            <option value="{{ $key }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
+                    <x-reg-searchable-select
+                        wire:model.live="city"
+                        :options="$cities"
+                        placeholder="— اختر المدينة —"
+                        search-placeholder="ابحث عن المدينة..."
+                    />
                     @error('city') <p class="reg-field-error">{{ $message }}</p> @enderror
                 </div>
                 <div>
