@@ -68,4 +68,13 @@ class MedicalRegistrationFactory extends Factory
             'reviewed_at' => now(),
         ]);
     }
+
+    public function declined(): static
+    {
+        return $this->submitted()->state(fn (): array => [
+            'status' => RegistrationStatus::Declined,
+            'review_note' => 'بيانات ناقصة',
+            'reviewed_at' => now(),
+        ]);
+    }
 }

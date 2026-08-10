@@ -24,13 +24,13 @@ class ManageRegistrationSettings extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 
-    protected static ?string $navigationLabel = 'إعدادات التسجيل';
+    protected static ?string $navigationLabel = 'إعدادات';
 
     protected static ?string $title = 'إعدادات نموذج التسجيل';
 
     protected static string|\UnitEnum|null $navigationGroup = 'التسجيل الطبي';
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 3;
 
     /** @var array<string, mixed>|null */
     public ?array $data = [];
@@ -90,18 +90,19 @@ class ManageRegistrationSettings extends Page
             Section::make('رسائل صفحة الإغلاق')
                 ->description('تظهر هذه الرسائل في صفحة «التسجيل مغلق» عندما يكون النموذج معطّلاً. العربية تظهر أولاً، والإنجليزية تحتها.')
                 ->icon(Heroicon::OutlinedChatBubbleBottomCenterText)
+                ->visible(fn (Get $get): bool => ! $get('form_enabled'))
                 ->schema([
                     Textarea::make('disabled_message_ar')
                         ->label('الرسالة بالعربية')
                         ->placeholder('مثال: التسجيل الطبي مغلق حالياً. يرجى المحاولة لاحقاً أو التواصل مع إدارة الرعاية الذكية.')
                         ->rows(4)
-                        ->required()
+                        ->required(fn (Get $get): bool => ! $get('form_enabled'))
                         ->helperText('هذه الرسالة الرئيسية التي يقرأها الموظف.'),
                     Textarea::make('disabled_message_en')
                         ->label('الرسالة بالإنجليزية')
                         ->placeholder('Example: Medical registration is currently closed. Please try again later.')
                         ->rows(3)
-                        ->required()
+                        ->required(fn (Get $get): bool => ! $get('form_enabled'))
                         ->helperText('تظهر تحت الرسالة العربية بخط أصغر.')
                         ->extraInputAttributes(['dir' => 'ltr']),
                 ]),

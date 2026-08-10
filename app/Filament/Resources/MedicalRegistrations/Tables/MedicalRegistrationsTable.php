@@ -3,26 +3,38 @@
 namespace App\Filament\Resources\MedicalRegistrations\Tables;
 
 use App\Enums\RegistrationStatus;
+use App\Models\MedicalRegistration;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class MedicalRegistrationsTable
 {
     public static function configure(Table $table): Table
     {
         return $table
-            ->defaultSort('created_at', 'desc')
+            ->defaultSort('submitted_at', 'desc')
             ->columns([
+                ImageColumn::make('employee_photo_path')
+                    ->label('الصورة')
+                    ->disk('public')
+                    ->circular()
+                    ->imageSize(40)
+                    ->defaultImageUrl(url('/images/brand/smart-care.png')),
                 TextColumn::make('reference_number')
                     ->label('رقم المرجع')
                     ->searchable()
                     ->sortable()
-                    ->placeholder('—'),
+                    ->placeholder('—')
+                    ->copyable(),
                 TextColumn::make('full_name')
                     ->label('الاسم')
                     ->searchable()
@@ -31,13 +43,14 @@ class MedicalRegistrationsTable
                     ->label('الرقم الوظيفي')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('national_id')
-                    ->label('الرقم الوطني')
-                    ->searchable()
+                TextColumn::make('workplace')
+                    ->label('مكان العمل')
+                    ->formatStateUsing(fn (?string $state, MedicalRegistration $record): string => $record->workplaceLabel() ?? '—')
                     ->toggleable(),
-                TextColumn::make('phone')
-                    ->label('الهاتف')
-                    ->toggleable(),
+                TextColumn::make('city')
+                    ->label('المدينة')
+                    ->formatStateUsing(fn (?string $state, MedicalRegistration $record): string => $record->cityLabel() ?? '—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('status')
                     ->label('الحالة')
                     ->badge()
@@ -47,11 +60,26 @@ class MedicalRegistrationsTable
                     ->label('المستفيدون')
                     ->numeric()
                     ->sortable(),
+                TextColumn::make('reviewer.name')
+                    ->label('المراجع')
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('submitted_at')
                     ->label('تاريخ الإرسال')
                     ->dateTime('Y-m-d H:i')
                     ->sortable()
                     ->placeholder('—'),
+                TextColumn::make('pending_age')
+                    ->label('عمر الانتظار')
+                    ->state(function (MedicalRegistration $record): ?string {
+                        if (! $record->isPendingReview() || $record->submitted_at === null) {
+                            return null;
+                        }
+
+                        return $record->submitted_at->diffForHumans(syntax: true);
+                    })
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('created_at')
                     ->label('تاريخ الإنشاء')
                     ->dateTime('Y-m-d H:i')
@@ -64,14 +92,45 @@ class MedicalRegistrationsTable
                     ->options(collect(RegistrationStatus::cases())->mapWithKeys(
                         fn (RegistrationStatus $status) => [$status->value => $status->label()]
                     )),
+                SelectFilter::make('workplace')
+                    ->label('مكان العمل')
+                    ->options(fn (): array => config('registration.workplaces', [])),
+                SelectFilter::make('city')
+                    ->label('المدينة')
+                    ->options(fn (): array => config('registration.cities', [])),
+                Filter::make('submitted_at')
+                    ->label('تاريخ الإرسال')
+                    ->schema([
+                        DatePicker::make('submitted_from')
+                            ->label('من تاريخ'),
+                        DatePicker::make('submitted_until')
+                            ->label('إلى تاريخ'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['submitted_from'] ?? null,
+                                fn (Builder $query, $date): Builder => $query->whereDate('submitted_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['submitted_until'] ?? null,
+                                fn (Builder $query, $date): Builder => $query->whereDate('submitted_at', '<=', $date),
+                            );
+                    }),
             ])
             ->recordActions([
-                ViewAction::make(),
+                ViewAction::make()
+                    ->label('الملف'),
                 EditAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->label('حذف المحدد')
+                        ->requiresConfirmation()
+                        ->modalHeading('تأكيد حذف الطلبات')
+                        ->modalDescription('سيتم حذف الطلبات المحددة نهائياً. تجنّب حذف الطلبات المُرسلة أو المعتمدة إلا للضرورة.')
+                        ->modalSubmitActionLabel('نعم، احذف'),
                 ]),
             ]);
     }

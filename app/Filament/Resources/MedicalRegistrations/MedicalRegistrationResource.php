@@ -8,12 +8,14 @@ use App\Filament\Resources\MedicalRegistrations\Pages\ViewMedicalRegistration;
 use App\Filament\Resources\MedicalRegistrations\RelationManagers\BeneficiariesRelationManager;
 use App\Filament\Resources\MedicalRegistrations\Schemas\MedicalRegistrationForm;
 use App\Filament\Resources\MedicalRegistrations\Tables\MedicalRegistrationsTable;
+use App\Filament\Widgets\RegistrationStatsOverview;
 use App\Models\MedicalRegistration;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class MedicalRegistrationResource extends Resource
 {
@@ -21,15 +23,28 @@ class MedicalRegistrationResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
 
-    protected static ?string $navigationLabel = 'طلبات التسجيل';
+    protected static ?string $navigationLabel = 'الطلبات';
 
     protected static ?string $modelLabel = 'طلب تسجيل';
 
-    protected static ?string $pluralModelLabel = 'طلبات التسجيل';
+    protected static ?string $pluralModelLabel = 'الطلبات';
 
     protected static string|\UnitEnum|null $navigationGroup = 'التسجيل الطبي';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 1;
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with(['reviewer', 'employee']);
+    }
+
+    public static function getWidgets(): array
+    {
+        return [
+            RegistrationStatsOverview::class,
+        ];
+    }
 
     protected static ?string $recordTitleAttribute = 'full_name';
 

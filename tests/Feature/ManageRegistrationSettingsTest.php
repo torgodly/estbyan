@@ -15,11 +15,11 @@ it('can re-enable the registration form without crashing', function () {
 
     Livewire::actingAs($admin)
         ->test(ManageRegistrationSettings::class)
+        ->assertSee('رسائل صفحة الإغلاق')
         ->fillForm([
             'form_enabled' => true,
-            'disabled_message_ar' => 'مغلق مؤقتاً',
-            'disabled_message_en' => 'Temporarily closed',
         ])
+        ->assertDontSee('رسائل صفحة الإغلاق')
         ->call('save')
         ->assertHasNoFormErrors()
         ->assertNotified();

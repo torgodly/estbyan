@@ -108,6 +108,21 @@ class MedicalRegistration extends Model
         return $this->status === RegistrationStatus::Approved;
     }
 
+    public function isDeclined(): bool
+    {
+        return $this->status === RegistrationStatus::Declined;
+    }
+
+    public function isPendingReview(): bool
+    {
+        return $this->status === RegistrationStatus::Submitted;
+    }
+
+    public function hasDocuments(): bool
+    {
+        return filled($this->family_status_document_path) && filled($this->employee_photo_path);
+    }
+
     public function isEditableByEmployee(): bool
     {
         return $this->status->isEditableByEmployee();

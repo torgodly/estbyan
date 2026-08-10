@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Support\WorkplaceOptions;
 use Database\Factories\EmployeeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'employee_number',
@@ -32,6 +34,16 @@ class Employee extends Model
     public function medicalRegistrations(): HasMany
     {
         return $this->hasMany(MedicalRegistration::class);
+    }
+
+    public function latestMedicalRegistration(): HasOne
+    {
+        return $this->hasOne(MedicalRegistration::class)->latestOfMany();
+    }
+
+    public function workplaceLabel(): ?string
+    {
+        return WorkplaceOptions::labelForKey($this->workplace);
     }
 
     public static function findForVerification(string $employeeNumber, string $nationalId): ?self
