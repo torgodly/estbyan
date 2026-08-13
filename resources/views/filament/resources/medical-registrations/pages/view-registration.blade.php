@@ -3,7 +3,6 @@
 
     $registration = $this->getRecord();
     $photoUrl = RegistrationDocuments::url($registration, RegistrationDocuments::EMPLOYEE_PHOTO);
-    $familyDocUrl = RegistrationDocuments::url($registration, RegistrationDocuments::FAMILY_STATUS);
     $chronicLabels = collect($registration->chronic_conditions ?? [])
         ->map(fn (string $key) => config('registration.chronic_conditions.'.$key) ?? $key)
         ->filter()
@@ -66,10 +65,6 @@
     ];
     $positiveFlags = collect($medicalFlags)->where('value', true)->values();
     $defaultOpen = $positiveFlags->first()['key'] ?? 'chronic';
-    $familyDocType = filled($registration->family_status_document_path)
-        && preg_match('/\.(jpe?g|png|webp|gif)$/i', $registration->family_status_document_path)
-        ? 'image'
-        : 'pdf';
 @endphp
 
 <x-filament-panels::page>
@@ -262,35 +257,6 @@
                     </div>
                     <div class="hr-panel__body">
                         <div class="hr-docs">
-                            <div class="hr-doc">
-                                <div class="hr-doc__bar">
-                                    <div class="hr-doc__title">شهادة الوضع العائلي</div>
-                                    @if ($familyDocUrl)
-                                        <button
-                                            type="button"
-                                            class="hr-doc__action"
-                                            @click="openPreview(@js($familyDocUrl), @js($familyDocType), 'شهادة الوضع العائلي')"
-                                        >
-                                            تكبير
-                                        </button>
-                                    @endif
-                                </div>
-                                <div class="hr-doc__frame">
-                                    @if ($familyDocUrl)
-                                        @if ($familyDocType === 'image')
-                                            <img src="{{ $familyDocUrl }}" alt="شهادة الوضع العائلي">
-                                        @else
-                                            <iframe src="{{ $familyDocUrl }}#toolbar=0" title="شهادة الوضع العائلي"></iframe>
-                                        @endif
-                                    @else
-                                        <div class="hr-doc__missing">
-                                            <x-filament::icon icon="heroicon-o-document" class="h-7 w-7" />
-                                            <span>لم يُرفق هذا المستند</span>
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-
                             <div class="hr-doc">
                                 <div class="hr-doc__bar">
                                     <div class="hr-doc__title">صورة الموظف</div>

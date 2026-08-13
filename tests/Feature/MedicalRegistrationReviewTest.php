@@ -59,7 +59,6 @@ it('renders the custom registration dossier with key sections', function () {
         'phone' => '0910000000',
         'has_chronic_conditions' => true,
         'chronic_conditions' => ['diabetes'],
-        'family_status_document_path' => null,
         'employee_photo_path' => null,
     ]);
     Beneficiary::factory()->create([
@@ -79,8 +78,9 @@ it('renders the custom registration dossier with key sections', function () {
         ->assertSee('اضغط لعرض التفاصيل المحددة')
         ->assertSee('تنبيه طبي')
         ->assertSee('المستندات')
-        ->assertSee('لم يُرفق هذا المستند')
-        ->assertSee('لا توجد صورة')
+        ->assertSee('صورة الموظف')
+        ->assertDontSee('شهادة الوضع العائلي')
+        ->assertSee('لم تُرفع صورة الموظف')
         ->assertSee('معاينة مباشرة داخل الصفحة')
         ->assertSee('المستفيدون')
         ->assertSee('سارة علي')

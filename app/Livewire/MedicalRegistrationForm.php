@@ -115,15 +115,11 @@ class MedicalRegistrationForm extends Component
 
     public ?int $editingBeneficiaryIndex = null;
 
-    public $familyStatusDocument = null;
-
     public $employeePhoto = null;
 
     public bool $submitted = false;
 
     public string $referenceNumber = '';
-
-    public bool $hasFamilyDocument = false;
 
     public bool $hasEmployeePhoto = false;
 
@@ -589,41 +585,22 @@ class MedicalRegistrationForm extends Component
 
         $rules = [];
 
-        if ($this->familyStatusDocument !== null || blank($registration->family_status_document_path)) {
-            $rules['familyStatusDocument'] = ['required', 'file', 'mimes:pdf', 'max:5120'];
-        }
-
         if ($this->employeePhoto !== null || blank($registration->employee_photo_path)) {
             $rules['employeePhoto'] = ['required', 'file', 'mimes:jpg,jpeg,png', 'max:5120'];
         }
 
         $this->validateRules($rules, [
-            'familyStatusDocument.required' => 'شهادة الوضع العائلي مطلوبة (PDF)',
-            'familyStatusDocument.mimes' => 'يجب أن تكون شهادة الوضع العائلي بصيغة PDF',
             'employeePhoto.required' => 'الصورة الشخصية للموظف مطلوبة',
             'employeePhoto.mimes' => 'يجب أن تكون صورة الموظف بصيغة JPG أو PNG',
         ]);
 
         $path = "registrations/{$registration->uuid}";
 
-        if ($this->familyStatusDocument) {
-            $registration->family_status_document_path = $this->familyStatusDocument->store(
-                $path,
-                RegistrationDocuments::diskName(),
-            );
-        }
-
         if ($this->employeePhoto) {
             $registration->employee_photo_path = $this->employeePhoto->store(
                 $path,
                 RegistrationDocuments::diskName(),
             );
-        }
-
-        if (blank($registration->family_status_document_path)) {
-            $this->addError('familyStatusDocument', 'شهادة الوضع العائلي مطلوبة (PDF)');
-
-            return;
         }
 
         if (blank($registration->employee_photo_path)) {
@@ -633,7 +610,6 @@ class MedicalRegistrationForm extends Component
         }
 
         $registration->save();
-        $this->hasFamilyDocument = true;
         $this->hasEmployeePhoto = true;
         $this->goToStep(6);
     }
@@ -664,10 +640,9 @@ class MedicalRegistrationForm extends Component
 
         if (
             ! $registration
-            || (! $registration->family_status_document_path && ! $this->hasFamilyDocument)
             || (! $registration->employee_photo_path && ! $this->hasEmployeePhoto)
         ) {
-            $this->addError('submit', 'يرجى إرفاق شهادة الوضع العائلي والصورة الشخصية قبل الإرسال');
+            $this->addError('submit', 'يرجى إرفاق الصورة الشخصية قبل الإرسال');
 
             return;
         }
@@ -1016,7 +991,6 @@ class MedicalRegistrationForm extends Component
             'photo_path' => $b->photo_path,
         ])->all();
 
-        $this->hasFamilyDocument = (bool) $registration->family_status_document_path;
         $this->hasEmployeePhoto = (bool) $registration->employee_photo_path;
         $this->step = $registration->current_step ?: max(2, $this->determineResumeStep($registration));
         $this->identityLocked = true;
@@ -1024,7 +998,7 @@ class MedicalRegistrationForm extends Component
 
     protected function determineResumeStep(MedicalRegistration $registration): int
     {
-        if ($registration->family_status_document_path) {
+        if ($registration->employee_photo_path) {
             return 6;
         }
 
@@ -1053,8 +1027,8 @@ class MedicalRegistrationForm extends Component
             'beneficiaryHasSurgeryHistory', 'beneficiaryUsesMedicalDevices',
             'beneficiaryHospitalizedRecently', 'beneficiaryTraveledForTreatment',
             'beneficiaryPhoto', 'beneficiaryExistingPhotoPath', 'editingBeneficiaryIndex',
-            'familyStatusDocument', 'employeePhoto', 'submitted', 'referenceNumber',
-            'hasFamilyDocument', 'hasEmployeePhoto', 'hasSavedDraft', 'identityLocked',
+            'employeePhoto', 'submitted', 'referenceNumber',
+            'hasEmployeePhoto', 'hasSavedDraft', 'identityLocked',
             'approvedLocked', 'approvedMessage',
         ]);
 

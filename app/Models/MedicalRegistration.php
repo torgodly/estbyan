@@ -125,7 +125,7 @@ class MedicalRegistration extends Model
 
     public function hasDocuments(): bool
     {
-        return filled($this->family_status_document_path) && filled($this->employee_photo_path);
+        return filled($this->employee_photo_path);
     }
 
     public function isEditableByEmployee(): bool
