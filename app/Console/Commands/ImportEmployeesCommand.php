@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Employee;
+use App\Support\TestEmployees;
 use App\Support\WorkplaceOptions;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -83,6 +84,7 @@ class ImportEmployeesCommand extends Command
             if ($importedNumbers !== []) {
                 Employee::query()
                     ->whereNotIn('employee_number', $importedNumbers)
+                    ->whereNotIn('employee_number', TestEmployees::employeeNumbers())
                     ->update(['is_active' => false]);
             }
         });
