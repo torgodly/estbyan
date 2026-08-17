@@ -115,11 +115,15 @@ class MedicalRegistrationForm extends Component
 
     public ?int $editingBeneficiaryIndex = null;
 
+    public $familyStatusDocument = null;
+
     public $employeePhoto = null;
 
     public bool $submitted = false;
 
     public string $referenceNumber = '';
+
+    public bool $hasFamilyDocument = false;
 
     public bool $hasEmployeePhoto = false;
 
@@ -624,22 +628,41 @@ class MedicalRegistrationForm extends Component
 
         $rules = [];
 
+        if ($this->familyStatusDocument !== null || blank($registration->family_status_document_path)) {
+            $rules['familyStatusDocument'] = ['required', 'file', 'mimes:pdf', 'max:5120'];
+        }
+
         if ($this->employeePhoto !== null || blank($registration->employee_photo_path)) {
             $rules['employeePhoto'] = ['required', 'file', 'mimes:jpg,jpeg,png', 'max:5120'];
         }
 
         $this->validateRules($rules, [
+            'familyStatusDocument.required' => 'ورقة العائلة مطلوبة (PDF)',
+            'familyStatusDocument.mimes' => 'يجب أن تكون ورقة العائلة بصيغة PDF',
             'employeePhoto.required' => 'الصورة الشخصية للموظف مطلوبة',
             'employeePhoto.mimes' => 'يجب أن تكون صورة الموظف بصيغة JPG أو PNG',
         ]);
 
         $path = "registrations/{$registration->uuid}";
 
+        if ($this->familyStatusDocument) {
+            $registration->family_status_document_path = $this->familyStatusDocument->store(
+                $path,
+                RegistrationDocuments::diskName(),
+            );
+        }
+
         if ($this->employeePhoto) {
             $registration->employee_photo_path = $this->employeePhoto->store(
                 $path,
                 RegistrationDocuments::diskName(),
             );
+        }
+
+        if (blank($registration->family_status_document_path)) {
+            $this->addError('familyStatusDocument', 'ورقة العائلة مطلوبة (PDF)');
+
+            return;
         }
 
         if (blank($registration->employee_photo_path)) {
@@ -649,6 +672,7 @@ class MedicalRegistrationForm extends Component
         }
 
         $registration->save();
+        $this->hasFamilyDocument = true;
         $this->hasEmployeePhoto = true;
         $this->goToStep(6);
     }
@@ -679,9 +703,10 @@ class MedicalRegistrationForm extends Component
 
         if (
             ! $registration
+            || (! $registration->family_status_document_path && ! $this->hasFamilyDocument)
             || (! $registration->employee_photo_path && ! $this->hasEmployeePhoto)
         ) {
-            $this->addError('submit', 'يرجى إرفاق الصورة الشخصية قبل الإرسال');
+            $this->addError('submit', 'يرجى إرفاق ورقة العائلة والصورة الشخصية قبل الإرسال');
 
             return;
         }
@@ -1030,6 +1055,7 @@ class MedicalRegistrationForm extends Component
             'photo_path' => $b->photo_path,
         ])->all();
 
+        $this->hasFamilyDocument = (bool) $registration->family_status_document_path;
         $this->hasEmployeePhoto = (bool) $registration->employee_photo_path;
 
         $resumeStep = (int) ($registration->current_step ?: 0);
@@ -1045,7 +1071,7 @@ class MedicalRegistrationForm extends Component
 
     protected function determineResumeStep(MedicalRegistration $registration): int
     {
-        if ($registration->employee_photo_path) {
+        if ($registration->hasDocuments()) {
             return 6;
         }
 
@@ -1074,8 +1100,8 @@ class MedicalRegistrationForm extends Component
             'beneficiaryHasSurgeryHistory', 'beneficiaryUsesMedicalDevices',
             'beneficiaryHospitalizedRecently', 'beneficiaryTraveledForTreatment',
             'beneficiaryPhoto', 'beneficiaryExistingPhotoPath', 'editingBeneficiaryIndex',
-            'employeePhoto', 'submitted', 'referenceNumber',
-            'hasEmployeePhoto', 'hasSavedDraft', 'identityLocked',
+            'familyStatusDocument', 'employeePhoto', 'submitted', 'referenceNumber',
+            'hasFamilyDocument', 'hasEmployeePhoto', 'hasSavedDraft', 'identityLocked',
             'approvedLocked', 'approvedMessage',
         ]);
 

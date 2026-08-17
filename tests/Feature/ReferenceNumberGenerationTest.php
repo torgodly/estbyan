@@ -48,6 +48,7 @@ it('submits without colliding when a lower reference exists on a newer row', fun
         'workplace' => 'general_admin',
         'status' => RegistrationStatus::Draft,
         'reference_number' => null,
+        'family_status_document_path' => 'registrations/demo/family.pdf',
         'employee_photo_path' => 'registrations/demo/employee.jpg',
         'current_step' => 6,
         'consent_at' => now(),
@@ -64,6 +65,7 @@ it('submits without colliding when a lower reference exists on a newer row', fun
         ->set('consent', true)
         ->call('verifyIdentity')
         ->set('step', 6)
+        ->set('hasFamilyDocument', true)
         ->set('hasEmployeePhoto', true)
         ->call('submitRegistration')
         ->assertHasNoErrors()

@@ -220,6 +220,10 @@
     <article class="reg-report-card">
         <p class="reg-report-kicker">المستندات</p>
         <ul class="space-y-2 text-sm">
+            <li class="flex items-center gap-2 font-bold {{ ($hasFamilyDocument || $familyStatusDocument) ? 'text-teal-700' : 'text-red-600' }}">
+                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                ورقة العائلة {{ ($hasFamilyDocument || $familyStatusDocument) ? '— مرفقة' : '— ناقصة' }}
+            </li>
             <li class="flex items-center gap-2 font-bold {{ ($hasEmployeePhoto || $employeePhoto) ? 'text-teal-700' : 'text-red-600' }}">
                 <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
                 الصورة الشخصية {{ ($hasEmployeePhoto || $employeePhoto) ? '— مرفقة' : '— ناقصة' }}

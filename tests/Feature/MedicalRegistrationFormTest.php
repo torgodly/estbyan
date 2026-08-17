@@ -317,6 +317,7 @@ it('continues to review when documents are already saved without re-uploading', 
         'workplace' => 'general_admin',
         'status' => RegistrationStatus::Draft,
         'current_step' => 6,
+        'family_status_document_path' => 'registrations/demo/family.pdf',
         'employee_photo_path' => 'registrations/demo/employee.jpg',
         'date_of_birth' => '1976-04-12',
         'phone' => '0912345678',
@@ -332,7 +333,8 @@ it('continues to review when documents are already saved without re-uploading', 
         ->set('consent', true)
         ->call('verifyIdentity')
         ->set('step', 5)
-        ->assertDontSee('شهادة الوضع العائلي')
+        ->assertSee('ورقة العائلة')
+        ->assertSet('hasFamilyDocument', true)
         ->assertSet('hasEmployeePhoto', true)
         ->call('saveDocuments')
         ->assertHasNoErrors()
@@ -563,6 +565,7 @@ it('does not trap verified users on the login gate when current_step is 1', func
         'address' => 'طرابلس',
         'beneficiaries_count' => 0,
         'consent_at' => now(),
+        'family_status_document_path' => 'registrations/demo/family.pdf',
         'employee_photo_path' => 'registrations/demo/employee.jpg',
     ]);
 
@@ -681,6 +684,7 @@ it('keeps the same reference number when resubmitting after edit', function () {
         'status' => RegistrationStatus::Submitted,
         'reference_number' => 'SC26-00042',
         'submitted_at' => now()->subDay(),
+        'family_status_document_path' => 'registrations/demo/family.pdf',
         'employee_photo_path' => 'registrations/demo/employee.jpg',
         'current_step' => 6,
         'consent_at' => now(),
