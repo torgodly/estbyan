@@ -664,9 +664,14 @@ class MedicalRegistrationForm extends Component
         }
 
         DB::transaction(function () use ($registration): void {
-            $reference = $registration->reference_number ?: MedicalRegistration::generateReferenceNumber();
+            $locked = MedicalRegistration::query()
+                ->whereKey($registration->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            $registration->update([
+            $reference = $locked->reference_number ?: MedicalRegistration::generateReferenceNumber();
+
+            $locked->update([
                 'status' => RegistrationStatus::Submitted,
                 'submitted_at' => now(),
                 'reference_number' => $reference,

@@ -141,7 +141,7 @@ class MedicalRegistration extends Model
             ->whereNotNull('reference_number')
             ->where('reference_number', 'like', $prefix.'-%')
             ->lockForUpdate()
-            ->orderByDesc('id')
+            ->orderByDesc('reference_number')
             ->value('reference_number');
 
         $sequence = 1;
