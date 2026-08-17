@@ -55,5 +55,5 @@ it('downloads the redesigned reference card for a session registration', functio
         ->get(route('registration.reference-card', $registration))
         ->assertSuccessful()
         ->assertHeader('content-type', 'image/png')
-        ->assertHeader('content-disposition', 'attachment; filename="smart-care-SC26-00123.png"');
+        ->assertHeader('content-disposition', 'attachment; filename="tax-SC26-00123.png"');
 });

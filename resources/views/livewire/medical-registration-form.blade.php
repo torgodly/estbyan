@@ -46,7 +46,7 @@
                 </div>
 
                 <footer class="hidden px-10 pb-6 text-center text-xs text-slate-400 lg:block">
-                    <p>Smart Care Inc. · التسجيل الطبي للموظفين © {{ date('Y') }}</p>
+                    <p>مصلحة الضرائب · SMART CARE · التسجيل الطبي © {{ date('Y') }}</p>
                 </footer>
             </div>
         </div>
