@@ -360,8 +360,8 @@ it('reserves scroll space under the fixed mobile action sheet on the final repor
         ->assertSeeHtml('class="reg-actions-dock"')
         ->assertSee('تأكيد وإرسال التسجيل')
         ->assertSee('جاري الإرسال')
-        ->assertSee('حفظ كمسودة')
-        ->assertSee('جاري الحفظ');
+        ->assertDontSee('حفظ كمسودة')
+        ->assertDontSee('جاري الحفظ');
 });
 
 it('renders a readable beneficiaries review section on the final report', function () {
