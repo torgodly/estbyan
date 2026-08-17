@@ -315,6 +315,38 @@
         @apply inline-flex size-11 shrink-0 items-center justify-center rounded-xl p-0 transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
     }
 
+    /* ── Network / SPA loading feedback ── */
+    .reg-network-progress {
+        @apply pointer-events-none fixed inset-x-0 top-0 z-[80] h-1 overflow-hidden;
+    }
+
+    .reg-network-progress-bar {
+        @apply h-full w-1/3 rounded-full bg-gradient-to-l from-teal-400 via-teal-500 to-teal-300;
+        animation: reg-network-slide 1.1s ease-in-out infinite;
+    }
+
+    @keyframes reg-network-slide {
+        0% {
+            transform: translateX(120%);
+        }
+        100% {
+            transform: translateX(-320%);
+        }
+    }
+
+    .reg-loading-overlay {
+        @apply fixed inset-0 z-[70] hidden items-center justify-center bg-navy-900/35 px-6 backdrop-blur-[2px];
+    }
+
+    .reg-loading-card {
+        @apply w-full max-w-xs rounded-2xl bg-white px-6 py-7 text-center shadow-2xl shadow-navy-900/20 ring-1 ring-slate-200/80;
+    }
+
+    .reg-offline-banner {
+        @apply fixed inset-x-0 top-0 z-[90] flex items-center justify-center gap-2 bg-amber-500 px-4 py-2.5 text-center text-xs font-bold text-amber-950 shadow-md;
+        padding-top: max(0.625rem, env(safe-area-inset-top));
+    }
+
     /* ── Action bar ──
        Outer wrapper stays in document flow and reserves clearance equal to the
        tallest mobile sheet (3 stacked buttons). The dock is fixed on small

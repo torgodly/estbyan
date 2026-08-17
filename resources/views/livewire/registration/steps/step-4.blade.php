@@ -170,8 +170,20 @@
                     </div>
                 </div>
 
-                <button wire:click="saveBeneficiary" type="button" class="reg-btn-primary sm:!w-auto sm:min-w-[10rem]">
-                    {{ $editingBeneficiaryIndex !== null ? 'تحديث' : 'حفظ المستفيد' }}
+                <button
+                    wire:click="saveBeneficiary"
+                    type="button"
+                    wire:loading.attr="disabled"
+                    wire:target="saveBeneficiary,beneficiaryPhoto"
+                    class="reg-btn-primary sm:!w-auto sm:min-w-[10rem]"
+                >
+                    <span wire:loading.remove wire:target="saveBeneficiary">
+                        {{ $editingBeneficiaryIndex !== null ? 'تحديث' : 'حفظ المستفيد' }}
+                    </span>
+                    <span wire:loading wire:target="saveBeneficiary" class="inline-flex items-center gap-2">
+                        <svg class="size-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                        جاري الحفظ...
+                    </span>
                 </button>
             </div>
         </div>
@@ -212,8 +224,8 @@
                     <div><dt class="text-xs text-slate-400">فصيلة الدم</dt><dd class="font-bold text-slate-800">{{ $blood->label() }}</dd></div>
                 </dl>
                 <div class="flex gap-2 border-t border-slate-100 pt-4">
-                    <button wire:click="editBeneficiary({{ $index }})" type="button" class="reg-btn-secondary flex-1 !min-h-[2.75rem] text-xs">تعديل</button>
-                    <button wire:click="deleteBeneficiary({{ $index }})" wire:confirm="حذف هذا المستفيد؟" type="button" class="reg-btn flex-1 !min-h-[2.75rem] border border-red-200 bg-red-50 text-xs font-bold text-red-600">حذف</button>
+                    <button wire:click="editBeneficiary({{ $index }})" type="button" wire:loading.attr="disabled" wire:target="editBeneficiary,deleteBeneficiary,saveBeneficiary" class="reg-btn-secondary flex-1 !min-h-[2.75rem] text-xs">تعديل</button>
+                    <button wire:click="deleteBeneficiary({{ $index }})" wire:confirm="حذف هذا المستفيد؟" type="button" wire:loading.attr="disabled" wire:target="editBeneficiary,deleteBeneficiary,saveBeneficiary" class="reg-btn flex-1 !min-h-[2.75rem] border border-red-200 bg-red-50 text-xs font-bold text-red-600">حذف</button>
                 </div>
             </article>
         @endforeach
@@ -245,4 +257,6 @@
 @include('livewire.registration.partials.actions', [
     'primaryAction' => 'continueFromBeneficiaries',
     'primaryLabel' => 'متابعة للمستندات',
+    'primaryTarget' => 'continueFromBeneficiaries',
+    'loadingLabel' => 'جاري المتابعة...',
 ])

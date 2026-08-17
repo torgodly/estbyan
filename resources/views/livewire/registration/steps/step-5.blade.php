@@ -49,6 +49,6 @@
 @include('livewire.registration.partials.actions', [
     'primaryAction' => 'saveDocuments',
     'primaryLabel' => 'متابعة للمراجعة',
-    'primaryLoading' => true,
     'primaryTarget' => 'saveDocuments',
+    'loadingLabel' => 'جاري الحفظ...',
 ])

@@ -133,6 +133,6 @@
 @include('livewire.registration.partials.actions', [
     'primaryAction' => 'saveEmployeeDetails',
     'primaryLabel' => 'حفظ ومتابعة',
-    'primaryLoading' => true,
     'primaryTarget' => 'saveEmployeeDetails',
+    'loadingLabel' => 'جاري الحفظ...',
 ])

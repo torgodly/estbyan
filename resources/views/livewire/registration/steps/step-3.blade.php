@@ -57,4 +57,6 @@
 @include('livewire.registration.partials.actions', [
     'primaryAction' => 'saveMedicalRecord',
     'primaryLabel' => 'حفظ ومتابعة',
+    'primaryTarget' => 'saveMedicalRecord',
+    'loadingLabel' => 'جاري الحفظ...',
 ])

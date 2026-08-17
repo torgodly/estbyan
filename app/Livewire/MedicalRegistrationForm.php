@@ -135,7 +135,12 @@ class MedicalRegistrationForm extends Component
 
     public function mount(): void
     {
-        $this->restoreFromSession();
+        // Never carry a previous toast into a fresh page load / refresh.
+        $this->toastMessage = null;
+
+        if (session('registration_gate_passed')) {
+            $this->restoreFromSession();
+        }
     }
 
     public function updated(mixed $property): void
@@ -201,10 +206,25 @@ class MedicalRegistrationForm extends Component
             'registration_step1',
             'reference_download_id',
             'registration_editing',
+            'registration_gate_passed',
         ]);
 
         $this->resetFormState();
         $this->toastMessage = 'تم مسح جميع البيانات. يمكنك البدء من جديد.';
+    }
+
+    public function logout(): void
+    {
+        session()->forget([
+            'registration_id',
+            'registration_step1',
+            'reference_download_id',
+            'registration_editing',
+            'registration_gate_passed',
+        ]);
+
+        $this->resetFormState();
+        $this->toastMessage = 'تم تسجيل الخروج بنجاح';
     }
 
     public function verifyIdentity(): void
@@ -240,7 +260,11 @@ class MedicalRegistrationForm extends Component
             $this->approvedMessage = 'تم اعتماد طلبك مسبقاً ولا يمكن تعديله.'.($existing->reference_number ? ' رقم المرجع: '.$existing->reference_number : '');
             $this->referenceNumber = $existing->reference_number ?? '';
             $this->registrationId = $existing->id;
-            session(['registration_id' => $existing->id, 'reference_download_id' => $existing->id]);
+            session([
+                'registration_id' => $existing->id,
+                'reference_download_id' => $existing->id,
+                'registration_gate_passed' => true,
+            ]);
 
             return;
         }
@@ -259,7 +283,10 @@ class MedicalRegistrationForm extends Component
             $this->loadRegistration($existing);
             $this->identityLocked = true;
             $this->gender = $genderFromNid;
-            session(['registration_id' => $existing->id]);
+            session([
+                'registration_id' => $existing->id,
+                'registration_gate_passed' => true,
+            ]);
             session()->forget('registration_step1');
 
             if ($existing->isSubmitted()) {
@@ -301,7 +328,10 @@ class MedicalRegistrationForm extends Component
         $this->identityLocked = true;
         $this->gender = $genderFromNid;
         $this->step = 2;
-        session(['registration_id' => $registration->id]);
+        session([
+            'registration_id' => $registration->id,
+            'registration_gate_passed' => true,
+        ]);
         session()->forget('registration_step1');
         $this->notify('تم التحقق من بياناتك — تابع إكمال التسجيل');
     }
@@ -687,6 +717,7 @@ class MedicalRegistrationForm extends Component
         session([
             'registration_id' => $registration->id,
             'reference_download_id' => $registration->id,
+            'registration_gate_passed' => true,
         ]);
         session()->forget(['registration_step1', 'registration_editing']);
     }
@@ -710,6 +741,7 @@ class MedicalRegistrationForm extends Component
         session([
             'registration_id' => $registration->id,
             'registration_editing' => true,
+            'registration_gate_passed' => true,
         ]);
         $this->notify('يمكنك تعديل بياناتك ثم إعادة الإرسال مع الاحتفاظ برقم المرجع');
     }
@@ -720,7 +752,9 @@ class MedicalRegistrationForm extends Component
             return;
         }
 
-        if ($this->step > 1) {
+        $minimumStep = ($this->identityLocked || $this->registrationId) ? 2 : 1;
+
+        if ($this->step > $minimumStep) {
             $this->goToStep($this->step - 1);
         }
     }
@@ -997,7 +1031,15 @@ class MedicalRegistrationForm extends Component
         ])->all();
 
         $this->hasEmployeePhoto = (bool) $registration->employee_photo_path;
-        $this->step = $registration->current_step ?: max(2, $this->determineResumeStep($registration));
+
+        $resumeStep = (int) ($registration->current_step ?: 0);
+
+        if ($resumeStep < 2) {
+            $resumeStep = $this->determineResumeStep($registration);
+        }
+
+        // Once identity is verified, never resume on the login gate (step 1).
+        $this->step = max(2, $resumeStep);
         $this->identityLocked = true;
     }
 
@@ -1103,9 +1145,12 @@ class MedicalRegistrationForm extends Component
         $this->identityLocked = true;
         $this->referenceNumber = $registration->reference_number ?? '';
         $this->registrationId = $registration->id;
+        // Keep the UI off the login gate even if current_step was saved as 1.
+        $this->step = max(2, (int) ($registration->current_step ?: 6));
         session([
             'registration_id' => $registration->id,
             'reference_download_id' => $registration->id,
+            'registration_gate_passed' => true,
         ]);
         session()->forget('registration_editing');
 
@@ -1123,6 +1168,7 @@ class MedicalRegistrationForm extends Component
         session([
             'registration_id' => $registration->id,
             'registration_editing' => true,
+            'registration_gate_passed' => true,
         ]);
     }
 

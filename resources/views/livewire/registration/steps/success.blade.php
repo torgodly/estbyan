@@ -26,10 +26,18 @@
         <button
             type="button"
             wire:click="editSubmittedRegistration"
+            wire:loading.attr="disabled"
+            wire:target="editSubmittedRegistration"
             class="reg-btn-secondary inline-flex items-center justify-center gap-2 sm:!w-auto sm:min-w-[12rem]"
         >
-            <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
-            تعديل الطلب
+            <span wire:loading.remove wire:target="editSubmittedRegistration" class="inline-flex items-center gap-2">
+                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
+                تعديل الطلب
+            </span>
+            <span wire:loading wire:target="editSubmittedRegistration" class="inline-flex items-center gap-2">
+                <svg class="size-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                جاري فتح التعديل...
+            </span>
         </button>
     </div>
 </section>
