@@ -32,7 +32,7 @@
 
         <div class="reg-login-card">
             <div class="reg-login-heading">
-                <p class="reg-login-kicker">ديوان المحاسبة الليبي · الرعاية الذكية</p>
+                <p class="reg-login-kicker">مصلحة الضرائب الليبية · الرعاية الذكية</p>
                 <h1 class="reg-login-title">منظومة الاستبيان</h1>
                 <p class="reg-login-subtitle">منظومة إدخال بيانات الموظفين وعوائلهم</p>
             </div>

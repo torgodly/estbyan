@@ -13,14 +13,14 @@ class TestEmployees
     {
         return [
             [
-                'full_name' => 'محمد سالم علي الفرجاني',
-                'employee_number' => '1047',
-                'national_id' => '119941111111',
+                'full_name' => 'عمر عبدالله الزروق المسيميط',
+                'employee_number' => '007017',
+                'national_id' => '119730351644',
             ],
             [
-                'full_name' => 'فاطمة خالد عمر الزوي',
-                'employee_number' => '2381',
-                'national_id' => '219872222222',
+                'full_name' => 'هاجر فرج عيسى محمد',
+                'employee_number' => '001078',
+                'national_id' => '219770149572',
             ],
         ];
     }

@@ -32,7 +32,7 @@
                 </div>
 
                 <h1 class="reg-closed-title">التسجيل غير متاح حالياً</h1>
-                <p class="reg-closed-subtitle">منظومة الاستبيان الطبي لموظفي ديوان المحاسبة</p>
+                <p class="reg-closed-subtitle">منظومة الاستبيان الطبي لموظفي مصلحة الضرائب</p>
 
                 <div class="reg-closed-message">
                     <p class="reg-closed-message-ar">{{ $messageAr }}</p>

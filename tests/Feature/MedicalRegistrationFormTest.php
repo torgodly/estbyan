@@ -27,9 +27,9 @@ it('shows registration form when enabled', function () {
         ->assertSee('منظومة الاستبيان', false)
         ->assertSee('info@smartcare.com.ly', false)
         ->assertSee('0921623448', false)
-        ->assertSee('إدارة الخدمات الصحية بديوان المحاسبة', false)
+        ->assertSee('إدارة الموارد البشرية بمصلحة الضرائب', false)
         ->assertSee('images/brand/smart-care.png', false)
-        ->assertSee('images/brand/audit-bureau-hd.png', false);
+        ->assertSee('images/brand/tax-authority.png', false);
 });
 
 it('shows closed page when form is disabled', function () {

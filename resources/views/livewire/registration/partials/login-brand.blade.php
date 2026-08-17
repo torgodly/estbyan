@@ -1,9 +1,9 @@
 <div class="reg-login-partners" aria-label="الجهات المشاركة">
-    <div class="reg-login-partner reg-login-partner-audit">
+    <div class="reg-login-partner reg-login-partner-tax">
         <img
-            src="{{ asset('images/brand/audit-bureau-hd.png') }}"
-            alt="ديوان المحاسبة الليبي"
-            class="reg-login-logo-audit"
+            src="{{ asset('images/brand/tax-authority.png') }}"
+            alt="مصلحة الضرائب الليبية"
+            class="reg-login-logo-tax"
         >
     </div>
 

@@ -29,7 +29,7 @@ class MedicalRegistrationsTable
                         $record,
                         RegistrationDocuments::EMPLOYEE_PHOTO,
                     ))
-                    ->defaultImageUrl(url('/images/brand/audit-bureau.png')),
+                    ->defaultImageUrl(url('/images/brand/tax-authority.png')),
                 TextColumn::make('reference_number')
                     ->label('رقم المرجع')
                     ->searchable()

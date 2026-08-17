@@ -55,21 +55,19 @@ class ReferenceCardGenerator
         $pairX = (int) (($width - $pairW) / 2);
         $plateY = 88;
 
-        // Smart Care (left visually in RTL sense of login row: audit first/right, smart second/left)
-        // Matching login markup order in RTL: audit appears on the right.
-        $auditX = $pairX + $plateW + $plateGap;
+        // Matching login markup order in RTL: tax authority on the right, Smart Care on the left.
+        $taxX = $pairX + $plateW + $plateGap;
         $smartX = $pairX;
 
-        $this->roundedRect($image, $auditX, $plateY, $plateW, $plateH, 24, $white);
-        $this->roundedRectBorder($image, $auditX, $plateY, $plateW, $plateH, 24, $ring, 2);
+        $this->roundedRect($image, $taxX, $plateY, $plateW, $plateH, 24, $white);
+        $this->roundedRectBorder($image, $taxX, $plateY, $plateW, $plateH, 24, $ring, 2);
         $this->drawLogo(
             $image,
-            $this->auditLogoPath(),
-            $auditX + 34,
-            $plateY + 22,
-            $plateW - 68,
-            $plateH - 44,
-            tintNavy: true,
+            $this->taxLogoPath(),
+            $taxX + 18,
+            $plateY + 28,
+            $plateW - 36,
+            $plateH - 56,
         );
 
         $this->roundedRect($image, $smartX, $plateY, $plateW, $plateH, 24, $navy);
@@ -86,7 +84,7 @@ class ReferenceCardGenerator
         $divX = $pairX + $plateW + (int) ($plateGap / 2);
         imageline($image, $divX, $plateY + 28, $divX, $plateY + $plateH - 28, $divider);
 
-        $this->drawCenteredArabic($image, $regular, 18, $slate, $width, 280, 'ديوان المحاسبة · الرعاية الذكية');
+        $this->drawCenteredArabic($image, $regular, 18, $slate, $width, 280, 'مصلحة الضرائب · الرعاية الذكية');
         $this->drawCenteredArabic($image, $bold, 36, $navy, $width, 335, 'بطاقة المراجعة');
 
         // Reference highlight
@@ -144,11 +142,9 @@ class ReferenceCardGenerator
         return $path;
     }
 
-    protected function auditLogoPath(): string
+    protected function taxLogoPath(): string
     {
-        $hd = public_path('images/brand/audit-bureau-hd.png');
-
-        return is_readable($hd) ? $hd : public_path('images/brand/audit-bureau.png');
+        return public_path('images/brand/tax-authority.png');
     }
 
     /**

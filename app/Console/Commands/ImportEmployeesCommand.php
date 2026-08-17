@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
 #[Signature('employees:import {path? : Path to the employees xlsx file}')]
-#[Description('Import active employees from the official staff spreadsheet')]
+#[Description('Import active employees from the Tax Authority staff spreadsheet')]
 class ImportEmployeesCommand extends Command
 {
     public function handle(): int
@@ -28,24 +28,17 @@ class ImportEmployeesCommand extends Command
         $imported = 0;
         $skipped = 0;
         $seenNumbers = [];
+        $importedNumbers = [];
 
-        DB::transaction(function () use ($spreadsheet, &$imported, &$skipped, &$seenNumbers): void {
+        DB::transaction(function () use ($spreadsheet, &$imported, &$skipped, &$seenNumbers, &$importedNumbers): void {
             foreach ($spreadsheet->getWorksheetIterator() as $worksheet) {
-                $title = trim((string) $worksheet->getTitle());
-                $isHeadquarters = str_contains($title, 'الإدارة العامة');
-                $isBranches = str_contains($title, 'الفروع');
-
-                if (! $isHeadquarters && ! $isBranches) {
-                    continue;
-                }
-
                 $highestRow = $worksheet->getHighestDataRow();
 
-                for ($row = 4; $row <= $highestRow; $row++) {
-                    $fullName = trim((string) $worksheet->getCell("B{$row}")->getValue());
-                    $location = trim((string) $worksheet->getCell("C{$row}")->getValue());
-                    $nationalId = trim((string) $worksheet->getCell("D{$row}")->getCalculatedValue());
-                    $employeeNumber = trim((string) $worksheet->getCell("E{$row}")->getCalculatedValue());
+                for ($row = 5; $row <= $highestRow; $row++) {
+                    $employeeNumber = $this->cellString($worksheet, "B{$row}");
+                    $fullName = $this->cellString($worksheet, "C{$row}");
+                    $nationalId = $this->cellString($worksheet, "D{$row}");
+                    $admin = $this->cellString($worksheet, "E{$row}");
 
                     if ($fullName === '' || $nationalId === '' || $employeeNumber === '') {
                         $skipped++;
@@ -53,11 +46,10 @@ class ImportEmployeesCommand extends Command
                         continue;
                     }
 
-                    $workplaceLabel = $isHeadquarters ? 'الإدارة العامة' : $location;
-                    $workplaceKey = WorkplaceOptions::keyForLabel($workplaceLabel);
+                    $workplaceKey = WorkplaceOptions::keyForSpreadsheetAdmin($admin);
 
                     if ($workplaceKey === null) {
-                        $this->warn("Unknown workplace «{$workplaceLabel}» for employee {$employeeNumber}");
+                        $this->warn("Unknown workplace «{$admin}» for employee {$employeeNumber}");
                         $skipped++;
 
                         continue;
@@ -71,6 +63,7 @@ class ImportEmployeesCommand extends Command
                     }
 
                     $seenNumbers[$employeeNumber] = true;
+                    $importedNumbers[] = $employeeNumber;
 
                     Employee::query()->updateOrCreate(
                         ['employee_number' => $employeeNumber],
@@ -86,10 +79,27 @@ class ImportEmployeesCommand extends Command
                     $imported++;
                 }
             }
+
+            if ($importedNumbers !== []) {
+                Employee::query()
+                    ->whereNotIn('employee_number', $importedNumbers)
+                    ->update(['is_active' => false]);
+            }
         });
 
         $this->info("Imported {$imported} employees ({$skipped} skipped).");
 
         return self::SUCCESS;
+    }
+
+    private function cellString(mixed $worksheet, string $coordinate): string
+    {
+        $value = $worksheet->getCell($coordinate)->getFormattedValue();
+
+        if ($value === null) {
+            $value = $worksheet->getCell($coordinate)->getCalculatedValue();
+        }
+
+        return trim((string) $value);
     }
 }

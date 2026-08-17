@@ -10,5 +10,5 @@
         <span class="reg-login-contact-sep">·</span>
         <a href="https://wa.me/218921623451" class="reg-login-contact-link" dir="ltr">0921623451</a>
     </p>
-    <p class="reg-login-contact-note">أو التواصل مع إدارة الخدمات الصحية بديوان المحاسبة</p>
+    <p class="reg-login-contact-note">أو التواصل مع إدارة الموارد البشرية بمصلحة الضرائب</p>
 </footer>
