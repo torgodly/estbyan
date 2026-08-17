@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     @include('partials.seo', [
-        'seoTitle' => 'التسجيل مغلق مؤقتاً — SMART CARE',
+        'seoTitle' => 'التسجيل مغلق مؤقتاً — مصلحة الضرائب × SMART CARE',
         'seoDescription' => $messageAr,
         'seoUrl' => route('registration.form'),
         'seoRobots' => 'noindex,follow',

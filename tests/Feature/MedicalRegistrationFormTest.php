@@ -53,12 +53,19 @@ it('shows closed page when form is disabled', function () {
 it('exposes open graph tags on the registration form for share previews', function () {
     $this->get('/register')
         ->assertSuccessful()
+        ->assertSee('التسجيل الطبي — مصلحة الضرائب × SMART CARE', false)
+        ->assertSee('موظفي مصلحة الضرائب الليبية', false)
+        ->assertSee('og:site_name', false)
+        ->assertSee('مصلحة الضرائب · SMART CARE', false)
         ->assertSee('og:title', false)
         ->assertSee('og:description', false)
         ->assertSee('og:image', false)
         ->assertSee('images/og-registration.png', false)
+        ->assertSee('og:image:alt', false)
+        ->assertSee('مصلحة الضرائب الليبية والرعاية الذكية', false)
         ->assertSee('twitter:card', false)
-        ->assertSee('apple-touch-icon', false);
+        ->assertSee('apple-touch-icon', false)
+        ->assertDontSee('ديوان المحاسبة', false);
 });
 
 it('rejects invalid national id format at the gate', function () {

@@ -23,7 +23,7 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 #[Layout('layouts.registration')]
-#[Title('التسجيل الطبي للموظفين — SMART CARE')]
+#[Title('التسجيل الطبي — مصلحة الضرائب × SMART CARE')]
 class MedicalRegistrationForm extends Component
 {
     use WithFileUploads;
