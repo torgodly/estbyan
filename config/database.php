@@ -1,5 +1,9 @@
 <?php
 
+use App\Models\Beneficiary;
+use App\Models\Employee;
+use App\Models\MedicalRegistration;
+use App\Models\User;
 use Illuminate\Support\Str;
 use Pdo\Mysql;
 
@@ -53,6 +57,30 @@ return [
             'username' => env('DB_USERNAME', 'root'),
             'password' => env('DB_PASSWORD', ''),
             'unix_socket' => env('DB_SOCKET', ''),
+            'charset' => env('DB_CHARSET', 'utf8mb4'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
+        /*
+        | Temporary destination while cutting over from SQLite → MySQL.
+        | Keep DB_CONNECTION=sqlite and fill MYSQL_* until the copy finishes,
+        | then switch DB_* to MySQL and set DB_CONNECTION=mysql.
+        */
+        'mysql_target' => [
+            'driver' => 'mysql',
+            'host' => env('MYSQL_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('MYSQL_PORT', env('DB_PORT', '3306')),
+            'database' => env('MYSQL_DATABASE', 'estbyan'),
+            'username' => env('MYSQL_USERNAME', env('DB_USERNAME', 'root')),
+            'password' => env('MYSQL_PASSWORD', env('DB_PASSWORD', '')),
+            'unix_socket' => env('MYSQL_SOCKET', env('DB_SOCKET', '')),
             'charset' => env('DB_CHARSET', 'utf8mb4'),
             'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
             'prefix' => '',
@@ -130,6 +158,28 @@ return [
     'migrations' => [
         'table' => 'migrations',
         'update_date_on_publish' => true,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | SQLite → MySQL zero-downtime cutover
+    |--------------------------------------------------------------------------
+    |
+    | While DB_DUAL_WRITE=true, Eloquent writes and database sessions are
+    | mirrored to mysql_target so you can sync, then flip DB_CONNECTION
+    | without taking the site down.
+    |
+    */
+
+    'cutover' => [
+        'dual_write' => env('DB_DUAL_WRITE', false),
+        'target' => env('DB_CUTOVER_TARGET', 'mysql_target'),
+        'models' => [
+            User::class,
+            Employee::class,
+            MedicalRegistration::class,
+            Beneficiary::class,
+        ],
     ],
 
     /*
