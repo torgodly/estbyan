@@ -264,12 +264,12 @@
                         <div class="hr-docs">
                             <div class="hr-doc">
                                 <div class="hr-doc__bar">
-                                    <div class="hr-doc__title">ورقة العائلة</div>
+                                    <div class="hr-doc__title">صورة من شهادة الوضع العائلي</div>
                                     @if ($familyDocUrl)
                                         <button
                                             type="button"
                                             class="hr-doc__action"
-                                            @click="openPreview(@js($familyDocUrl), @js($familyDocType), 'ورقة العائلة')"
+                                            @click="openPreview(@js($familyDocUrl), @js($familyDocType), 'صورة من شهادة الوضع العائلي')"
                                         >
                                             تكبير
                                         </button>
@@ -278,9 +278,9 @@
                                 <div class="hr-doc__frame">
                                     @if ($familyDocUrl)
                                         @if ($familyDocType === 'image')
-                                            <img src="{{ $familyDocUrl }}" alt="ورقة العائلة">
+                                            <img src="{{ $familyDocUrl }}" alt="صورة من شهادة الوضع العائلي">
                                         @else
-                                            <iframe src="{{ $familyDocUrl }}#toolbar=0" title="ورقة العائلة"></iframe>
+                                            <iframe src="{{ $familyDocUrl }}#toolbar=0" title="صورة من شهادة الوضع العائلي"></iframe>
                                         @endif
                                     @else
                                         <div class="hr-doc__missing">

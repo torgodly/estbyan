@@ -79,7 +79,7 @@ it('renders the custom registration dossier with key sections', function () {
         ->assertSee('اضغط لعرض التفاصيل المحددة')
         ->assertSee('تنبيه طبي')
         ->assertSee('المستندات')
-        ->assertSee('ورقة العائلة')
+        ->assertSee('صورة من شهادة الوضع العائلي')
         ->assertSee('صورة الموظف')
         ->assertSee('لم يُرفق هذا المستند')
         ->assertSee('لم تُرفع صورة الموظف')

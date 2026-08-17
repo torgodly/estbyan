@@ -629,7 +629,7 @@ class MedicalRegistrationForm extends Component
         $rules = [];
 
         if ($this->familyStatusDocument !== null || blank($registration->family_status_document_path)) {
-            $rules['familyStatusDocument'] = ['required', 'file', 'mimes:pdf', 'max:5120'];
+            $rules['familyStatusDocument'] = ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'];
         }
 
         if ($this->employeePhoto !== null || blank($registration->employee_photo_path)) {
@@ -637,8 +637,8 @@ class MedicalRegistrationForm extends Component
         }
 
         $this->validateRules($rules, [
-            'familyStatusDocument.required' => 'ورقة العائلة مطلوبة (PDF)',
-            'familyStatusDocument.mimes' => 'يجب أن تكون ورقة العائلة بصيغة PDF',
+            'familyStatusDocument.required' => 'صورة من شهادة الوضع العائلي مطلوبة',
+            'familyStatusDocument.mimes' => 'يجب أن تكون شهادة الوضع العائلي بصيغة PDF أو JPG أو PNG',
             'employeePhoto.required' => 'الصورة الشخصية للموظف مطلوبة',
             'employeePhoto.mimes' => 'يجب أن تكون صورة الموظف بصيغة JPG أو PNG',
         ]);
@@ -660,7 +660,7 @@ class MedicalRegistrationForm extends Component
         }
 
         if (blank($registration->family_status_document_path)) {
-            $this->addError('familyStatusDocument', 'ورقة العائلة مطلوبة (PDF)');
+            $this->addError('familyStatusDocument', 'صورة من شهادة الوضع العائلي مطلوبة');
 
             return;
         }
@@ -706,7 +706,7 @@ class MedicalRegistrationForm extends Component
             || (! $registration->family_status_document_path && ! $this->hasFamilyDocument)
             || (! $registration->employee_photo_path && ! $this->hasEmployeePhoto)
         ) {
-            $this->addError('submit', 'يرجى إرفاق ورقة العائلة والصورة الشخصية قبل الإرسال');
+            $this->addError('submit', 'يرجى إرفاق صورة من شهادة الوضع العائلي والصورة الشخصية قبل الإرسال');
 
             return;
         }

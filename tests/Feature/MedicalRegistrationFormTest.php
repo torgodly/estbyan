@@ -333,7 +333,7 @@ it('continues to review when documents are already saved without re-uploading', 
         ->set('consent', true)
         ->call('verifyIdentity')
         ->set('step', 5)
-        ->assertSee('ورقة العائلة')
+        ->assertSee('صورة من شهادة الوضع العائلي')
         ->assertSet('hasFamilyDocument', true)
         ->assertSet('hasEmployeePhoto', true)
         ->call('saveDocuments')

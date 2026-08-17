@@ -9,8 +9,8 @@
             <div class="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-teal-100 text-teal-600">
                 <svg class="size-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 18H15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 15 4.5h-4.5A2.25 2.25 0 0 0 8.25 6.75v10.5A2.25 2.25 0 0 0 10.5 19.5Z"/></svg>
             </div>
-            <p class="font-bold text-slate-800">ورقة العائلة <span class="reg-required">*</span></p>
-            <p class="mt-1 text-xs text-slate-500">PDF فقط — حد أقصى 5 م.ب</p>
+            <p class="font-bold text-slate-800">صورة من شهادة الوضع العائلي <span class="reg-required">*</span></p>
+            <p class="mt-1 text-xs text-slate-500">PDF أو صورة JPG/PNG — حد أقصى 5 م.ب</p>
             @if ($hasFamilyDocument && ! $familyStatusDocument)
                 <p class="mt-3 inline-flex items-center gap-1.5 rounded-full bg-teal-100 px-3 py-1 text-xs font-bold text-teal-700">
                     <svg class="size-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
@@ -18,9 +18,9 @@
                 </p>
             @endif
             <label class="reg-btn-secondary mt-4 cursor-pointer !inline-flex !w-auto">
-                <span wire:loading.remove wire:target="familyStatusDocument">اختيار ملف PDF</span>
+                <span wire:loading.remove wire:target="familyStatusDocument">اختيار ملف</span>
                 <span wire:loading wire:target="familyStatusDocument">جاري الرفع…</span>
-                <input wire:model="familyStatusDocument" type="file" accept=".pdf,application/pdf" class="sr-only">
+                <input wire:model="familyStatusDocument" type="file" accept=".pdf,application/pdf,image/jpeg,image/png,image/jpg" class="sr-only">
             </label>
             @error('familyStatusDocument') <p class="reg-field-error mt-2 justify-center">{{ $message }}</p> @enderror
         </div>
