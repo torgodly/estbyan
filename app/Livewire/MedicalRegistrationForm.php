@@ -140,6 +140,15 @@ class MedicalRegistrationForm extends Component
 
         if (session('registration_gate_passed')) {
             $this->restoreFromSession();
+
+            return;
+        }
+
+        if ($draft = session('registration_step1')) {
+            $this->nationalId = $draft['national_id'] ?? '';
+            $this->consent = (bool) ($draft['consent'] ?? false);
+            $this->step = 1;
+            $this->hasSavedDraft = true;
         }
     }
 
@@ -230,22 +239,22 @@ class MedicalRegistrationForm extends Component
     public function verifyIdentity(): void
     {
         $this->validateRules([
-            'employeeNumber' => ['required', 'string', 'max:20'],
             'nationalId' => ['required', 'string', new LibyanNationalId],
             'consent' => ['accepted'],
         ], [
-            'employeeNumber.required' => 'الرقم الوظيفي مطلوب',
             'nationalId.required' => 'الرقم الوطني مطلوب',
             'consent.accepted' => 'يجب الموافقة على سياسة الخصوصية للمتابعة',
         ]);
 
-        $employee = Employee::findForVerification($this->employeeNumber, $this->nationalId);
+        $employee = Employee::findForVerification($this->nationalId);
 
         if (! $employee) {
-            $this->addError('employeeNumber', 'لم يتم العثور على موظف بهذه البيانات. تأكد من الرقم الوظيفي والرقم الوطني.');
+            $this->addError('nationalId', 'لم يتم العثور على موظف بهذا الرقم الوطني.');
 
             return;
         }
+
+        $this->employeeNumber = $employee->employee_number;
 
         $genderFromNid = LibyanNationalIdSupport::gender($employee->national_id)->value;
 
@@ -831,21 +840,12 @@ class MedicalRegistrationForm extends Component
                 return;
             }
         }
-
-        if ($draft = session('registration_step1')) {
-            $this->employeeNumber = $draft['employee_number'] ?? '';
-            $this->nationalId = $draft['national_id'] ?? '';
-            $this->consent = (bool) ($draft['consent'] ?? false);
-            $this->step = 1;
-            $this->hasSavedDraft = true;
-        }
     }
 
     protected function persistStepOneDraft(): void
     {
         session([
             'registration_step1' => [
-                'employee_number' => $this->employeeNumber,
                 'national_id' => $this->nationalId,
                 'consent' => $this->consent,
             ],
@@ -856,7 +856,7 @@ class MedicalRegistrationForm extends Component
 
     protected function isStepOneField(string $property): bool
     {
-        return in_array($property, ['employeeNumber', 'nationalId', 'consent'], true);
+        return in_array($property, ['nationalId', 'consent'], true);
     }
 
     protected function isAutoPersistField(string $property): bool

@@ -74,7 +74,6 @@ it('exposes open graph tags on the registration form for share previews', functi
 
 it('rejects invalid national id format at the gate', function () {
     Livewire::test(MedicalRegistrationForm::class)
-        ->set('employeeNumber', '99999')
         ->set('nationalId', '123')
         ->set('consent', true)
         ->call('verifyIdentity')
@@ -84,11 +83,10 @@ it('rejects invalid national id format at the gate', function () {
 
 it('rejects non-employees at the identity gate', function () {
     Livewire::test(MedicalRegistrationForm::class)
-        ->set('employeeNumber', '99999')
         ->set('nationalId', '119900112233')
         ->set('consent', true)
         ->call('verifyIdentity')
-        ->assertHasErrors('employeeNumber')
+        ->assertHasErrors('nationalId')
         ->assertSet('step', 1);
 
     expect(MedicalRegistration::query()->count())->toBe(0);
@@ -103,12 +101,12 @@ it('unlocks the form for a valid employee and prefills locked fields', function 
     ]);
 
     Livewire::test(MedicalRegistrationForm::class)
-        ->set('employeeNumber', '2001')
         ->set('nationalId', '119800507148')
         ->set('consent', true)
         ->call('verifyIdentity')
         ->assertHasNoErrors()
         ->assertSet('step', 2)
+        ->assertSet('employeeNumber', '2001')
         ->assertSet('verifiedFullName', 'أحمد محمد')
         ->assertSet('workplace', 'general_admin')
         ->assertSet('gender', 'male')
@@ -125,13 +123,11 @@ it('unlocks the form for a valid employee and prefills locked fields', function 
 
 it('persists step one draft in session and restores on remount', function () {
     Livewire::test(MedicalRegistrationForm::class)
-        ->set('employeeNumber', '1001')
         ->set('nationalId', '119700349522')
         ->set('consent', true)
         ->assertSet('hasSavedDraft', true);
 
     Livewire::test(MedicalRegistrationForm::class)
-        ->assertSet('employeeNumber', '1001')
         ->assertSet('nationalId', '119700349522')
         ->assertSet('consent', true)
         ->assertSet('hasSavedDraft', true);
