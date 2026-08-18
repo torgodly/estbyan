@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Settings\RegistrationSettings;
 use App\Support\LibyanNationalId;
+use App\Support\RegistrationDocuments;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -339,6 +340,116 @@ it('continues to review when documents are already saved without re-uploading', 
         ->call('saveDocuments')
         ->assertHasNoErrors()
         ->assertSet('step', 6);
+});
+
+it('stores the family booklet immediately and shows an upload progress indicator', function () {
+    Storage::fake('local');
+
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1977);
+
+    Employee::factory()->create([
+        'employee_number' => '5010',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'سالم عمر',
+        'workplace' => 'general_admin',
+    ]);
+
+    $document = UploadedFile::fake()->create('family-booklet.pdf', 2048, 'application/pdf');
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '5010')
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('step', 5)
+        ->assertSee('جاري رفع ورقة العائلة')
+        ->assertSee('حد أقصى 50 م.ب')
+        ->assertSeeHtml('x-on:livewire-upload-progress')
+        ->assertSeeHtml('reg-upload-meter')
+        ->set('familyStatusDocument', $document)
+        ->assertHasNoErrors('familyStatusDocument')
+        ->assertSet('hasFamilyDocument', true)
+        ->assertSet('familyStatusDocumentName', 'family-booklet.pdf')
+        ->assertSee('family-booklet.pdf');
+
+    $registration = MedicalRegistration::query()->first();
+
+    expect($registration?->family_status_document_path)->not->toBeNull();
+
+    Storage::disk('local')->assertExists($registration->family_status_document_path);
+});
+
+it('stores a photographed family booklet and continues after both documents are on file', function () {
+    Storage::fake('local');
+
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1974);
+
+    Employee::factory()->create([
+        'employee_number' => '5011',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'عمر سالم',
+        'workplace' => 'general_admin',
+    ]);
+
+    $document = UploadedFile::fake()->image('family.jpg', 1200, 1600);
+    $photo = UploadedFile::fake()->image('employee.jpg', 400, 400);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '5011')
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('step', 5)
+        ->set('familyStatusDocument', $document)
+        ->set('employeePhoto', $photo)
+        ->assertHasNoErrors()
+        ->assertSet('hasFamilyDocument', true)
+        ->assertSet('hasEmployeePhoto', true)
+        ->call('saveDocuments')
+        ->assertHasNoErrors()
+        ->assertSet('step', 6);
+
+    $registration = MedicalRegistration::query()->first();
+
+    expect($registration?->family_status_document_path)->not->toBeNull()
+        ->and($registration->employee_photo_path)->not->toBeNull();
+});
+
+it('rejects family booklet files that exceed the upload limit', function () {
+    Storage::fake('local');
+
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1973);
+
+    Employee::factory()->create([
+        'employee_number' => '5012',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'نوري علي',
+        'workplace' => 'general_admin',
+    ]);
+
+    $tooLarge = UploadedFile::fake()->create(
+        'family.pdf',
+        RegistrationDocuments::maxKilobytes() + 1,
+        'application/pdf',
+    );
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '5012')
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('step', 5)
+        ->set('familyStatusDocument', $tooLarge)
+        ->assertHasErrors(['familyStatusDocument' => 'max'])
+        ->assertSee('حجم شهادة الوضع العائلي يجب ألا يتجاوز 50 م.ب')
+        ->assertSet('hasFamilyDocument', false);
+});
+
+it('raises livewire temporary upload limits for family booklet scans', function () {
+    expect(config('livewire.temporary_file_upload.rules'))
+        ->toContain('max:'.(64 * 1024))
+        ->and(config('livewire.temporary_file_upload.max_upload_time'))->toBe(30)
+        ->and(config('livewire.temporary_file_upload.disk'))->toBe('local');
 });
 
 it('reserves scroll space under the fixed mobile action sheet on the final report', function () {

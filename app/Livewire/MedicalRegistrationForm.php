@@ -119,6 +119,10 @@ class MedicalRegistrationForm extends Component
 
     public $employeePhoto = null;
 
+    public ?string $familyStatusDocumentName = null;
+
+    public ?string $employeePhotoName = null;
+
     public bool $submitted = false;
 
     public string $referenceNumber = '';
@@ -452,13 +456,13 @@ class MedicalRegistrationForm extends Component
             'beneficiaryPhoto' => [
                 Rule::requiredIf($this->editingBeneficiaryIndex === null && blank($this->beneficiaryExistingPhotoPath)),
                 'nullable',
-                'image',
-                'mimes:jpg,jpeg,png',
-                'max:10240',
+                'file',
+                'mimes:'.implode(',', RegistrationDocuments::photoMimes()),
+                'max:'.RegistrationDocuments::maxKilobytes(),
             ],
         ];
 
-        $this->validateRules($rules, [
+        $this->validateRules($rules, array_merge($this->documentValidationMessages(), [
             'beneficiaryName.required' => 'اسم المستفيد مطلوب',
             'beneficiaryRelationship.in' => $this->maritalStatus === MaritalStatus::Single->value
                 ? 'الأعزب يمكنه إضافة الوالدين فقط'
@@ -467,7 +471,7 @@ class MedicalRegistrationForm extends Component
             'beneficiaryDateOfBirth.required' => 'تاريخ ميلاد المستفيد مطلوب',
             'beneficiaryPhoto.required' => 'صورة المستفيد مطلوبة',
             'beneficiaryChronicConditions.required' => 'يرجى تحديد الأمراض المزمنة على الأقل',
-        ]);
+        ]));
 
         $relationship = BeneficiaryRelationship::from($this->beneficiaryRelationship);
         $expectedGender = $relationship->expectedGender();
@@ -629,35 +633,19 @@ class MedicalRegistrationForm extends Component
         $rules = [];
 
         if ($this->familyStatusDocument !== null || blank($registration->family_status_document_path)) {
-            $rules['familyStatusDocument'] = ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'];
+            $rules['familyStatusDocument'] = RegistrationDocuments::familyValidationRules();
         }
 
         if ($this->employeePhoto !== null || blank($registration->employee_photo_path)) {
-            $rules['employeePhoto'] = ['required', 'file', 'mimes:jpg,jpeg,png', 'max:10240'];
+            $rules['employeePhoto'] = RegistrationDocuments::photoValidationRules();
         }
 
-        $this->validateRules($rules, [
-            'familyStatusDocument.required' => 'صورة من شهادة الوضع العائلي مطلوبة',
-            'familyStatusDocument.mimes' => 'يجب أن تكون شهادة الوضع العائلي بصيغة PDF أو JPG أو PNG',
-            'employeePhoto.required' => 'الصورة الشخصية للموظف مطلوبة',
-            'employeePhoto.mimes' => 'يجب أن تكون صورة الموظف بصيغة JPG أو PNG',
-        ]);
+        $this->validateRules($rules, $this->documentValidationMessages());
 
-        $path = "registrations/{$registration->uuid}";
+        $this->persistFamilyStatusDocument($registration);
+        $this->persistEmployeePhoto($registration);
 
-        if ($this->familyStatusDocument) {
-            $registration->family_status_document_path = $this->familyStatusDocument->store(
-                $path,
-                RegistrationDocuments::diskName(),
-            );
-        }
-
-        if ($this->employeePhoto) {
-            $registration->employee_photo_path = $this->employeePhoto->store(
-                $path,
-                RegistrationDocuments::diskName(),
-            );
-        }
+        $registration->refresh();
 
         if (blank($registration->family_status_document_path)) {
             $this->addError('familyStatusDocument', 'صورة من شهادة الوضع العائلي مطلوبة');
@@ -671,10 +659,19 @@ class MedicalRegistrationForm extends Component
             return;
         }
 
-        $registration->save();
         $this->hasFamilyDocument = true;
         $this->hasEmployeePhoto = true;
         $this->goToStep(6);
+    }
+
+    public function updatedFamilyStatusDocument(): void
+    {
+        $this->storeUploadedDocument('familyStatusDocument');
+    }
+
+    public function updatedEmployeePhoto(): void
+    {
+        $this->storeUploadedDocument('employeePhoto');
     }
 
     public function saveDraft(): void
@@ -1100,7 +1097,8 @@ class MedicalRegistrationForm extends Component
             'beneficiaryHasSurgeryHistory', 'beneficiaryUsesMedicalDevices',
             'beneficiaryHospitalizedRecently', 'beneficiaryTraveledForTreatment',
             'beneficiaryPhoto', 'beneficiaryExistingPhotoPath', 'editingBeneficiaryIndex',
-            'familyStatusDocument', 'employeePhoto', 'submitted', 'referenceNumber',
+            'familyStatusDocument', 'employeePhoto', 'familyStatusDocumentName', 'employeePhotoName',
+            'submitted', 'referenceNumber',
             'hasFamilyDocument', 'hasEmployeePhoto', 'hasSavedDraft', 'identityLocked',
             'approvedLocked', 'approvedMessage',
         ]);
@@ -1217,5 +1215,102 @@ class MedicalRegistrationForm extends Component
         }
 
         $this->validate($rules, $messages);
+    }
+
+    /**
+     * @param  'familyStatusDocument'|'employeePhoto'  $property
+     */
+    protected function storeUploadedDocument(string $property): void
+    {
+        if ($this->isFormLocked() || ! $this->{$property} instanceof TemporaryUploadedFile) {
+            return;
+        }
+
+        $isFamily = $property === 'familyStatusDocument';
+
+        $this->validateOnly($property, [
+            $property => $isFamily
+                ? RegistrationDocuments::familyValidationRules()
+                : RegistrationDocuments::photoValidationRules(),
+        ], $this->documentValidationMessages());
+
+        $registration = $this->registration();
+
+        if (! $registration) {
+            return;
+        }
+
+        if ($isFamily) {
+            $this->persistFamilyStatusDocument($registration);
+        } else {
+            $this->persistEmployeePhoto($registration);
+        }
+    }
+
+    protected function persistFamilyStatusDocument(MedicalRegistration $registration): void
+    {
+        if (! $this->familyStatusDocument instanceof TemporaryUploadedFile) {
+            return;
+        }
+
+        $previous = $registration->family_status_document_path;
+        $path = $this->familyStatusDocument->store(
+            "registrations/{$registration->uuid}",
+            RegistrationDocuments::diskName(),
+        );
+
+        $this->familyStatusDocumentName = $this->familyStatusDocument->getClientOriginalName();
+        $registration->family_status_document_path = $path;
+        $registration->save();
+
+        if (filled($previous) && $previous !== $path) {
+            RegistrationDocuments::disk()->delete($previous);
+        }
+
+        $this->hasFamilyDocument = true;
+        $this->familyStatusDocument = null;
+    }
+
+    protected function persistEmployeePhoto(MedicalRegistration $registration): void
+    {
+        if (! $this->employeePhoto instanceof TemporaryUploadedFile) {
+            return;
+        }
+
+        $previous = $registration->employee_photo_path;
+        $path = $this->employeePhoto->store(
+            "registrations/{$registration->uuid}",
+            RegistrationDocuments::diskName(),
+        );
+
+        $this->employeePhotoName = $this->employeePhoto->getClientOriginalName();
+        $registration->employee_photo_path = $path;
+        $registration->save();
+
+        if (filled($previous) && $previous !== $path) {
+            RegistrationDocuments::disk()->delete($previous);
+        }
+
+        $this->hasEmployeePhoto = true;
+        $this->employeePhoto = null;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function documentValidationMessages(): array
+    {
+        $maxMb = RegistrationDocuments::maxMegabytes();
+
+        return [
+            'familyStatusDocument.required' => 'صورة من شهادة الوضع العائلي مطلوبة',
+            'familyStatusDocument.mimes' => 'يجب أن تكون شهادة الوضع العائلي بصيغة PDF أو JPG أو PNG أو WEBP',
+            'familyStatusDocument.max' => "حجم شهادة الوضع العائلي يجب ألا يتجاوز {$maxMb} م.ب",
+            'employeePhoto.required' => 'الصورة الشخصية للموظف مطلوبة',
+            'employeePhoto.mimes' => 'يجب أن تكون صورة الموظف بصيغة JPG أو PNG أو WEBP',
+            'employeePhoto.max' => "حجم صورة الموظف يجب ألا يتجاوز {$maxMb} م.ب",
+            'beneficiaryPhoto.mimes' => 'يجب أن تكون صورة المستفيد بصيغة JPG أو PNG أو WEBP',
+            'beneficiaryPhoto.max' => "حجم صورة المستفيد يجب ألا يتجاوز {$maxMb} م.ب",
+        ];
     }
 }

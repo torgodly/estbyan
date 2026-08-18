@@ -89,7 +89,8 @@ class MedicalRegistrationForm
                             ->disk(RegistrationDocuments::diskName())
                             ->directory('registrations')
                             ->visibility('private')
-                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'])
+                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/heic', 'image/heif'])
+                            ->maxSize(RegistrationDocuments::maxKilobytes())
                             ->downloadable()
                             ->openable(),
                         FileUpload::make('employee_photo_path')
@@ -98,6 +99,7 @@ class MedicalRegistrationForm
                             ->directory('registrations')
                             ->visibility('private')
                             ->image()
+                            ->maxSize(RegistrationDocuments::maxKilobytes())
                             ->downloadable()
                             ->openable(),
                     ]),

@@ -281,6 +281,22 @@
         @apply border-teal-200 bg-teal-50/40;
     }
 
+    .reg-upload-hit {
+        @apply absolute inset-0 z-10 cursor-pointer opacity-0;
+    }
+
+    .reg-upload-hit:disabled {
+        @apply cursor-wait;
+    }
+
+    .reg-upload-meter {
+        @apply h-2 w-full overflow-hidden rounded-full bg-slate-200;
+    }
+
+    .reg-upload-meter-bar {
+        @apply h-full rounded-full bg-gradient-to-l from-teal-600 to-teal-400 transition-[width] duration-150 ease-out;
+    }
+
     /* ── Review blocks ── */
     .reg-review-block {
         @apply rounded-2xl border border-slate-100 bg-slate-50/60 p-4;

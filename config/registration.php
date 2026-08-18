@@ -101,6 +101,16 @@ return [
         'zliten' => 'زليتن',
     ],
 
+    /*
+    | Phone scans of ورقة العائلة are often well above PHP/Livewire defaults.
+    | Sizes are kilobytes (Laravel file validation / Livewire temp uploads).
+    */
+    'uploads' => [
+        'max_kilobytes' => (int) env('REGISTRATION_UPLOAD_MAX_KB', 51200),
+        'family_mimes' => ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
+        'photo_mimes' => ['jpg', 'jpeg', 'png', 'webp'],
+    ],
+
     'chronic_conditions' => [
         'heart_disease' => 'أمراض القلب',
         'cancer' => 'السرطان',

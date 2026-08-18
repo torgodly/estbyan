@@ -68,4 +68,71 @@ class RegistrationDocuments
 
         return self::disk()->mimeType($path) ?: 'application/octet-stream';
     }
+
+    public static function maxKilobytes(): int
+    {
+        return (int) config('registration.uploads.max_kilobytes', 51200);
+    }
+
+    public static function maxMegabytes(): int
+    {
+        return (int) ceil(self::maxKilobytes() / 1024);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function familyMimes(): array
+    {
+        return config('registration.uploads.family_mimes', ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function photoMimes(): array
+    {
+        return config('registration.uploads.photo_mimes', ['jpg', 'jpeg', 'png', 'webp']);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function familyValidationRules(bool $required = true): array
+    {
+        return [
+            $required ? 'required' : 'nullable',
+            'file',
+            'mimes:'.implode(',', self::familyMimes()),
+            'max:'.self::maxKilobytes(),
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function photoValidationRules(bool $required = true): array
+    {
+        return [
+            $required ? 'required' : 'nullable',
+            'file',
+            'mimes:'.implode(',', self::photoMimes()),
+            'max:'.self::maxKilobytes(),
+        ];
+    }
+
+    public static function isImagePath(?string $path): bool
+    {
+        return filled($path) && (bool) preg_match('/\.(jpe?g|png|webp|gif|heic|heif)$/i', $path);
+    }
+
+    public static function familyAcceptAttribute(): string
+    {
+        return 'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif';
+    }
+
+    public static function photoAcceptAttribute(): string
+    {
+        return 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp';
+    }
 }
