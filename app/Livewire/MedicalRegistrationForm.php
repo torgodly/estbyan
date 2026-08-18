@@ -454,7 +454,7 @@ class MedicalRegistrationForm extends Component
                 'nullable',
                 'image',
                 'mimes:jpg,jpeg,png',
-                'max:5120',
+                'max:10240',
             ],
         ];
 
@@ -629,11 +629,11 @@ class MedicalRegistrationForm extends Component
         $rules = [];
 
         if ($this->familyStatusDocument !== null || blank($registration->family_status_document_path)) {
-            $rules['familyStatusDocument'] = ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'];
+            $rules['familyStatusDocument'] = ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'];
         }
 
         if ($this->employeePhoto !== null || blank($registration->employee_photo_path)) {
-            $rules['employeePhoto'] = ['required', 'file', 'mimes:jpg,jpeg,png', 'max:5120'];
+            $rules['employeePhoto'] = ['required', 'file', 'mimes:jpg,jpeg,png', 'max:10240'];
         }
 
         $this->validateRules($rules, [
