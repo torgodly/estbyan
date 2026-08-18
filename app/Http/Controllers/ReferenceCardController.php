@@ -21,7 +21,7 @@ class ReferenceCardController extends Controller
         abort_unless(filled($registration->reference_number), 404);
 
         $png = $generator->png($registration);
-        $filename = 'smart-care-'.$registration->reference_number.'.png';
+        $filename = 'tax-'.$registration->reference_number.'.png';
 
         return response($png, 200, [
             'Content-Type' => 'image/png',

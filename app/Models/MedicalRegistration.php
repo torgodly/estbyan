@@ -125,7 +125,7 @@ class MedicalRegistration extends Model
 
     public function hasDocuments(): bool
     {
-        return filled($this->employee_photo_path);
+        return filled($this->family_status_document_path) && filled($this->employee_photo_path);
     }
 
     public function isEditableByEmployee(): bool
@@ -141,7 +141,7 @@ class MedicalRegistration extends Model
             ->whereNotNull('reference_number')
             ->where('reference_number', 'like', $prefix.'-%')
             ->lockForUpdate()
-            ->orderByDesc('id')
+            ->orderByDesc('reference_number')
             ->value('reference_number');
 
         $sequence = 1;

@@ -27,9 +27,13 @@ it('shows registration form when enabled', function () {
         ->assertSee('منظومة الاستبيان', false)
         ->assertSee('info@smartcare.com.ly', false)
         ->assertSee('0921623448', false)
-        ->assertSee('إدارة الخدمات الصحية بديوان المحاسبة', false)
+        ->assertSee('إدارة الموارد البشرية بمصلحة الضرائب', false)
         ->assertSee('images/brand/smart-care.png', false)
-        ->assertSee('images/brand/audit-bureau-hd.png', false);
+        ->assertSee('images/brand/tax-authority.png', false)
+        ->assertSee('reg-network-progress', false)
+        ->assertSee('reg-loading-overlay', false)
+        ->assertSee('لا يوجد اتصال بالإنترنت', false)
+        ->assertSee('جاري التحقق', false);
 });
 
 it('shows closed page when form is disabled', function () {
@@ -53,17 +57,23 @@ it('shows closed page when form is disabled', function () {
 it('exposes open graph tags on the registration form for share previews', function () {
     $this->get('/register')
         ->assertSuccessful()
+        ->assertSee('التسجيل الطبي — مصلحة الضرائب × SMART CARE', false)
+        ->assertSee('موظفي مصلحة الضرائب الليبية', false)
+        ->assertSee('og:site_name', false)
+        ->assertSee('مصلحة الضرائب · SMART CARE', false)
         ->assertSee('og:title', false)
         ->assertSee('og:description', false)
         ->assertSee('og:image', false)
         ->assertSee('images/og-registration.png', false)
+        ->assertSee('og:image:alt', false)
+        ->assertSee('مصلحة الضرائب الليبية والرعاية الذكية', false)
         ->assertSee('twitter:card', false)
-        ->assertSee('apple-touch-icon', false);
+        ->assertSee('apple-touch-icon', false)
+        ->assertDontSee('ديوان المحاسبة', false);
 });
 
 it('rejects invalid national id format at the gate', function () {
     Livewire::test(MedicalRegistrationForm::class)
-        ->set('employeeNumber', '99999')
         ->set('nationalId', '123')
         ->set('consent', true)
         ->call('verifyIdentity')
@@ -73,11 +83,10 @@ it('rejects invalid national id format at the gate', function () {
 
 it('rejects non-employees at the identity gate', function () {
     Livewire::test(MedicalRegistrationForm::class)
-        ->set('employeeNumber', '99999')
         ->set('nationalId', '119900112233')
         ->set('consent', true)
         ->call('verifyIdentity')
-        ->assertHasErrors('employeeNumber')
+        ->assertHasErrors('nationalId')
         ->assertSet('step', 1);
 
     expect(MedicalRegistration::query()->count())->toBe(0);
@@ -92,12 +101,12 @@ it('unlocks the form for a valid employee and prefills locked fields', function 
     ]);
 
     Livewire::test(MedicalRegistrationForm::class)
-        ->set('employeeNumber', '2001')
         ->set('nationalId', '119800507148')
         ->set('consent', true)
         ->call('verifyIdentity')
         ->assertHasNoErrors()
         ->assertSet('step', 2)
+        ->assertSet('employeeNumber', '2001')
         ->assertSet('verifiedFullName', 'أحمد محمد')
         ->assertSet('workplace', 'general_admin')
         ->assertSet('gender', 'male')
@@ -114,13 +123,11 @@ it('unlocks the form for a valid employee and prefills locked fields', function 
 
 it('persists step one draft in session and restores on remount', function () {
     Livewire::test(MedicalRegistrationForm::class)
-        ->set('employeeNumber', '1001')
         ->set('nationalId', '119700349522')
         ->set('consent', true)
         ->assertSet('hasSavedDraft', true);
 
     Livewire::test(MedicalRegistrationForm::class)
-        ->assertSet('employeeNumber', '1001')
         ->assertSet('nationalId', '119700349522')
         ->assertSet('consent', true)
         ->assertSet('hasSavedDraft', true);
@@ -310,6 +317,7 @@ it('continues to review when documents are already saved without re-uploading', 
         'workplace' => 'general_admin',
         'status' => RegistrationStatus::Draft,
         'current_step' => 6,
+        'family_status_document_path' => 'registrations/demo/family.pdf',
         'employee_photo_path' => 'registrations/demo/employee.jpg',
         'date_of_birth' => '1976-04-12',
         'phone' => '0912345678',
@@ -325,7 +333,8 @@ it('continues to review when documents are already saved without re-uploading', 
         ->set('consent', true)
         ->call('verifyIdentity')
         ->set('step', 5)
-        ->assertDontSee('شهادة الوضع العائلي')
+        ->assertSee('صورة من شهادة الوضع العائلي')
+        ->assertSet('hasFamilyDocument', true)
         ->assertSet('hasEmployeePhoto', true)
         ->call('saveDocuments')
         ->assertHasNoErrors()
@@ -352,7 +361,9 @@ it('reserves scroll space under the fixed mobile action sheet on the final repor
         ->assertSeeHtml('class="reg-actions"')
         ->assertSeeHtml('class="reg-actions-dock"')
         ->assertSee('تأكيد وإرسال التسجيل')
-        ->assertSee('حفظ كمسودة');
+        ->assertSee('جاري الإرسال')
+        ->assertDontSee('حفظ كمسودة')
+        ->assertDontSee('جاري الحفظ');
 });
 
 it('renders a readable beneficiaries review section on the final report', function () {
@@ -446,13 +457,46 @@ it('restores the success page on reload for a submitted registration', function 
         'reference_number' => 'SC26-00055',
     ]);
 
-    $this->withSession(['registration_id' => $registration->id]);
+    $this->withSession([
+        'registration_id' => $registration->id,
+        'registration_gate_passed' => true,
+    ]);
 
     Livewire::test(MedicalRegistrationForm::class)
         ->assertSet('submitted', true)
         ->assertSet('referenceNumber', 'SC26-00055')
+        ->assertSet('toastMessage', null)
         ->assertSee('تم إرسال التسجيل بنجاح')
         ->assertSee('تعديل الطلب');
+});
+
+it('keeps the login gate clean on refresh when identity was not verified this session', function () {
+    $employee = Employee::factory()->create([
+        'national_id' => LibyanNationalId::generate(Gender::Male, 1975),
+    ]);
+
+    $registration = MedicalRegistration::factory()->submitted()->create([
+        'employee_id' => $employee->id,
+        'employee_number' => $employee->employee_number,
+        'national_id' => $employee->national_id,
+        'full_name' => $employee->full_name,
+        'reference_number' => 'SC26-00091',
+    ]);
+
+    // Stale registration id in session without passing the login gate again.
+    $this->withSession([
+        'registration_id' => $registration->id,
+        'reference_download_id' => $registration->id,
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->assertSet('submitted', false)
+        ->assertSet('registrationId', null)
+        ->assertSet('step', 1)
+        ->assertSet('toastMessage', null)
+        ->assertSee('تسجيل الدخول للموظفين')
+        ->assertDontSee('تم إرسال التسجيل بنجاح')
+        ->assertDontSee('طلبك مُرسَل مسبقاً');
 });
 
 it('starts editing a submitted registration from the first form step with data filled', function () {
@@ -496,6 +540,82 @@ it('starts editing a submitted registration from the first form step with data f
         ->assertSee('بيانات الموظف');
 });
 
+it('does not trap verified users on the login gate when current_step is 1', function () {
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1984);
+
+    $employee = Employee::factory()->create([
+        'employee_number' => '6010',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'نادر سليمان',
+        'workplace' => 'general_admin',
+    ]);
+
+    MedicalRegistration::factory()->create([
+        'employee_id' => $employee->id,
+        'employee_number' => '6010',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'نادر سليمان',
+        'workplace' => 'general_admin',
+        'status' => RegistrationStatus::Editing,
+        'reference_number' => 'SC26-00088',
+        'current_step' => 1,
+        'date_of_birth' => '1984-06-01',
+        'phone' => '0912223344',
+        'city' => 'tripoli',
+        'address' => 'طرابلس',
+        'beneficiaries_count' => 0,
+        'consent_at' => now(),
+        'family_status_document_path' => 'registrations/demo/family.pdf',
+        'employee_photo_path' => 'registrations/demo/employee.jpg',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '6010')
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->assertHasNoErrors()
+        ->assertSet('submitted', false)
+        ->assertSet('identityLocked', true)
+        ->assertSet('registrationId', fn ($id) => filled($id))
+        ->assertSet('step', 6)
+        ->assertDontSee('تسجيل الدخول للموظفين')
+        ->assertSee('بيانات الموظف')
+        ->assertSee('تم استعادة طلبك');
+});
+
+it('blocks going back to the login gate after identity is verified', function () {
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1977);
+
+    $employee = Employee::factory()->create([
+        'employee_number' => '6011',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'كريم فرج',
+        'workplace' => 'general_admin',
+    ]);
+
+    MedicalRegistration::factory()->create([
+        'employee_id' => $employee->id,
+        'employee_number' => '6011',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'كريم فرج',
+        'workplace' => 'general_admin',
+        'status' => RegistrationStatus::Draft,
+        'current_step' => 2,
+        'consent_at' => now(),
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '6011')
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->assertSet('step', 2)
+        ->call('goBack')
+        ->assertSet('step', 2)
+        ->assertDontSee('تسجيل الدخول للموظفين');
+});
+
 it('keeps edit mode after refresh instead of returning to the success page', function () {
     $employee = Employee::factory()->create([
         'national_id' => LibyanNationalId::generate(Gender::Male, 1982),
@@ -515,7 +635,10 @@ it('keeps edit mode after refresh instead of returning to the success page', fun
         'current_step' => 6,
     ]);
 
-    $this->withSession(['registration_id' => $registration->id]);
+    $this->withSession([
+        'registration_id' => $registration->id,
+        'registration_gate_passed' => true,
+    ]);
 
     Livewire::test(MedicalRegistrationForm::class)
         ->assertSet('submitted', true)
@@ -561,6 +684,7 @@ it('keeps the same reference number when resubmitting after edit', function () {
         'status' => RegistrationStatus::Submitted,
         'reference_number' => 'SC26-00042',
         'submitted_at' => now()->subDay(),
+        'family_status_document_path' => 'registrations/demo/family.pdf',
         'employee_photo_path' => 'registrations/demo/employee.jpg',
         'current_step' => 6,
         'consent_at' => now(),
@@ -616,12 +740,49 @@ it('blocks editing when the registration is approved', function () {
         ->assertSet('referenceNumber', 'SC26-00077');
 });
 
-it('dismisses toast messages', function () {
+it('logs out from the success page without deleting the registration', function () {
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1981);
+
+    $employee = Employee::factory()->create([
+        'employee_number' => '6020',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'راشد منصور',
+        'workplace' => 'general_admin',
+    ]);
+
+    $registration = MedicalRegistration::factory()->submitted()->create([
+        'employee_id' => $employee->id,
+        'employee_number' => '6020',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'راشد منصور',
+        'workplace' => 'general_admin',
+        'reference_number' => 'SC26-00099',
+        'date_of_birth' => '1981-02-02',
+        'phone' => '0913334444',
+        'city' => 'tripoli',
+        'address' => 'طرابلس',
+        'beneficiaries_count' => 0,
+        'employee_photo_path' => 'registrations/demo/employee.jpg',
+    ]);
+
     Livewire::test(MedicalRegistrationForm::class)
-        ->call('clearForm')
-        ->assertSet('toastMessage', 'تم مسح جميع البيانات. يمكنك البدء من جديد.')
-        ->call('dismissToast')
-        ->assertSet('toastMessage', null);
+        ->set('employeeNumber', '6020')
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->assertSet('submitted', true)
+        ->assertSee('تسجيل الخروج')
+        ->call('logout')
+        ->assertSet('submitted', false)
+        ->assertSet('registrationId', null)
+        ->assertSet('step', 1)
+        ->assertSet('toastMessage', 'تم تسجيل الخروج بنجاح')
+        ->assertSee('تسجيل الدخول للموظفين')
+        ->assertDontSee('تم إرسال التسجيل بنجاح');
+
+    expect($registration->fresh())->not->toBeNull()
+        ->and(session('registration_gate_passed'))->toBeNull()
+        ->and(session('registration_id'))->toBeNull();
 });
 
 it('downloads a reference card for the session registration', function () {

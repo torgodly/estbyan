@@ -126,7 +126,7 @@ class ViewMedicalRegistration extends ViewRecord
                 ->visible(fn (): bool => filled($this->record->reference_number))
                 ->action(function (ReferenceCardGenerator $generator): StreamedResponse {
                     $png = $generator->png($this->record);
-                    $filename = 'smart-care-'.$this->record->reference_number.'.png';
+                    $filename = 'tax-'.$this->record->reference_number.'.png';
 
                     return response()->streamDownload(
                         function () use ($png): void {

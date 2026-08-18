@@ -23,7 +23,7 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 #[Layout('layouts.registration')]
-#[Title('التسجيل الطبي للموظفين — SMART CARE')]
+#[Title('التسجيل الطبي — مصلحة الضرائب × SMART CARE')]
 class MedicalRegistrationForm extends Component
 {
     use WithFileUploads;
@@ -115,11 +115,15 @@ class MedicalRegistrationForm extends Component
 
     public ?int $editingBeneficiaryIndex = null;
 
+    public $familyStatusDocument = null;
+
     public $employeePhoto = null;
 
     public bool $submitted = false;
 
     public string $referenceNumber = '';
+
+    public bool $hasFamilyDocument = false;
 
     public bool $hasEmployeePhoto = false;
 
@@ -135,7 +139,21 @@ class MedicalRegistrationForm extends Component
 
     public function mount(): void
     {
-        $this->restoreFromSession();
+        // Never carry a previous toast into a fresh page load / refresh.
+        $this->toastMessage = null;
+
+        if (session('registration_gate_passed')) {
+            $this->restoreFromSession();
+
+            return;
+        }
+
+        if ($draft = session('registration_step1')) {
+            $this->nationalId = $draft['national_id'] ?? '';
+            $this->consent = (bool) ($draft['consent'] ?? false);
+            $this->step = 1;
+            $this->hasSavedDraft = true;
+        }
     }
 
     public function updated(mixed $property): void
@@ -201,31 +219,46 @@ class MedicalRegistrationForm extends Component
             'registration_step1',
             'reference_download_id',
             'registration_editing',
+            'registration_gate_passed',
         ]);
 
         $this->resetFormState();
         $this->toastMessage = 'تم مسح جميع البيانات. يمكنك البدء من جديد.';
     }
 
+    public function logout(): void
+    {
+        session()->forget([
+            'registration_id',
+            'registration_step1',
+            'reference_download_id',
+            'registration_editing',
+            'registration_gate_passed',
+        ]);
+
+        $this->resetFormState();
+        $this->toastMessage = 'تم تسجيل الخروج بنجاح';
+    }
+
     public function verifyIdentity(): void
     {
         $this->validateRules([
-            'employeeNumber' => ['required', 'string', 'max:20'],
             'nationalId' => ['required', 'string', new LibyanNationalId],
             'consent' => ['accepted'],
         ], [
-            'employeeNumber.required' => 'الرقم الوظيفي مطلوب',
             'nationalId.required' => 'الرقم الوطني مطلوب',
             'consent.accepted' => 'يجب الموافقة على سياسة الخصوصية للمتابعة',
         ]);
 
-        $employee = Employee::findForVerification($this->employeeNumber, $this->nationalId);
+        $employee = Employee::findForVerification($this->nationalId);
 
         if (! $employee) {
-            $this->addError('employeeNumber', 'لم يتم العثور على موظف بهذه البيانات. تأكد من الرقم الوظيفي والرقم الوطني.');
+            $this->addError('nationalId', 'لم يتم العثور على موظف بهذا الرقم الوطني.');
 
             return;
         }
+
+        $this->employeeNumber = $employee->employee_number;
 
         $genderFromNid = LibyanNationalIdSupport::gender($employee->national_id)->value;
 
@@ -240,7 +273,11 @@ class MedicalRegistrationForm extends Component
             $this->approvedMessage = 'تم اعتماد طلبك مسبقاً ولا يمكن تعديله.'.($existing->reference_number ? ' رقم المرجع: '.$existing->reference_number : '');
             $this->referenceNumber = $existing->reference_number ?? '';
             $this->registrationId = $existing->id;
-            session(['registration_id' => $existing->id, 'reference_download_id' => $existing->id]);
+            session([
+                'registration_id' => $existing->id,
+                'reference_download_id' => $existing->id,
+                'registration_gate_passed' => true,
+            ]);
 
             return;
         }
@@ -259,7 +296,10 @@ class MedicalRegistrationForm extends Component
             $this->loadRegistration($existing);
             $this->identityLocked = true;
             $this->gender = $genderFromNid;
-            session(['registration_id' => $existing->id]);
+            session([
+                'registration_id' => $existing->id,
+                'registration_gate_passed' => true,
+            ]);
             session()->forget('registration_step1');
 
             if ($existing->isSubmitted()) {
@@ -301,7 +341,10 @@ class MedicalRegistrationForm extends Component
         $this->identityLocked = true;
         $this->gender = $genderFromNid;
         $this->step = 2;
-        session(['registration_id' => $registration->id]);
+        session([
+            'registration_id' => $registration->id,
+            'registration_gate_passed' => true,
+        ]);
         session()->forget('registration_step1');
         $this->notify('تم التحقق من بياناتك — تابع إكمال التسجيل');
     }
@@ -411,7 +454,7 @@ class MedicalRegistrationForm extends Component
                 'nullable',
                 'image',
                 'mimes:jpg,jpeg,png',
-                'max:5120',
+                'max:10240',
             ],
         ];
 
@@ -585,22 +628,41 @@ class MedicalRegistrationForm extends Component
 
         $rules = [];
 
+        if ($this->familyStatusDocument !== null || blank($registration->family_status_document_path)) {
+            $rules['familyStatusDocument'] = ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'];
+        }
+
         if ($this->employeePhoto !== null || blank($registration->employee_photo_path)) {
-            $rules['employeePhoto'] = ['required', 'file', 'mimes:jpg,jpeg,png', 'max:5120'];
+            $rules['employeePhoto'] = ['required', 'file', 'mimes:jpg,jpeg,png', 'max:10240'];
         }
 
         $this->validateRules($rules, [
+            'familyStatusDocument.required' => 'صورة من شهادة الوضع العائلي مطلوبة',
+            'familyStatusDocument.mimes' => 'يجب أن تكون شهادة الوضع العائلي بصيغة PDF أو JPG أو PNG',
             'employeePhoto.required' => 'الصورة الشخصية للموظف مطلوبة',
             'employeePhoto.mimes' => 'يجب أن تكون صورة الموظف بصيغة JPG أو PNG',
         ]);
 
         $path = "registrations/{$registration->uuid}";
 
+        if ($this->familyStatusDocument) {
+            $registration->family_status_document_path = $this->familyStatusDocument->store(
+                $path,
+                RegistrationDocuments::diskName(),
+            );
+        }
+
         if ($this->employeePhoto) {
             $registration->employee_photo_path = $this->employeePhoto->store(
                 $path,
                 RegistrationDocuments::diskName(),
             );
+        }
+
+        if (blank($registration->family_status_document_path)) {
+            $this->addError('familyStatusDocument', 'صورة من شهادة الوضع العائلي مطلوبة');
+
+            return;
         }
 
         if (blank($registration->employee_photo_path)) {
@@ -610,6 +672,7 @@ class MedicalRegistrationForm extends Component
         }
 
         $registration->save();
+        $this->hasFamilyDocument = true;
         $this->hasEmployeePhoto = true;
         $this->goToStep(6);
     }
@@ -640,9 +703,10 @@ class MedicalRegistrationForm extends Component
 
         if (
             ! $registration
+            || (! $registration->family_status_document_path && ! $this->hasFamilyDocument)
             || (! $registration->employee_photo_path && ! $this->hasEmployeePhoto)
         ) {
-            $this->addError('submit', 'يرجى إرفاق الصورة الشخصية قبل الإرسال');
+            $this->addError('submit', 'يرجى إرفاق صورة من شهادة الوضع العائلي والصورة الشخصية قبل الإرسال');
 
             return;
         }
@@ -664,9 +728,14 @@ class MedicalRegistrationForm extends Component
         }
 
         DB::transaction(function () use ($registration): void {
-            $reference = $registration->reference_number ?: MedicalRegistration::generateReferenceNumber();
+            $locked = MedicalRegistration::query()
+                ->whereKey($registration->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            $registration->update([
+            $reference = $locked->reference_number ?: MedicalRegistration::generateReferenceNumber();
+
+            $locked->update([
                 'status' => RegistrationStatus::Submitted,
                 'submitted_at' => now(),
                 'reference_number' => $reference,
@@ -682,6 +751,7 @@ class MedicalRegistrationForm extends Component
         session([
             'registration_id' => $registration->id,
             'reference_download_id' => $registration->id,
+            'registration_gate_passed' => true,
         ]);
         session()->forget(['registration_step1', 'registration_editing']);
     }
@@ -705,6 +775,7 @@ class MedicalRegistrationForm extends Component
         session([
             'registration_id' => $registration->id,
             'registration_editing' => true,
+            'registration_gate_passed' => true,
         ]);
         $this->notify('يمكنك تعديل بياناتك ثم إعادة الإرسال مع الاحتفاظ برقم المرجع');
     }
@@ -715,7 +786,9 @@ class MedicalRegistrationForm extends Component
             return;
         }
 
-        if ($this->step > 1) {
+        $minimumStep = ($this->identityLocked || $this->registrationId) ? 2 : 1;
+
+        if ($this->step > $minimumStep) {
             $this->goToStep($this->step - 1);
         }
     }
@@ -792,21 +865,12 @@ class MedicalRegistrationForm extends Component
                 return;
             }
         }
-
-        if ($draft = session('registration_step1')) {
-            $this->employeeNumber = $draft['employee_number'] ?? '';
-            $this->nationalId = $draft['national_id'] ?? '';
-            $this->consent = (bool) ($draft['consent'] ?? false);
-            $this->step = 1;
-            $this->hasSavedDraft = true;
-        }
     }
 
     protected function persistStepOneDraft(): void
     {
         session([
             'registration_step1' => [
-                'employee_number' => $this->employeeNumber,
                 'national_id' => $this->nationalId,
                 'consent' => $this->consent,
             ],
@@ -817,7 +881,7 @@ class MedicalRegistrationForm extends Component
 
     protected function isStepOneField(string $property): bool
     {
-        return in_array($property, ['employeeNumber', 'nationalId', 'consent'], true);
+        return in_array($property, ['nationalId', 'consent'], true);
     }
 
     protected function isAutoPersistField(string $property): bool
@@ -991,14 +1055,23 @@ class MedicalRegistrationForm extends Component
             'photo_path' => $b->photo_path,
         ])->all();
 
+        $this->hasFamilyDocument = (bool) $registration->family_status_document_path;
         $this->hasEmployeePhoto = (bool) $registration->employee_photo_path;
-        $this->step = $registration->current_step ?: max(2, $this->determineResumeStep($registration));
+
+        $resumeStep = (int) ($registration->current_step ?: 0);
+
+        if ($resumeStep < 2) {
+            $resumeStep = $this->determineResumeStep($registration);
+        }
+
+        // Once identity is verified, never resume on the login gate (step 1).
+        $this->step = max(2, $resumeStep);
         $this->identityLocked = true;
     }
 
     protected function determineResumeStep(MedicalRegistration $registration): int
     {
-        if ($registration->employee_photo_path) {
+        if ($registration->hasDocuments()) {
             return 6;
         }
 
@@ -1027,8 +1100,8 @@ class MedicalRegistrationForm extends Component
             'beneficiaryHasSurgeryHistory', 'beneficiaryUsesMedicalDevices',
             'beneficiaryHospitalizedRecently', 'beneficiaryTraveledForTreatment',
             'beneficiaryPhoto', 'beneficiaryExistingPhotoPath', 'editingBeneficiaryIndex',
-            'employeePhoto', 'submitted', 'referenceNumber',
-            'hasEmployeePhoto', 'hasSavedDraft', 'identityLocked',
+            'familyStatusDocument', 'employeePhoto', 'submitted', 'referenceNumber',
+            'hasFamilyDocument', 'hasEmployeePhoto', 'hasSavedDraft', 'identityLocked',
             'approvedLocked', 'approvedMessage',
         ]);
 
@@ -1098,9 +1171,12 @@ class MedicalRegistrationForm extends Component
         $this->identityLocked = true;
         $this->referenceNumber = $registration->reference_number ?? '';
         $this->registrationId = $registration->id;
+        // Keep the UI off the login gate even if current_step was saved as 1.
+        $this->step = max(2, (int) ($registration->current_step ?: 6));
         session([
             'registration_id' => $registration->id,
             'reference_download_id' => $registration->id,
+            'registration_gate_passed' => true,
         ]);
         session()->forget('registration_editing');
 
@@ -1118,6 +1194,7 @@ class MedicalRegistrationForm extends Component
         session([
             'registration_id' => $registration->id,
             'registration_editing' => true,
+            'registration_gate_passed' => true,
         ]);
     }
 

@@ -84,6 +84,14 @@ class MedicalRegistrationForm
                     ]),
                 Section::make('المستندات')
                     ->schema([
+                        FileUpload::make('family_status_document_path')
+                            ->label('صورة من شهادة الوضع العائلي')
+                            ->disk(RegistrationDocuments::diskName())
+                            ->directory('registrations')
+                            ->visibility('private')
+                            ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'])
+                            ->downloadable()
+                            ->openable(),
                         FileUpload::make('employee_photo_path')
                             ->label('صورة الموظف')
                             ->disk(RegistrationDocuments::diskName())

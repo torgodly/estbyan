@@ -220,6 +220,10 @@
     <article class="reg-report-card">
         <p class="reg-report-kicker">المستندات</p>
         <ul class="space-y-2 text-sm">
+            <li class="flex items-center gap-2 font-bold {{ ($hasFamilyDocument || $familyStatusDocument) ? 'text-teal-700' : 'text-red-600' }}">
+                <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+                صورة من شهادة الوضع العائلي {{ ($hasFamilyDocument || $familyStatusDocument) ? '— مرفقة' : '— ناقصة' }}
+            </li>
             <li class="flex items-center gap-2 font-bold {{ ($hasEmployeePhoto || $employeePhoto) ? 'text-teal-700' : 'text-red-600' }}">
                 <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
                 الصورة الشخصية {{ ($hasEmployeePhoto || $employeePhoto) ? '— مرفقة' : '— ناقصة' }}
@@ -240,15 +244,32 @@
 <div class="reg-actions">
     <div class="reg-actions-dock">
         <div class="reg-actions-inner">
-            <button wire:click="submitRegistration" wire:loading.attr="disabled" class="reg-btn-primary lg:min-w-[12rem]">
+            <button
+                type="button"
+                wire:click="submitRegistration"
+                wire:loading.attr="disabled"
+                wire:target="submitRegistration,goBack"
+                class="reg-btn-primary lg:min-w-[12rem]"
+            >
                 <span wire:loading.remove wire:target="submitRegistration">تأكيد وإرسال التسجيل</span>
-                <span wire:loading wire:target="submitRegistration" class="flex items-center gap-2">
-                    <svg class="size-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                <span wire:loading wire:target="submitRegistration" class="inline-flex items-center gap-2">
+                    <svg class="size-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                     جاري الإرسال...
                 </span>
             </button>
-            <button wire:click="saveDraft" type="button" class="reg-btn-secondary lg:min-w-[10rem]">حفظ كمسودة</button>
-            <button wire:click="goBack" type="button" class="reg-btn-secondary lg:min-w-[8rem]">رجوع</button>
+            <button
+                type="button"
+                wire:click="goBack"
+                wire:loading.attr="disabled"
+                wire:target="submitRegistration,goBack"
+                class="reg-btn-secondary lg:min-w-[8rem]"
+            >
+                <span wire:loading.remove wire:target="goBack">رجوع</span>
+                <span wire:loading wire:target="goBack" class="inline-flex items-center gap-2">
+                    <svg class="size-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    جاري الرجوع...
+                </span>
+            </button>
         </div>
     </div>
 </div>

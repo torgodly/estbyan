@@ -5,7 +5,7 @@ namespace App\Support;
 class TestEmployees
 {
     /**
-     * Fixed employees used for manual / automated registration testing.
+     * Fake employees used only for registration smoke tests — not real staff.
      *
      * @return list<array{full_name: string, employee_number: string, national_id: string}>
      */
@@ -13,14 +13,14 @@ class TestEmployees
     {
         return [
             [
-                'full_name' => 'محمد سالم علي الفرجاني',
-                'employee_number' => '1047',
-                'national_id' => '119941111111',
+                'full_name' => 'موظف تجريبي أول',
+                'employee_number' => '990001',
+                'national_id' => '119990000001',
             ],
             [
-                'full_name' => 'فاطمة خالد عمر الزوي',
-                'employee_number' => '2381',
-                'national_id' => '219872222222',
+                'full_name' => 'موظفة تجريبية ثانية',
+                'employee_number' => '990002',
+                'national_id' => '219990000002',
             ],
         ];
     }

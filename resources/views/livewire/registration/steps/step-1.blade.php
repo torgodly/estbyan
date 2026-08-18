@@ -32,36 +32,17 @@
 
         <div class="reg-login-card">
             <div class="reg-login-heading">
-                <p class="reg-login-kicker">ديوان المحاسبة الليبي · الرعاية الذكية</p>
+                <p class="reg-login-kicker">مصلحة الضرائب الليبية · الرعاية الذكية</p>
                 <h1 class="reg-login-title">منظومة الاستبيان</h1>
                 <p class="reg-login-subtitle">منظومة إدخال بيانات الموظفين وعوائلهم</p>
             </div>
 
             <div class="mb-6 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-center">
                 <p class="text-sm font-bold text-navy-900">تسجيل الدخول للموظفين</p>
-                <p class="mt-1 text-xs leading-relaxed text-slate-500">أدخل الرقم الوظيفي والرقم الوطني للتحقق من هويتك</p>
+                <p class="mt-1 text-xs leading-relaxed text-slate-500">أدخل الرقم الوطني للتحقق من هويتك</p>
             </div>
 
             <div class="space-y-4">
-                <div>
-                    <label class="reg-label" for="empNo">الرقم الوظيفي <span class="reg-required">*</span></label>
-                    <div class="reg-login-field">
-                        <span class="reg-login-field-icon" aria-hidden="true">
-                            <svg class="size-5" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>
-                        </span>
-                        <input
-                            wire:model.blur="employeeNumber"
-                            id="empNo"
-                            type="text"
-                            inputmode="numeric"
-                            autocomplete="username"
-                            class="reg-input reg-login-input"
-                            placeholder="مثال: 0000"
-                        >
-                    </div>
-                    @error('employeeNumber') <p class="reg-field-error">{{ $message }}</p> @enderror
-                </div>
-
                 <div>
                     <label class="reg-label" for="natId">الرقم الوطني <span class="reg-required">*</span></label>
                     <div class="reg-login-field">
@@ -73,11 +54,11 @@
                             id="natId"
                             type="text"
                             inputmode="numeric"
-                            autocomplete="off"
+                            autocomplete="username"
                             class="reg-input reg-login-input"
                             placeholder="119990000000"
                             maxlength="12"
-                            dir="rtl"
+                            dir="ltr"
                         >
                     </div>
                     @error('nationalId') <p class="reg-field-error">{{ $message }}</p> @enderror
