@@ -8,6 +8,8 @@
         أو على واتساب:
         <a href="https://wa.me/218921623448" class="reg-login-contact-link" dir="ltr">0921623448</a>
         <span class="reg-login-contact-sep">·</span>
+        <a href="https://wa.me/218921623444" class="reg-login-contact-link" dir="ltr">0921623444</a>
+        <span class="reg-login-contact-sep">·</span>
         <a href="https://wa.me/218921623451" class="reg-login-contact-link" dir="ltr">0921623451</a>
     </p>
     <p class="reg-login-contact-note">أو التواصل مع إدارة الموارد البشرية بمصلحة الضرائب</p>

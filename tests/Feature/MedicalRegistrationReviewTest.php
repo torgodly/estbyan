@@ -105,7 +105,7 @@ it('shows selected chronic conditions inside the medical accordion details', fun
     Livewire::test(ViewMedicalRegistration::class, ['record' => $registration->getRouteKey()])
         ->assertSuccessful()
         ->assertSee('الأمراض المزمنة المحددة')
-        ->assertSee('أمراض القلب')
+        ->assertSee('أمراض القلب و الشرايين')
         ->assertSee('الصرع');
 });
 

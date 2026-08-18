@@ -28,6 +28,8 @@ it('shows registration form when enabled', function () {
         ->assertSee('منظومة الاستبيان', false)
         ->assertSee('info@smartcare.com.ly', false)
         ->assertSee('0921623448', false)
+        ->assertSee('0921623444', false)
+        ->assertSee('0921623451', false)
         ->assertSee('إدارة الموارد البشرية بمصلحة الضرائب', false)
         ->assertSee('images/brand/smart-care.png', false)
         ->assertSee('images/brand/tax-authority.png', false)
@@ -71,6 +73,34 @@ it('exposes open graph tags on the registration form for share previews', functi
         ->assertSee('twitter:card', false)
         ->assertSee('apple-touch-icon', false)
         ->assertDontSee('ديوان المحاسبة', false);
+});
+
+it('shows the expanded chronic condition list on the medical step', function () {
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1979);
+
+    Employee::factory()->create([
+        'employee_number' => '8810',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'سالم الطبي',
+        'workplace' => 'general_admin',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('step', 3)
+        ->set('hasChronicConditions', true)
+        ->assertSee('السكري')
+        ->assertSee('ارتفاع ضغط الدم')
+        ->assertSee('أمراض القلب و الشرايين')
+        ->assertSee('الربو')
+        ->assertSee('الانسداد الرئوي')
+        ->assertSee('أمراض الكلى المزمنة')
+        ->assertSee('السرطان')
+        ->assertSee('أمراض المفاصل المزمنة')
+        ->assertSee('الأمراض العصبية المزمنة')
+        ->assertSee('الأمراض المناعية المزمنة');
 });
 
 it('rejects invalid national id format at the gate', function () {
