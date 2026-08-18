@@ -33,10 +33,15 @@ class EmployeesTable
                     ->searchable()
                     ->toggleable(),
                 TextColumn::make('workplace')
-                    ->label('مكان العمل')
+                    ->label('الإدارة')
                     ->formatStateUsing(fn (?string $state, Employee $record): string => $record->workplaceLabel() ?? '—')
                     ->sortable()
                     ->searchable(),
+                TextColumn::make('office')
+                    ->label('المكتب')
+                    ->placeholder('—')
+                    ->searchable()
+                    ->sortable(),
                 TextColumn::make('has_submitted_form')
                     ->label('تعبئة النموذج')
                     ->badge()
@@ -74,7 +79,7 @@ class EmployeesTable
             ])
             ->filters([
                 SelectFilter::make('workplace')
-                    ->label('مكان العمل')
+                    ->label('الإدارة')
                     ->options(fn (): array => config('registration.workplaces', [])),
                 TernaryFilter::make('has_submitted_form')
                     ->label('تعبئة النموذج')

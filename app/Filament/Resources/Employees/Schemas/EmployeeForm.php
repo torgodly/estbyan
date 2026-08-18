@@ -30,9 +30,13 @@ class EmployeeForm
                             ->required()
                             ->maxLength(20),
                         Select::make('workplace')
-                            ->label('مكان العمل')
+                            ->label('الإدارة')
                             ->options(fn (): array => config('registration.workplaces', []))
                             ->searchable()
+                            ->nullable(),
+                        TextInput::make('office')
+                            ->label('المكتب')
+                            ->maxLength(255)
                             ->nullable(),
                         Toggle::make('is_active')
                             ->label('نشط')

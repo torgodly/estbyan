@@ -23,6 +23,7 @@ it('lists employees and supports search', function () {
         'full_name' => 'خالد المستهدف',
         'employee_number' => '77881',
         'national_id' => '1199001000123',
+        'office' => 'مكتب الشؤون القانونية',
     ]);
     Employee::factory()->create([
         'full_name' => 'موظف آخر',
@@ -33,6 +34,8 @@ it('lists employees and supports search', function () {
 
     Livewire::test(ListEmployees::class)
         ->assertSuccessful()
+        ->assertSee('الإدارة')
+        ->assertSee('المكتب')
         ->assertCanSeeTableRecords([$target])
         ->searchTable('77881')
         ->assertCanSeeTableRecords([$target])
@@ -88,6 +91,7 @@ it('shows the employee dossier with registration history and submission state', 
     $employee = Employee::factory()->create([
         'full_name' => 'نادية الملف',
         'employee_number' => '33445',
+        'office' => 'مكتب نائب المدير العام',
     ]);
     $registration = MedicalRegistration::factory()->submitted()->create([
         'employee_id' => $employee->id,
@@ -103,6 +107,9 @@ it('shows the employee dossier with registration history and submission state', 
         ->assertSuccessful()
         ->assertSee('نادية الملف')
         ->assertSee('33445')
+        ->assertSee('الإدارة')
+        ->assertSee('المكتب')
+        ->assertSee('مكتب نائب المدير العام')
         ->assertSee('أرسل النموذج')
         ->assertSee('سجل طلبات التسجيل')
         ->assertSee('SC26-12345')

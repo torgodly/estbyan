@@ -46,6 +46,8 @@ class MedicalRegistrationForm extends Component
 
     public string $workplace = '';
 
+    public string $office = '';
+
     public string $jobTitle = 'employee';
 
     public string $gender = 'male';
@@ -291,7 +293,7 @@ class MedicalRegistrationForm extends Component
                 'full_name' => $employee->full_name,
                 'employee_number' => $employee->employee_number,
                 'national_id' => $employee->national_id,
-                'workplace' => $employee->workplace,
+                'workplace' => $existing->workplace ?: $employee->workplace,
                 'gender' => $genderFromNid,
                 'consent_at' => $existing->consent_at ?? now(),
             ]);
@@ -300,6 +302,7 @@ class MedicalRegistrationForm extends Component
             $this->loadRegistration($existing);
             $this->identityLocked = true;
             $this->gender = $genderFromNid;
+            $this->syncDirectoryFromEmployee($employee);
             session([
                 'registration_id' => $existing->id,
                 'registration_gate_passed' => true,
@@ -344,6 +347,7 @@ class MedicalRegistrationForm extends Component
         $this->loadRegistration($registration);
         $this->identityLocked = true;
         $this->gender = $genderFromNid;
+        $this->syncDirectoryFromEmployee($employee);
         $this->step = 2;
         session([
             'registration_id' => $registration->id,
@@ -1008,6 +1012,7 @@ class MedicalRegistrationForm extends Component
 
     protected function loadRegistration(MedicalRegistration $registration): void
     {
+        $registration->loadMissing(['beneficiaries', 'employee']);
         $this->registrationId = $registration->id;
         $this->employeeNumber = $registration->employee_number;
         $this->nationalId = $registration->national_id;
@@ -1016,6 +1021,7 @@ class MedicalRegistrationForm extends Component
         $this->fullName = $registration->full_name;
         $this->verifiedFullName = $registration->full_name;
         $this->workplace = $registration->workplace ?? '';
+        $this->office = $registration->employee?->officeLabel() ?? '';
         $this->jobTitle = $registration->job_title ?? 'employee';
         $this->gender = $registration->gender?->value ?? 'male';
         $this->maritalStatus = $registration->marital_status?->value ?? 'married';
@@ -1087,7 +1093,7 @@ class MedicalRegistrationForm extends Component
     {
         $this->reset([
             'step', 'registrationId', 'fullName', 'employeeNumber', 'nationalId', 'dateOfBirth', 'consent',
-            'verifiedFullName', 'workplace', 'jobTitle', 'gender', 'maritalStatus',
+            'verifiedFullName', 'workplace', 'office', 'jobTitle', 'gender', 'maritalStatus',
             'beneficiariesCount', 'phone', 'whatsapp', 'email', 'city', 'address',
             'hasChronicConditions', 'chronicConditions', 'hasTumor', 'hasSurgeryHistory',
             'usesMedicalDevices', 'hospitalizedRecently', 'traveledForTreatment',
@@ -1215,6 +1221,15 @@ class MedicalRegistrationForm extends Component
         }
 
         $this->validate($rules, $messages);
+    }
+
+    protected function syncDirectoryFromEmployee(Employee $employee): void
+    {
+        if (blank($this->workplace) && filled($employee->workplace)) {
+            $this->workplace = $employee->workplace;
+        }
+
+        $this->office = $employee->officeLabel() ?? '';
     }
 
     /**

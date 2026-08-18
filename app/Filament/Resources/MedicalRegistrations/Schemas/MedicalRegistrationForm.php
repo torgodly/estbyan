@@ -45,7 +45,7 @@ class MedicalRegistrationForm
                     ->columns(2)
                     ->schema([
                         Select::make('workplace')
-                            ->label('مكان العمل')
+                            ->label('الإدارة')
                             ->options(config('registration.workplaces')),
                         Select::make('job_title')
                             ->label('المسمى الوظيفي')

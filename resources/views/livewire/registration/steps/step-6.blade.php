@@ -31,8 +31,12 @@
 
         <div class="reg-report-grid">
             <div class="reg-report-item">
-                <dt>مكان العمل</dt>
+                <dt>الإدارة</dt>
                 <dd>{{ $workplaces[$workplace] ?? '—' }}</dd>
+            </div>
+            <div class="reg-report-item">
+                <dt>المكتب</dt>
+                <dd>{{ $office !== '' ? $office : '—' }}</dd>
             </div>
             <div class="reg-report-item">
                 <dt>المسمى الوظيفي</dt>

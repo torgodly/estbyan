@@ -158,6 +158,11 @@ class MedicalRegistration extends Model
         return WorkplaceOptions::labelForKey($this->workplace);
     }
 
+    public function officeLabel(): ?string
+    {
+        return $this->employee?->officeLabel();
+    }
+
     public function jobTitleLabel(): ?string
     {
         return $this->job_title

@@ -22,7 +22,7 @@
     <div class="space-y-5">
         <div class="reg-grid-2">
             <div>
-                <label class="reg-label">مكان العمل <span class="reg-required">*</span></label>
+                <label class="reg-label">الإدارة <span class="reg-required">*</span></label>
                 @if ($identityLocked)
                     <div class="reg-input bg-slate-50 font-bold text-navy-900">
                         {{ $workplaces[$workplace] ?? $workplace }}
@@ -38,13 +38,20 @@
                 @error('workplace') <p class="reg-field-error">{{ $message }}</p> @enderror
             </div>
             <div>
-                <label class="reg-label">المسمى الوظيفي</label>
-                <select wire:model.live="jobTitle" class="reg-select">
-                    @foreach ($jobTitles as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
-                    @endforeach
-                </select>
+                <label class="reg-label">المكتب</label>
+                <div class="reg-input bg-slate-50 font-bold text-navy-900">
+                    {{ $office !== '' ? $office : '—' }}
+                </div>
             </div>
+        </div>
+
+        <div>
+            <label class="reg-label">المسمى الوظيفي</label>
+            <select wire:model.live="jobTitle" class="reg-select">
+                @foreach ($jobTitles as $key => $label)
+                    <option value="{{ $key }}">{{ $label }}</option>
+                @endforeach
+            </select>
         </div>
 
         <div class="reg-grid-2">

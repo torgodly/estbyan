@@ -21,6 +21,7 @@ class SeedTestEmployeesCommand extends Command
                     'national_id' => $definition['national_id'],
                     'full_name' => $definition['full_name'],
                     'workplace' => 'general_admin',
+                    'office' => 'مكتب الاختبار',
                     'date_of_birth' => null,
                     'is_active' => true,
                 ],

@@ -56,6 +56,20 @@ class WorkplaceOptions
     }
 
     /**
+     * Spreadsheet "المكتب" uses "/" when the office is not specified.
+     */
+    public static function cleanSpreadsheetOffice(string $raw): ?string
+    {
+        $value = self::cleanSpreadsheetAdmin($raw);
+
+        if ($value === '' || in_array($value, ['/', '\\', '-', '—', '.'], true)) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
      * @return array<string, string>
      */
     protected static function aliases(): array

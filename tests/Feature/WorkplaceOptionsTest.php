@@ -17,3 +17,9 @@ it('resolves tax authority workplaces and spreadsheet admin labels', function ()
 it('returns null for unknown workplaces', function () {
     expect(WorkplaceOptions::keyForLabel('مكان غير موجود'))->toBeNull();
 });
+
+it('treats slash spreadsheet offices as empty', function () {
+    expect(WorkplaceOptions::cleanSpreadsheetOffice('/'))->toBeNull()
+        ->and(WorkplaceOptions::cleanSpreadsheetOffice('—'))->toBeNull()
+        ->and(WorkplaceOptions::cleanSpreadsheetOffice(' مكتب نائب المدير العام '))->toBe('مكتب نائب المدير العام');
+});

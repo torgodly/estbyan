@@ -138,7 +138,10 @@
 
                             <h2 class="hr-hero__name">{{ $registration->full_name ?: 'بدون اسم' }}</h2>
                             <p class="hr-hero__sub">
-                                {{ $registration->workplaceLabel() ?? 'مكان العمل غير محدد' }}
+                                {{ $registration->workplaceLabel() ?? 'الإدارة غير محددة' }}
+                                @if ($registration->officeLabel())
+                                    · {{ $registration->officeLabel() }}
+                                @endif
                                 @if ($registration->jobTitleLabel())
                                     · {{ $registration->jobTitleLabel() }}
                                 @endif
@@ -182,6 +185,8 @@
                     <div class="hr-panel__body">
                         <div class="hr-rows">
                             @foreach ([
+                                'الإدارة' => $registration->workplaceLabel() ?? '—',
+                                'المكتب' => $registration->officeLabel() ?? '—',
                                 'تاريخ الميلاد' => $registration->date_of_birth?->format('Y-m-d') ?: '—',
                                 'الجنس' => $registration->gender?->label() ?? '—',
                                 'الحالة الاجتماعية' => $registration->marital_status?->label() ?? '—',

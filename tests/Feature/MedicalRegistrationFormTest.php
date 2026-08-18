@@ -99,6 +99,7 @@ it('unlocks the form for a valid employee and prefills locked fields', function 
         'national_id' => '119800507148',
         'full_name' => 'أحمد محمد',
         'workplace' => 'general_admin',
+        'office' => 'مكتب نائب المدير العام',
     ]);
 
     Livewire::test(MedicalRegistrationForm::class)
@@ -110,8 +111,13 @@ it('unlocks the form for a valid employee and prefills locked fields', function 
         ->assertSet('employeeNumber', '2001')
         ->assertSet('verifiedFullName', 'أحمد محمد')
         ->assertSet('workplace', 'general_admin')
+        ->assertSet('office', 'مكتب نائب المدير العام')
         ->assertSet('gender', 'male')
-        ->assertSet('identityLocked', true);
+        ->assertSet('identityLocked', true)
+        ->assertSee('الإدارة')
+        ->assertSee('المكتب')
+        ->assertSee('مكتب نائب المدير العام')
+        ->assertDontSee('مكان العمل');
 
     $registration = MedicalRegistration::query()->where('employee_number', '2001')->first();
 

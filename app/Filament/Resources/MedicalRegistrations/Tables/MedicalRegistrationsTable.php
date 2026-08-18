@@ -45,8 +45,12 @@ class MedicalRegistrationsTable
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('workplace')
-                    ->label('مكان العمل')
+                    ->label('الإدارة')
                     ->formatStateUsing(fn (?string $state, MedicalRegistration $record): string => $record->workplaceLabel() ?? '—')
+                    ->toggleable(),
+                TextColumn::make('employee.office')
+                    ->label('المكتب')
+                    ->placeholder('—')
                     ->toggleable(),
                 TextColumn::make('city')
                     ->label('المدينة')
@@ -94,7 +98,7 @@ class MedicalRegistrationsTable
                         fn (RegistrationStatus $status) => [$status->value => $status->label()]
                     )),
                 SelectFilter::make('workplace')
-                    ->label('مكان العمل')
+                    ->label('الإدارة')
                     ->options(fn (): array => config('registration.workplaces', [])),
                 SelectFilter::make('city')
                     ->label('المدينة')

@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'date_of_birth',
     'full_name',
     'workplace',
+    'office',
     'is_active',
 ])]
 class Employee extends Model
@@ -67,6 +68,11 @@ class Employee extends Model
     public function workplaceLabel(): ?string
     {
         return WorkplaceOptions::labelForKey($this->workplace);
+    }
+
+    public function officeLabel(): ?string
+    {
+        return filled($this->office) ? $this->office : null;
     }
 
     public function hasSubmittedForm(): bool

@@ -24,6 +24,7 @@ class EmployeeFactory extends Factory
             'date_of_birth' => null,
             'full_name' => fake()->name(),
             'workplace' => 'general_admin',
+            'office' => null,
             'is_active' => true,
         ];
     }

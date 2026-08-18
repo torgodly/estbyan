@@ -40,6 +40,9 @@ class ImportEmployeesCommand extends Command
                     $fullName = $this->cellString($worksheet, "C{$row}");
                     $nationalId = $this->cellString($worksheet, "D{$row}");
                     $admin = $this->cellString($worksheet, "E{$row}");
+                    $office = WorkplaceOptions::cleanSpreadsheetOffice(
+                        $this->cellString($worksheet, "F{$row}"),
+                    );
 
                     if ($fullName === '' || $nationalId === '' || $employeeNumber === '') {
                         $skipped++;
@@ -66,16 +69,23 @@ class ImportEmployeesCommand extends Command
                     $seenNumbers[$employeeNumber] = true;
                     $importedNumbers[] = $employeeNumber;
 
-                    Employee::query()->updateOrCreate(
+                    $employee = Employee::query()->firstOrNew(
                         ['employee_number' => $employeeNumber],
-                        [
-                            'national_id' => $nationalId,
-                            'full_name' => $fullName,
-                            'workplace' => $workplaceKey,
-                            'date_of_birth' => null,
-                            'is_active' => true,
-                        ],
                     );
+
+                    $employee->fill([
+                        'national_id' => $nationalId,
+                        'full_name' => $fullName,
+                        'workplace' => $workplaceKey,
+                        'office' => $office,
+                        'is_active' => true,
+                    ]);
+
+                    if (! $employee->exists) {
+                        $employee->date_of_birth = null;
+                    }
+
+                    $employee->save();
 
                     $imported++;
                 }

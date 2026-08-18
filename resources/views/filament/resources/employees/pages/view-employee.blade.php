@@ -22,7 +22,12 @@
                     </div>
 
                     <h2 class="hr-hero__name">{{ $employee->full_name }}</h2>
-                    <p class="hr-hero__sub">{{ $employee->workplaceLabel() ?? 'مكان العمل غير محدد' }}</p>
+                    <p class="hr-hero__sub">
+                        {{ $employee->workplaceLabel() ?? 'الإدارة غير محددة' }}
+                        @if ($employee->officeLabel())
+                            · {{ $employee->officeLabel() }}
+                        @endif
+                    </p>
 
                     <div class="hr-kpis">
                         <div class="hr-kpi">
@@ -32,6 +37,14 @@
                         <div class="hr-kpi">
                             <span class="hr-kpi__label">الرقم الوطني</span>
                             <div class="hr-kpi__value">{{ $employee->national_id }}</div>
+                        </div>
+                        <div class="hr-kpi">
+                            <span class="hr-kpi__label">الإدارة</span>
+                            <div class="hr-kpi__value">{{ $employee->workplaceLabel() ?: '—' }}</div>
+                        </div>
+                        <div class="hr-kpi">
+                            <span class="hr-kpi__label">المكتب</span>
+                            <div class="hr-kpi__value">{{ $employee->officeLabel() ?: '—' }}</div>
                         </div>
                         <div class="hr-kpi">
                             <span class="hr-kpi__label">تاريخ الميلاد</span>
