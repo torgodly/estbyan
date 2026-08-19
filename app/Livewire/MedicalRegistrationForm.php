@@ -397,6 +397,7 @@ class MedicalRegistrationForm extends Component
             'phone.required' => 'رقم الهاتف مطلوب',
             'city.required' => 'المدينة مطلوبة',
             'address.required' => 'العنوان السكني مطلوب',
+            'email.email' => 'أدخل بريداً إلكترونياً صحيحاً (مثل name@example.com) أو اترك الحقل فارغاً',
         ]);
 
         $this->autoPersistToDatabase();

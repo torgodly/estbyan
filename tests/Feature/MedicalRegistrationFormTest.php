@@ -226,6 +226,39 @@ it('requires date of birth year to match national id', function () {
         ->assertHasErrors('dateOfBirth');
 });
 
+it('blocks a website typed as email and continues after the field is cleared', function () {
+    $employeeNationalId = '119840122279';
+
+    Employee::factory()->create([
+        'employee_number' => '021010',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'عبدالله الامين عبدالله عمر',
+        'workplace' => 'murzuq',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('dateOfBirth', '1984-09-01')
+        ->set('jobTitle', 'section_head')
+        ->set('maritalStatus', 'married')
+        ->set('beneficiariesCount', '6')
+        ->set('phone', '0927758220')
+        ->set('whatsapp', '0927758220')
+        ->set('email', 'www.ogal25.com')
+        ->set('city', 'murzuq')
+        ->set('address', 'تراغن')
+        ->call('saveEmployeeDetails')
+        ->assertHasErrors(['email' => 'email'])
+        ->assertSet('step', 2)
+        ->assertSee('أدخل بريداً إلكترونياً صحيحاً')
+        ->set('email', '')
+        ->call('saveEmployeeDetails')
+        ->assertHasNoErrors()
+        ->assertSet('step', 3);
+});
+
 it('clears all form data and session', function () {
     Employee::factory()->create([
         'employee_number' => '4001',

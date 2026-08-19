@@ -114,7 +114,9 @@
             </div>
             <div>
                 <label class="reg-label">البريد الإلكتروني</label>
-                <input wire:model.blur="email" type="email" dir="ltr" class="reg-input text-left">
+                <input wire:model.blur="email" type="text" inputmode="email" autocomplete="email" dir="ltr" class="reg-input text-left" placeholder="name@example.com">
+                <p class="mt-1 text-xs text-slate-400">اختياري — اتركه فارغاً إن لم يكن لديك بريد</p>
+                @error('email') <p class="reg-field-error">{{ $message }}</p> @enderror
             </div>
             <div class="reg-grid-2">
                 <div>
