@@ -363,13 +363,24 @@
                                 </div>
                                 <div>
                                     <h4 class="hr-ben__name">{{ $index + 1 }}. {{ $beneficiary->full_name }}</h4>
-                                    <p class="hr-ben__rel">{{ $beneficiary->relationship?->label() ?? '—' }}</p>
+                                    <p class="hr-ben__rel">{{ $beneficiary->relationship?->label($registration->gender) ?? '—' }}</p>
 
                                     <div class="hr-kpis" style="margin-top: 0;">
-                                        <div class="hr-kpi">
-                                            <span class="hr-kpi__label">الرقم الوطني</span>
-                                            <div class="hr-kpi__value">{{ $beneficiary->national_id ?: '—' }}</div>
-                                        </div>
+                                        @if ($beneficiary->is_libyan)
+                                            <div class="hr-kpi">
+                                                <span class="hr-kpi__label">الرقم الوطني</span>
+                                                <div class="hr-kpi__value">{{ $beneficiary->national_id ?: '—' }}</div>
+                                            </div>
+                                        @else
+                                            <div class="hr-kpi">
+                                                <span class="hr-kpi__label">الجنسية</span>
+                                                <div class="hr-kpi__value">{{ $beneficiary->nationalityLabel() ?: '—' }}</div>
+                                            </div>
+                                            <div class="hr-kpi">
+                                                <span class="hr-kpi__label">جواز السفر</span>
+                                                <div class="hr-kpi__value">{{ $beneficiary->passport_number ?: '—' }}</div>
+                                            </div>
+                                        @endif
                                         <div class="hr-kpi">
                                             <span class="hr-kpi__label">تاريخ الميلاد</span>
                                             <div class="hr-kpi__value">{{ $beneficiary->date_of_birth?->format('Y-m-d') ?: '—' }}</div>

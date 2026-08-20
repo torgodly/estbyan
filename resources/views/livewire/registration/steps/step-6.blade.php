@@ -56,7 +56,7 @@
             </div>
             <div class="reg-report-item">
                 <dt>عدد المستفيدين</dt>
-                <dd>{{ $beneficiariesCount !== '' ? $beneficiariesCount : '—' }}</dd>
+                <dd>{{ count($beneficiaries) }}</dd>
             </div>
             <div class="reg-report-item">
                 <dt>الهاتف</dt>
@@ -110,13 +110,7 @@
                 </div>
                 <div class="reg-report-count">
                     <span class="reg-report-count-value">{{ count($beneficiaries) }}</span>
-                    <span class="reg-report-count-label">
-                        @if ($beneficiariesCount !== '' && (int) $beneficiariesCount !== count($beneficiaries))
-                            من {{ $beneficiariesCount }}
-                        @else
-                            مستفيد
-                        @endif
-                    </span>
+                    <span class="reg-report-count-label">مستفيد</span>
                 </div>
             </div>
         </div>
@@ -151,9 +145,9 @@
                         <div class="min-w-0 pt-0.5">
                             <div class="flex flex-wrap items-center gap-2">
                                 <h4 class="truncate text-lg font-extrabold text-navy-900">{{ $beneficiary['full_name'] }}</h4>
-                                <span class="reg-tag reg-tag-relation">{{ $rel->label() }}</span>
+                                <span class="reg-tag reg-tag-relation">{{ $rel->label($employeeGender) }}</span>
                             </div>
-                            <p class="mt-1 text-sm text-slate-500" dir="ltr">{{ $beneficiary['national_id'] ?? '—' }}</p>
+                            <p class="mt-1 text-sm text-slate-500" dir="ltr">{{ $this->beneficiaryIdentityLabel($beneficiary) }}</p>
                         </div>
                     </div>
                     <span @class([
@@ -170,16 +164,27 @@
                         <dl class="reg-report-grid">
                             <div class="reg-report-item">
                                 <dt>صلة القرابة</dt>
-                                <dd>{{ $rel->label() }}</dd>
+                                <dd>{{ $rel->label($employeeGender) }}</dd>
                             </div>
                             <div class="reg-report-item">
                                 <dt>تاريخ الميلاد</dt>
                                 <dd>{{ $beneficiary['date_of_birth'] ?? '—' }}</dd>
                             </div>
-                            <div class="reg-report-item">
-                                <dt>الرقم الوطني</dt>
-                                <dd dir="ltr">{{ $beneficiary['national_id'] ?? '—' }}</dd>
-                            </div>
+                            @if ($beneficiary['is_libyan'] ?? true)
+                                <div class="reg-report-item">
+                                    <dt>الرقم الوطني</dt>
+                                    <dd dir="ltr">{{ $beneficiary['national_id'] ?? '—' }}</dd>
+                                </div>
+                            @else
+                                <div class="reg-report-item">
+                                    <dt>الجنسية</dt>
+                                    <dd>{{ config('registration.nationalities.'.$beneficiary['nationality']) ?? ($beneficiary['nationality'] ?? '—') }}</dd>
+                                </div>
+                                <div class="reg-report-item">
+                                    <dt>رقم جواز السفر</dt>
+                                    <dd dir="ltr">{{ $beneficiary['passport_number'] ?? '—' }}</dd>
+                                </div>
+                            @endif
                             <div class="reg-report-item">
                                 <dt>فصيلة الدم</dt>
                                 <dd>{{ $blood?->label() ?? '—' }}</dd>

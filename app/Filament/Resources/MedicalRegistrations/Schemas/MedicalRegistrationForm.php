@@ -60,7 +60,12 @@ class MedicalRegistrationForm
                             ->options(collect(MaritalStatus::cases())->mapWithKeys(
                                 fn (MaritalStatus $s) => [$s->value => $s->label()]
                             )),
-                        TextInput::make('beneficiaries_count')->label('عدد المستفيدين')->numeric(),
+                        TextInput::make('beneficiaries_count')
+                            ->label('عدد المستفيدين')
+                            ->numeric()
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->helperText('يُحسب تلقائياً من أفراد العائلة المسجلين'),
                         TextInput::make('phone')->label('الهاتف')->tel(),
                         TextInput::make('whatsapp')->label('واتساب')->tel(),
                         TextInput::make('email')->label('البريد')->email(),

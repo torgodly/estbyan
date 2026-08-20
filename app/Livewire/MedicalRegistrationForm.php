@@ -90,7 +90,13 @@ class MedicalRegistrationForm extends Component
 
     public string $beneficiaryRelationship = 'spouse';
 
+    public bool $beneficiaryIsLibyan = true;
+
+    public string $beneficiaryNationality = '';
+
     public string $beneficiaryNationalId = '';
+
+    public string $beneficiaryPassportNumber = '';
 
     public string $beneficiaryDateOfBirth = '';
 
@@ -178,6 +184,14 @@ class MedicalRegistrationForm extends Component
 
         if ($property === 'maritalStatus') {
             $this->syncBeneficiaryRelationshipToMaritalStatus();
+        }
+
+        if ($property === 'beneficiaryRelationship') {
+            $this->syncBeneficiaryCitizenshipToRelationship();
+        }
+
+        if ($property === 'beneficiaryIsLibyan') {
+            $this->syncBeneficiaryIdentityFieldsToCitizenship();
         }
 
         if ($this->isStepOneField($property) && ! $this->registrationId) {
@@ -385,7 +399,6 @@ class MedicalRegistrationForm extends Component
             'jobTitle' => ['nullable', Rule::in(array_keys(config('registration.job_titles')))],
             'gender' => ['required', Rule::in(array_map(fn (Gender $g) => $g->value, Gender::cases()))],
             'maritalStatus' => ['required', Rule::in(array_map(fn (MaritalStatus $s) => $s->value, MaritalStatus::cases()))],
-            'beneficiariesCount' => ['required', 'integer', 'min:0', 'max:20'],
             'phone' => ['required', 'string', 'min:9', 'max:15'],
             'whatsapp' => ['nullable', 'string', 'max:15'],
             'email' => ['nullable', 'email', 'max:255'],
@@ -436,25 +449,16 @@ class MedicalRegistrationForm extends Component
             return;
         }
 
+        $isLibyan = $this->beneficiaryIsLibyanForCurrentRelationship();
+
         $rules = [
             'beneficiaryName' => ['required', 'string', 'max:255'],
             'beneficiaryRelationship' => [
                 'required',
                 Rule::in(array_map(
                     fn (BeneficiaryRelationship $r) => $r->value,
-                    BeneficiaryRelationship::availableFor($this->maritalStatus),
+                    $this->availableBeneficiaryRelationships(),
                 )),
-            ],
-            'beneficiaryNationalId' => ['required', 'string', new LibyanNationalId],
-            'beneficiaryDateOfBirth' => [
-                'required',
-                'date',
-                'before:today',
-                function (string $attribute, mixed $value, \Closure $fail): void {
-                    if (! is_string($value) || ! LibyanNationalIdSupport::matchesDateOfBirth($this->beneficiaryNationalId, $value)) {
-                        $fail('سنة ميلاد المستفيد يجب أن تطابق السنة في رقمه الوطني.');
-                    }
-                },
             ],
             'beneficiaryBloodType' => ['required', Rule::in(array_map(fn (BloodType $b) => $b->value, BloodType::cases()))],
             'beneficiaryChronicConditions' => [Rule::requiredIf($this->beneficiaryHasChronicConditions), 'array'],
@@ -467,22 +471,72 @@ class MedicalRegistrationForm extends Component
             ],
         ];
 
+        if ($isLibyan) {
+            $rules['beneficiaryNationalId'] = ['required', 'string', new LibyanNationalId];
+            $rules['beneficiaryDateOfBirth'] = [
+                'required',
+                'date',
+                'before:today',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (! is_string($value) || ! LibyanNationalIdSupport::matchesDateOfBirth($this->beneficiaryNationalId, $value)) {
+                        $fail('سنة ميلاد المستفيد يجب أن تطابق السنة في رقمه الوطني.');
+                    }
+                },
+            ];
+        } else {
+            $rules['beneficiaryNationality'] = ['required', Rule::in(array_keys(config('registration.nationalities', [])))];
+            $rules['beneficiaryPassportNumber'] = ['required', 'string', 'min:5', 'max:40', 'regex:/^[A-Za-z0-9\\/-]+$/'];
+            $rules['beneficiaryDateOfBirth'] = ['required', 'date', 'before:today'];
+        }
+
         $this->validateRules($rules, array_merge($this->documentValidationMessages(), [
             'beneficiaryName.required' => 'اسم المستفيد مطلوب',
-            'beneficiaryRelationship.in' => $this->maritalStatus === MaritalStatus::Single->value
-                ? 'الأعزب يمكنه إضافة الوالدين فقط'
-                : 'صلة القرابة غير صالحة',
+            'beneficiaryRelationship.in' => $this->beneficiaryRelationshipValidationMessage(),
             'beneficiaryNationalId.required' => 'الرقم الوطني للمستفيد مطلوب',
+            'beneficiaryNationality.required' => 'الجنسية مطلوبة للمستفيد غير الليبي',
+            'beneficiaryNationality.in' => 'الجنسية المختارة غير صالحة',
+            'beneficiaryPassportNumber.required' => 'رقم جواز السفر مطلوب للمستفيد غير الليبي',
+            'beneficiaryPassportNumber.regex' => 'رقم جواز السفر يجب أن يحتوي على أحرف وأرقام فقط',
             'beneficiaryDateOfBirth.required' => 'تاريخ ميلاد المستفيد مطلوب',
             'beneficiaryPhoto.required' => 'صورة المستفيد مطلوبة',
             'beneficiaryChronicConditions.required' => 'يرجى تحديد الأمراض المزمنة على الأقل',
         ]));
 
+        $employeeGender = $this->employeeGender();
         $relationship = BeneficiaryRelationship::from($this->beneficiaryRelationship);
-        $expectedGender = $relationship->expectedGender();
+        $relationshipLabel = $relationship->label($employeeGender);
+        $expectedGender = $relationship->expectedGender($employeeGender);
+
+        if ($relationship === BeneficiaryRelationship::Spouse) {
+            $maxSpouses = BeneficiaryRelationship::maxSpousesFor($employeeGender);
+            $spouseCount = $this->spouseCount($this->editingBeneficiaryIndex);
+
+            if ($spouseCount >= $maxSpouses) {
+                throw ValidationException::withMessages([
+                    'beneficiaryRelationship' => $this->spouseLimitMessage($employeeGender, $maxSpouses),
+                ]);
+            }
+
+            if (
+                $employeeGender === Gender::Female
+                && ! $isLibyan
+                && $this->hasLibyanChildren($this->editingBeneficiaryIndex)
+            ) {
+                throw ValidationException::withMessages([
+                    'beneficiaryIsLibyan' => 'لا يمكن تسجيل الزوج كغير ليبي بينما يوجد أبناء ليبيون. عدّل الأبناء أولاً إلى غير ليبيين بجواز السفر.',
+                ]);
+            }
+        }
+
+        if ($relationship->isChild() && $this->hasNonLibyanHusband() && $isLibyan) {
+            throw ValidationException::withMessages([
+                'beneficiaryIsLibyan' => 'لأن الزوج غير ليبي لا يمكن تسجيل الأبناء كليبيين — أدخل الجنسية ورقم جواز السفر.',
+            ]);
+        }
 
         if (
-            $expectedGender !== null
+            $isLibyan
+            && $expectedGender !== null
             && LibyanNationalIdSupport::isValid($this->beneficiaryNationalId)
             && ! LibyanNationalIdSupport::matchesGender($this->beneficiaryNationalId, $expectedGender)
         ) {
@@ -490,7 +544,7 @@ class MedicalRegistrationForm extends Component
             $genderLabel = $expectedGender === Gender::Male ? 'ذكر' : 'أنثى';
 
             throw ValidationException::withMessages([
-                'beneficiaryNationalId' => "الرقم الوطني لـ{$relationship->label()} يجب أن يبدأ بـ {$digit} ({$genderLabel}).",
+                'beneficiaryNationalId' => "الرقم الوطني لـ{$relationshipLabel} يجب أن يبدأ بـ {$digit} ({$genderLabel}).",
             ]);
         }
 
@@ -518,7 +572,10 @@ class MedicalRegistrationForm extends Component
         $data = [
             'full_name' => $this->beneficiaryName,
             'relationship' => $this->beneficiaryRelationship,
-            'national_id' => $this->beneficiaryNationalId,
+            'is_libyan' => $isLibyan,
+            'nationality' => $isLibyan ? null : $this->beneficiaryNationality,
+            'national_id' => $isLibyan ? $this->beneficiaryNationalId : null,
+            'passport_number' => $isLibyan ? null : strtoupper(trim($this->beneficiaryPassportNumber)),
             'date_of_birth' => $this->beneficiaryDateOfBirth ?: null,
             'blood_type' => $this->beneficiaryBloodType,
             'has_chronic_condition' => $this->beneficiaryHasChronicConditions,
@@ -562,7 +619,10 @@ class MedicalRegistrationForm extends Component
         $this->editingBeneficiaryIndex = $index;
         $this->beneficiaryName = $beneficiary['full_name'];
         $this->beneficiaryRelationship = $beneficiary['relationship'];
+        $this->beneficiaryIsLibyan = (bool) ($beneficiary['is_libyan'] ?? true);
+        $this->beneficiaryNationality = $beneficiary['nationality'] ?? '';
         $this->beneficiaryNationalId = $beneficiary['national_id'] ?? '';
+        $this->beneficiaryPassportNumber = $beneficiary['passport_number'] ?? '';
         $this->beneficiaryDateOfBirth = $beneficiary['date_of_birth'] ?? '';
         $this->beneficiaryBloodType = $beneficiary['blood_type'];
         $this->beneficiaryHasChronicConditions = (bool) ($beneficiary['has_chronic_conditions'] ?? $beneficiary['has_chronic_condition'] ?? false);
@@ -575,6 +635,7 @@ class MedicalRegistrationForm extends Component
         $this->beneficiaryExistingPhotoPath = $beneficiary['photo_path'] ?? null;
         $this->beneficiaryPhoto = null;
         $this->showBeneficiaryForm = true;
+        $this->syncBeneficiaryCitizenshipToRelationship();
     }
 
     public function deleteBeneficiary(int $index): void
@@ -615,6 +676,24 @@ class MedicalRegistrationForm extends Component
                 $this->maritalStatus === MaritalStatus::Single->value
                     ? 'الحالة أعزب — يرجى حذف المستفيدين من غير الوالدين قبل المتابعة'
                     : 'يوجد مستفيدون بصلة قرابة غير صالحة',
+            );
+
+            return;
+        }
+
+        $employeeGender = $this->employeeGender();
+        $maxSpouses = BeneficiaryRelationship::maxSpousesFor($employeeGender);
+
+        if ($this->spouseCount() > $maxSpouses) {
+            $this->addError('beneficiaries', $this->spouseLimitMessage($employeeGender, $maxSpouses));
+
+            return;
+        }
+
+        if ($this->hasNonLibyanHusband() && $this->hasLibyanChildren()) {
+            $this->addError(
+                'beneficiaries',
+                'لأن الزوج غير ليبي لا يمكن أن يكون الأبناء ليبيين — عدّل كل ابن/ابنة وأدخل الجنسية ورقم جواز السفر',
             );
 
             return;
@@ -801,7 +880,13 @@ class MedicalRegistrationForm extends Component
             'workplaces' => config('registration.workplaces'),
             'jobTitles' => config('registration.job_titles'),
             'cities' => config('registration.cities'),
+            'nationalities' => $this->orderedNationalities(),
             'chronicConditionOptions' => config('registration.chronic_conditions'),
+            'employeeGender' => $this->employeeGender(),
+            'availableBeneficiaryRelationships' => $this->availableBeneficiaryRelationships(),
+            'maxSpouses' => BeneficiaryRelationship::maxSpousesFor($this->employeeGender()),
+            'spouseLabel' => BeneficiaryRelationship::Spouse->label($this->employeeGender()),
+            'childrenMustBeNonLibyan' => $this->childrenMustBeNonLibyan(),
             'totalSteps' => 6,
             'stepLabels' => [
                 1 => 'التحقق',
@@ -889,7 +974,7 @@ class MedicalRegistrationForm extends Component
     protected function isAutoPersistField(string $property): bool
     {
         return in_array($property, [
-            'dateOfBirth', 'workplace', 'jobTitle', 'gender', 'maritalStatus', 'beneficiariesCount',
+            'dateOfBirth', 'workplace', 'jobTitle', 'gender', 'maritalStatus',
             'phone', 'whatsapp', 'email', 'city', 'address',
             'hasChronicConditions', 'chronicConditions', 'hasTumor', 'hasSurgeryHistory',
             'usesMedicalDevices', 'hospitalizedRecently', 'traveledForTreatment',
@@ -908,6 +993,8 @@ class MedicalRegistrationForm extends Component
             $this->gender = LibyanNationalIdSupport::gender($this->nationalId)->value;
         }
 
+        $this->beneficiariesCount = (string) count($this->beneficiaries);
+
         $registration->update([
             'current_step' => $this->step,
             'full_name' => $this->verifiedFullName ?: $registration->full_name,
@@ -918,7 +1005,7 @@ class MedicalRegistrationForm extends Component
             'job_title' => $this->jobTitle ?: null,
             'gender' => $this->gender ?: null,
             'marital_status' => $this->maritalStatus ?: null,
-            'beneficiaries_count' => $this->beneficiariesCount !== '' ? (int) $this->beneficiariesCount : null,
+            'beneficiaries_count' => (int) $this->beneficiariesCount,
             'phone' => $this->phone ?: null,
             'whatsapp' => $this->whatsapp ?: null,
             'email' => $this->email ?: null,
@@ -973,7 +1060,10 @@ class MedicalRegistrationForm extends Component
                 'medical_registration_id' => $registration->id,
                 'full_name' => $beneficiary['full_name'],
                 'relationship' => $beneficiary['relationship'],
+                'is_libyan' => (bool) ($beneficiary['is_libyan'] ?? true),
+                'nationality' => $beneficiary['nationality'] ?? null,
                 'national_id' => $beneficiary['national_id'] ?? null,
+                'passport_number' => $beneficiary['passport_number'] ?? null,
                 'date_of_birth' => $beneficiary['date_of_birth'] ?: null,
                 'blood_type' => $beneficiary['blood_type'],
                 'has_chronic_condition' => (bool) ($beneficiary['has_chronic_conditions'] ?? $beneficiary['has_chronic_condition'] ?? false),
@@ -989,26 +1079,25 @@ class MedicalRegistrationForm extends Component
         }
 
         $registration->unsetRelation('beneficiaries');
-        $this->beneficiaries = $registration->beneficiaries()->get()->map(fn (Beneficiary $b) => [
-            'id' => $b->id,
-            'full_name' => $b->full_name,
-            'relationship' => $b->relationship->value,
-            'national_id' => $b->national_id,
-            'date_of_birth' => $b->date_of_birth?->format('Y-m-d'),
-            'blood_type' => $b->blood_type?->value,
-            'has_chronic_condition' => $b->has_chronic_condition || $b->has_chronic_conditions,
-            'has_chronic_conditions' => $b->has_chronic_conditions || $b->has_chronic_condition,
-            'chronic_conditions' => $b->chronic_conditions ?? [],
-            'has_tumor' => $b->has_tumor,
-            'has_surgery_history' => $b->has_surgery_history,
-            'uses_medical_devices' => $b->uses_medical_devices,
-            'hospitalized_recently' => $b->hospitalized_recently,
-            'traveled_for_treatment' => $b->traveled_for_treatment,
-            'photo_path' => $b->photo_path,
-        ])->all();
+        $this->beneficiaries = $registration->beneficiaries()->get()->map(
+            fn (Beneficiary $b) => $this->beneficiaryToArray($b),
+        )->all();
 
+        $this->syncFamilyBeneficiariesCount($registration);
         $registration->update(['current_step' => $this->step]);
         $this->hasSavedDraft = true;
+    }
+
+    protected function syncFamilyBeneficiariesCount(?MedicalRegistration $registration = null): void
+    {
+        $count = count($this->beneficiaries);
+        $this->beneficiariesCount = (string) $count;
+
+        $registration ??= $this->registration();
+
+        if ($registration && (int) $registration->beneficiaries_count !== $count) {
+            $registration->update(['beneficiaries_count' => $count]);
+        }
     }
 
     protected function loadRegistration(MedicalRegistration $registration): void
@@ -1026,7 +1115,6 @@ class MedicalRegistrationForm extends Component
         $this->jobTitle = $registration->job_title ?? 'employee';
         $this->gender = $registration->gender?->value ?? 'male';
         $this->maritalStatus = $registration->marital_status?->value ?? 'married';
-        $this->beneficiariesCount = (string) ($registration->beneficiaries_count ?? '');
         $this->phone = $registration->phone ?? '';
         $this->whatsapp = $registration->whatsapp ?? '';
         $this->email = $registration->email ?? '';
@@ -1041,23 +1129,11 @@ class MedicalRegistrationForm extends Component
         $this->traveledForTreatment = (bool) $registration->traveled_for_treatment;
         $this->referenceNumber = $registration->reference_number ?? '';
 
-        $this->beneficiaries = $registration->beneficiaries->map(fn (Beneficiary $b) => [
-            'id' => $b->id,
-            'full_name' => $b->full_name,
-            'relationship' => $b->relationship->value,
-            'national_id' => $b->national_id,
-            'date_of_birth' => $b->date_of_birth?->format('Y-m-d'),
-            'blood_type' => $b->blood_type?->value,
-            'has_chronic_condition' => $b->has_chronic_condition || $b->has_chronic_conditions,
-            'has_chronic_conditions' => $b->has_chronic_conditions || $b->has_chronic_condition,
-            'chronic_conditions' => $b->chronic_conditions ?? [],
-            'has_tumor' => $b->has_tumor,
-            'has_surgery_history' => $b->has_surgery_history,
-            'uses_medical_devices' => $b->uses_medical_devices,
-            'hospitalized_recently' => $b->hospitalized_recently,
-            'traveled_for_treatment' => $b->traveled_for_treatment,
-            'photo_path' => $b->photo_path,
-        ])->all();
+        $this->beneficiaries = $registration->beneficiaries->map(
+            fn (Beneficiary $b) => $this->beneficiaryToArray($b),
+        )->all();
+
+        $this->syncFamilyBeneficiariesCount($registration);
 
         $this->hasFamilyDocument = (bool) $registration->family_status_document_path;
         $this->hasEmployeePhoto = (bool) $registration->employee_photo_path;
@@ -1099,7 +1175,8 @@ class MedicalRegistrationForm extends Component
             'hasChronicConditions', 'chronicConditions', 'hasTumor', 'hasSurgeryHistory',
             'usesMedicalDevices', 'hospitalizedRecently', 'traveledForTreatment',
             'beneficiaries', 'showBeneficiaryForm', 'beneficiaryName', 'beneficiaryRelationship',
-            'beneficiaryNationalId', 'beneficiaryDateOfBirth', 'beneficiaryBloodType',
+            'beneficiaryIsLibyan', 'beneficiaryNationality', 'beneficiaryNationalId', 'beneficiaryPassportNumber',
+            'beneficiaryDateOfBirth', 'beneficiaryBloodType',
             'beneficiaryHasChronicConditions', 'beneficiaryChronicConditions', 'beneficiaryHasTumor',
             'beneficiaryHasSurgeryHistory', 'beneficiaryUsesMedicalDevices',
             'beneficiaryHospitalizedRecently', 'beneficiaryTraveledForTreatment',
@@ -1115,6 +1192,7 @@ class MedicalRegistrationForm extends Component
         $this->gender = 'male';
         $this->maritalStatus = 'married';
         $this->beneficiaryRelationship = BeneficiaryRelationship::Spouse->value;
+        $this->beneficiaryIsLibyan = true;
         $this->beneficiaryBloodType = 'a_positive';
     }
 
@@ -1123,7 +1201,10 @@ class MedicalRegistrationForm extends Component
         $this->editingBeneficiaryIndex = null;
         $this->beneficiaryName = '';
         $this->beneficiaryRelationship = $this->defaultBeneficiaryRelationship();
+        $this->beneficiaryIsLibyan = true;
+        $this->beneficiaryNationality = '';
         $this->beneficiaryNationalId = '';
+        $this->beneficiaryPassportNumber = '';
         $this->beneficiaryDateOfBirth = '';
         $this->beneficiaryBloodType = 'a_positive';
         $this->beneficiaryHasChronicConditions = false;
@@ -1138,7 +1219,10 @@ class MedicalRegistrationForm extends Component
         $this->resetValidation([
             'beneficiaryName',
             'beneficiaryRelationship',
+            'beneficiaryIsLibyan',
+            'beneficiaryNationality',
             'beneficiaryNationalId',
+            'beneficiaryPassportNumber',
             'beneficiaryDateOfBirth',
             'beneficiaryBloodType',
             'beneficiaryChronicConditions',
@@ -1146,11 +1230,155 @@ class MedicalRegistrationForm extends Component
         ]);
     }
 
+    protected function syncBeneficiaryCitizenshipToRelationship(): void
+    {
+        if ($this->currentBeneficiaryMustBeNonLibyan()) {
+            $this->beneficiaryIsLibyan = false;
+        } elseif (! $this->beneficiaryRelationshipAllowsNonLibyan()) {
+            $this->beneficiaryIsLibyan = true;
+            $this->beneficiaryNationality = '';
+            $this->beneficiaryPassportNumber = '';
+        }
+
+        $this->syncBeneficiaryIdentityFieldsToCitizenship();
+    }
+
+    protected function syncBeneficiaryIdentityFieldsToCitizenship(): void
+    {
+        if ($this->beneficiaryIsLibyanForCurrentRelationship()) {
+            $this->beneficiaryNationality = '';
+            $this->beneficiaryPassportNumber = '';
+        } else {
+            $this->beneficiaryNationalId = '';
+        }
+    }
+
+    protected function beneficiaryRelationshipAllowsNonLibyan(): bool
+    {
+        $relationship = BeneficiaryRelationship::tryFrom($this->beneficiaryRelationship);
+
+        if ($relationship?->allowsNonLibyan()) {
+            return true;
+        }
+
+        return $this->currentBeneficiaryMustBeNonLibyan();
+    }
+
+    protected function beneficiaryIsLibyanForCurrentRelationship(): bool
+    {
+        if ($this->currentBeneficiaryMustBeNonLibyan()) {
+            return false;
+        }
+
+        if (! $this->beneficiaryRelationshipAllowsNonLibyan()) {
+            return true;
+        }
+
+        return $this->beneficiaryIsLibyan;
+    }
+
+    /**
+     * Female employee with a non-Libyan husband → children cannot be Libyan.
+     */
+    protected function childrenMustBeNonLibyan(): bool
+    {
+        return $this->hasNonLibyanHusband();
+    }
+
+    protected function currentBeneficiaryMustBeNonLibyan(): bool
+    {
+        $relationship = BeneficiaryRelationship::tryFrom($this->beneficiaryRelationship);
+
+        return $relationship !== null
+            && $relationship->isChild()
+            && $this->childrenMustBeNonLibyan();
+    }
+
+    protected function hasNonLibyanHusband(): bool
+    {
+        if ($this->employeeGender() !== Gender::Female) {
+            return false;
+        }
+
+        return collect($this->beneficiaries)->contains(function (array $beneficiary, int $index): bool {
+            if ($this->editingBeneficiaryIndex === $index) {
+                return $this->beneficiaryRelationship === BeneficiaryRelationship::Spouse->value
+                    && ! $this->beneficiaryIsLibyan;
+            }
+
+            return ($beneficiary['relationship'] ?? null) === BeneficiaryRelationship::Spouse->value
+                && ! (bool) ($beneficiary['is_libyan'] ?? true);
+        });
+    }
+
+    protected function hasLibyanChildren(?int $exceptIndex = null): bool
+    {
+        return collect($this->beneficiaries)->contains(function (array $beneficiary, int $index) use ($exceptIndex): bool {
+            if ($exceptIndex !== null && $index === $exceptIndex) {
+                return false;
+            }
+
+            $relationship = BeneficiaryRelationship::tryFrom($beneficiary['relationship'] ?? '');
+
+            return $relationship?->isChild() === true
+                && (bool) ($beneficiary['is_libyan'] ?? true);
+        });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function beneficiaryToArray(Beneficiary $beneficiary): array
+    {
+        return [
+            'id' => $beneficiary->id,
+            'full_name' => $beneficiary->full_name,
+            'relationship' => $beneficiary->relationship->value,
+            'is_libyan' => (bool) $beneficiary->is_libyan,
+            'nationality' => $beneficiary->nationality,
+            'national_id' => $beneficiary->national_id,
+            'passport_number' => $beneficiary->passport_number,
+            'date_of_birth' => $beneficiary->date_of_birth?->format('Y-m-d'),
+            'blood_type' => $beneficiary->blood_type?->value,
+            'has_chronic_condition' => $beneficiary->has_chronic_condition || $beneficiary->has_chronic_conditions,
+            'has_chronic_conditions' => $beneficiary->has_chronic_conditions || $beneficiary->has_chronic_condition,
+            'chronic_conditions' => $beneficiary->chronic_conditions ?? [],
+            'has_tumor' => $beneficiary->has_tumor,
+            'has_surgery_history' => $beneficiary->has_surgery_history,
+            'uses_medical_devices' => $beneficiary->uses_medical_devices,
+            'hospitalized_recently' => $beneficiary->hospitalized_recently,
+            'traveled_for_treatment' => $beneficiary->traveled_for_treatment,
+            'photo_path' => $beneficiary->photo_path,
+        ];
+    }
+
+    public function beneficiaryIdentityLabel(array $beneficiary): string
+    {
+        $isLibyan = (bool) ($beneficiary['is_libyan'] ?? true);
+
+        if ($isLibyan) {
+            return filled($beneficiary['national_id'] ?? null)
+                ? (string) $beneficiary['national_id']
+                : '—';
+        }
+
+        $nationality = filled($beneficiary['nationality'] ?? null)
+            ? (config('registration.nationalities.'.$beneficiary['nationality']) ?? $beneficiary['nationality'])
+            : null;
+        $passport = filled($beneficiary['passport_number'] ?? null)
+            ? 'جواز: '.$beneficiary['passport_number']
+            : null;
+
+        $parts = array_filter([$nationality, $passport]);
+
+        return $parts !== [] ? implode(' · ', $parts) : '—';
+    }
+
     protected function syncBeneficiaryRelationshipToMaritalStatus(): void
     {
         $allowed = array_map(
             fn (BeneficiaryRelationship $relationship): string => $relationship->value,
-            BeneficiaryRelationship::availableFor($this->maritalStatus),
+            $this->availableBeneficiaryRelationships(),
         );
 
         if (! in_array($this->beneficiaryRelationship, $allowed, true)) {
@@ -1160,9 +1388,99 @@ class MedicalRegistrationForm extends Component
 
     protected function defaultBeneficiaryRelationship(): string
     {
-        $available = BeneficiaryRelationship::availableFor($this->maritalStatus);
+        $available = $this->availableBeneficiaryRelationships();
 
         return ($available[0] ?? BeneficiaryRelationship::Father)->value;
+    }
+
+    protected function employeeGender(): Gender
+    {
+        return Gender::tryFrom($this->gender) ?? Gender::Male;
+    }
+
+    /**
+     * Neighbors and common nationalities first, then A–Z, with "أخرى" last.
+     *
+     * @return array<string, string>
+     */
+    protected function orderedNationalities(): array
+    {
+        $nationalities = config('registration.nationalities', []);
+        $priorityRank = array_flip(array_values(array_unique(config('registration.nationality_priority', []))));
+
+        return collect($nationalities)
+            ->sortBy(function (string $label, string $key) use ($priorityRank): array {
+                if ($key === 'other') {
+                    return [2, $label];
+                }
+
+                if (isset($priorityRank[$key])) {
+                    return [0, sprintf('%03d', $priorityRank[$key])];
+                }
+
+                return [1, $label];
+            })
+            ->all();
+    }
+
+    /**
+     * @return list<BeneficiaryRelationship>
+     */
+    protected function availableBeneficiaryRelationships(): array
+    {
+        $available = BeneficiaryRelationship::availableFor($this->maritalStatus);
+        $exceptIndex = $this->editingBeneficiaryIndex;
+        $spouseCount = $this->spouseCount($exceptIndex);
+        $maxSpouses = BeneficiaryRelationship::maxSpousesFor($this->employeeGender());
+
+        $editingIsSpouse = $exceptIndex !== null
+            && ($this->beneficiaries[$exceptIndex]['relationship'] ?? null) === BeneficiaryRelationship::Spouse->value;
+
+        if ($spouseCount >= $maxSpouses && ! $editingIsSpouse) {
+            return array_values(array_filter(
+                $available,
+                fn (BeneficiaryRelationship $relationship): bool => $relationship !== BeneficiaryRelationship::Spouse,
+            ));
+        }
+
+        return $available;
+    }
+
+    protected function spouseCount(?int $exceptIndex = null): int
+    {
+        return collect($this->beneficiaries)
+            ->filter(function (array $beneficiary, int $index) use ($exceptIndex): bool {
+                if ($exceptIndex !== null && $index === $exceptIndex) {
+                    return false;
+                }
+
+                return ($beneficiary['relationship'] ?? null) === BeneficiaryRelationship::Spouse->value;
+            })
+            ->count();
+    }
+
+    protected function spouseLimitMessage(Gender $employeeGender, int $maxSpouses): string
+    {
+        return match ($employeeGender) {
+            Gender::Male => "يمكن إضافة حتى {$maxSpouses} زوجات فقط",
+            Gender::Female => 'يمكن إضافة زوج واحد فقط',
+        };
+    }
+
+    protected function beneficiaryRelationshipValidationMessage(): string
+    {
+        if ($this->maritalStatus === MaritalStatus::Single->value) {
+            return 'الأعزب يمكنه إضافة الوالدين فقط';
+        }
+
+        if ($this->beneficiaryRelationship === BeneficiaryRelationship::Spouse->value) {
+            return $this->spouseLimitMessage(
+                $this->employeeGender(),
+                BeneficiaryRelationship::maxSpousesFor($this->employeeGender()),
+            );
+        }
+
+        return 'صلة القرابة غير صالحة';
     }
 
     protected function notify(string $message): void

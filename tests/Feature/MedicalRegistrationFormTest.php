@@ -185,7 +185,6 @@ it('restores registration after refresh simulation', function () {
         ->call('verifyIdentity')
         ->set('dateOfBirth', '1980-01-01')
         ->set('city', 'tripoli')
-        ->set('beneficiariesCount', '2')
         ->set('address', 'طرابلس')
         ->set('phone', '0912345678')
         ->call('saveEmployeeDetails')
@@ -195,6 +194,7 @@ it('restores registration after refresh simulation', function () {
 
     expect($registration)->not->toBeNull()
         ->and($registration->phone)->toBe('0912345678')
+        ->and($registration->beneficiaries_count)->toBe(0)
         ->and($registration->current_step)->toBe(3);
 
     Livewire::test(MedicalRegistrationForm::class)
@@ -219,7 +219,6 @@ it('requires date of birth year to match national id', function () {
         ->call('verifyIdentity')
         ->set('dateOfBirth', '1990-01-01')
         ->set('city', 'tripoli')
-        ->set('beneficiariesCount', '0')
         ->set('address', 'طرابلس')
         ->set('phone', '0912345678')
         ->call('saveEmployeeDetails')
@@ -243,7 +242,6 @@ it('blocks a website typed as email and continues after the field is cleared', f
         ->set('dateOfBirth', '1984-09-01')
         ->set('jobTitle', 'section_head')
         ->set('maritalStatus', 'married')
-        ->set('beneficiariesCount', '6')
         ->set('phone', '0927758220')
         ->set('whatsapp', '0927758220')
         ->set('email', 'www.ogal25.com')
@@ -253,6 +251,7 @@ it('blocks a website typed as email and continues after the field is cleared', f
         ->assertHasErrors(['email' => 'email'])
         ->assertSet('step', 2)
         ->assertSee('أدخل بريداً إلكترونياً صحيحاً')
+        ->assertDontSee('عدد المستفيدين')
         ->set('email', '')
         ->call('saveEmployeeDetails')
         ->assertHasNoErrors()
@@ -321,7 +320,8 @@ it('saves a beneficiary with photo medical record and validated national id', fu
         ->and($beneficiary->national_id)->toBe('119880112233')
         ->and($beneficiary->has_chronic_conditions)->toBeTrue()
         ->and($beneficiary->chronic_conditions)->toBe(['heart_disease'])
-        ->and($beneficiary->photo_path)->not->toBeNull();
+        ->and($beneficiary->photo_path)->not->toBeNull()
+        ->and($registration->fresh()->beneficiaries_count)->toBe(1);
 
     Storage::disk('local')->assertExists($beneficiary->photo_path);
 });
