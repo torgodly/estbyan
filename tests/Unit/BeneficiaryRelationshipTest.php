@@ -54,3 +54,15 @@ it('limits male employees to four spouses and female employees to one', function
         ->and(BeneficiaryRelationship::maxSpousesFor(Gender::Female))->toBe(1)
         ->and(BeneficiaryRelationship::maxSpousesFor('male'))->toBe(4);
 });
+
+it('prioritizes neighboring nationalities before alphabetical countries', function () {
+    $priority = config('registration.nationality_priority');
+    $nationalities = config('registration.nationalities');
+
+    expect($priority[0])->toBe('egyptian')
+        ->and($priority[1])->toBe('tunisian')
+        ->and($priority)->toContain('chadian')
+        ->and($nationalities)->toHaveKey('egyptian')
+        ->and($nationalities)->toHaveKey('other')
+        ->and(count($nationalities))->toBeGreaterThan(80);
+});
