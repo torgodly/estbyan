@@ -118,9 +118,53 @@ it('rejects non-employees at the identity gate', function () {
         ->set('consent', true)
         ->call('verifyIdentity')
         ->assertHasErrors('nationalId')
+        ->assertSee('لم يتم العثور على موظف بهذا الرقم الوطني.', false)
+        ->assertDispatched('reg-scroll-to-error', function (string $event, array $params): bool {
+            return ($params['field'] ?? null) === 'nationalId';
+        })
         ->assertSet('step', 1);
 
     expect(MedicalRegistration::query()->count())->toBe(0);
+});
+
+it('scrolls to the first invalid login field instead of failing silently', function () {
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('nationalId', '')
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->assertHasErrors(['nationalId'])
+        ->assertSee('data-reg-field="nationalId"', false)
+        ->assertSee('يرجى تصحيح الأخطاء التالية', false)
+        ->assertDispatched('reg-scroll-to-error', function (string $event, array $params): bool {
+            return ($params['field'] ?? null) === 'nationalId';
+        });
+});
+
+it('shows validation summary messages in the form when step two fails', function () {
+    $nationalId = LibyanNationalId::generate(Gender::Male, 1980);
+
+    Employee::factory()->create([
+        'employee_number' => '3344',
+        'national_id' => $nationalId,
+        'full_name' => 'عرض الأخطاء',
+        'workplace' => 'general_admin',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('nationalId', $nationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('workplace', '')
+        ->call('saveEmployeeDetails')
+        ->assertHasErrors(['workplace', 'dateOfBirth', 'phone', 'city', 'address'])
+        ->assertSee('يرجى تصحيح الأخطاء التالية', false)
+        ->assertSee('مكان العمل مطلوب', false)
+        ->assertSee('رقم الهاتف مطلوب', false)
+        ->assertSee('data-reg-jump="dateOfBirth"', false)
+        ->assertSee('data-reg-field="dateOfBirth"', false)
+        ->assertDispatched('reg-scroll-to-error', function (string $event, array $params): bool {
+            return $event === 'reg-scroll-to-error' && ($params['field'] ?? null) === 'dateOfBirth';
+        });
 });
 
 it('unlocks the form for a valid employee and prefills locked fields', function () {
@@ -280,6 +324,72 @@ it('clears all form data and session', function () {
         ->and(MedicalRegistration::query()->where('employee_number', '4001')->exists())->toBeFalse();
 });
 
+it('lists clear arabic portrait photo requirements including the system file limit', function () {
+    expect(RegistrationDocuments::requirementsTitle())->toBe('تعليمات ومتطلبات الصورة الشخصية')
+        ->and(RegistrationDocuments::requirementItems())->not->toContain(RegistrationDocuments::formatRequirement())
+        ->and(RegistrationDocuments::photoMaxKilobytes())->toBe(10240)
+        ->and(RegistrationDocuments::photoMaxMegabytes())->toBe(10)
+        ->and(RegistrationDocuments::photoSizeHint())->toContain('10')
+        ->and(RegistrationDocuments::photoSizeHint())->toContain('JPG أو PNG')
+        ->and(RegistrationDocuments::photoSizeHint())->not->toContain('WEBP')
+        ->and(RegistrationDocuments::requirementsNote())->toContain('سيتم رفضها')
+        ->and(RegistrationDocuments::childrenRequirementsTitle())->toBe('تعليمات خاصة بالأطفال والرضع')
+        ->and(RegistrationDocuments::requirementItems())->toContain(
+            'حجم الوجه في الصورة: يجب أن يشغل الوجه ما بين 70% إلى 80% من المساحة الكلية.',
+        )
+        ->and(RegistrationDocuments::childrenRequirementItems())->toContain(
+            'الظهور: يجب أن يظهر الطفل بمفرده في الصورة (دون ظهور يدي المُمسك به أو ظهر الكرسي).',
+        );
+});
+
+it('shows a clear photo picker on the new beneficiary form', function () {
+    $nationalId = LibyanNationalId::generate(Gender::Male, 1974);
+
+    Employee::factory()->create([
+        'employee_number' => '5020',
+        'national_id' => $nationalId,
+        'full_name' => 'سالم علي',
+        'workplace' => 'general_admin',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('nationalId', $nationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('step', 4)
+        ->set('showBeneficiaryForm', true)
+        ->assertSee('مستفيد جديد', false)
+        ->assertSee('اضغط هنا لاختيار الصورة الشخصية', false)
+        ->assertSee('اختيار صورة', false)
+        ->assertSee(RegistrationDocuments::photoSizeHint(), false)
+        ->assertSee(RegistrationDocuments::childrenRequirementsTitle(), false)
+        ->assertSee('reg-photo-dropzone', false);
+});
+
+it('shows a clear photo picker on the employee document step', function () {
+    $nationalId = LibyanNationalId::generate(Gender::Male, 1973);
+
+    Employee::factory()->create([
+        'employee_number' => '5021',
+        'national_id' => $nationalId,
+        'full_name' => 'نوري علي',
+        'workplace' => 'general_admin',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('nationalId', $nationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('step', 5)
+        ->assertSee('صورة من شهادة الوضع العائلي', false)
+        ->assertSee('الصورة الشخصية للموظف', false)
+        ->assertSee('اضغط هنا لاختيار الصورة الشخصية', false)
+        ->assertSee('اختيار صورة', false)
+        ->assertSee(RegistrationDocuments::photoSizeHint(), false)
+        ->assertSee('reg-photo-dropzone', false)
+        ->assertSee(RegistrationDocuments::requirementsTitle(), false);
+});
+
 it('saves a beneficiary with photo medical record and validated national id', function () {
     Storage::fake('local');
 
@@ -365,6 +475,9 @@ it('hides the beneficiary card while its edit form is open', function () {
         ->assertSet('showBeneficiaryForm', true)
         ->assertSet('editingBeneficiaryIndex', 0)
         ->assertSee('تعديل مستفيد')
+        ->assertSee(RegistrationDocuments::requirementsTitle(), false)
+        ->assertSee('صور السيلفي', false)
+        ->assertSee(RegistrationDocuments::requirementsNote(), false)
         ->assertDontSeeHtml('wire:click="editBeneficiary(0)"')
         ->assertDontSeeHtml('wire:click="deleteBeneficiary(0)"');
 });
@@ -404,6 +517,21 @@ it('continues to review when documents are already saved without re-uploading', 
         ->call('verifyIdentity')
         ->set('step', 5)
         ->assertSee('صورة من شهادة الوضع العائلي')
+        ->assertSee('الصورة الشخصية للموظف')
+        ->assertSee('reg-photo-dropzone', false)
+        ->assertSee('تم اختيار صورة الموظف', false)
+        ->assertSee('تغيير الصورة', false)
+        ->assertSee(RegistrationDocuments::requirementsTitle(), false)
+        ->assertSee('شكل الصورة', false)
+        ->assertSee('الوجه والوضعية', false)
+        ->assertSee('غير مسموح', false)
+        ->assertSee('بيضاء سادة فقط', false)
+        ->assertSee('حجم الوجه في الصورة', false)
+        ->assertSee('70% إلى 80%', false)
+        ->assertSee('تعليمات خاصة بالأطفال والرضع', false)
+        ->assertSee('يجب أن يظهر الطفل بمفرده', false)
+        ->assertSee(RegistrationDocuments::photoSizeHint(), false)
+        ->assertSee(RegistrationDocuments::requirementsNote(), false)
         ->assertSet('hasFamilyDocument', true)
         ->assertSet('hasEmployeePhoto', true)
         ->call('saveDocuments')
@@ -433,6 +561,8 @@ it('stores the family booklet immediately and shows an upload progress indicator
         ->set('step', 5)
         ->assertSee('جاري رفع ورقة العائلة')
         ->assertSee('حد أقصى 50 م.ب')
+        ->assertSee('اضغط هنا لاختيار الصورة الشخصية', false)
+        ->assertSee(RegistrationDocuments::photoSizeHint(), false)
         ->assertSeeHtml('x-on:livewire-upload-progress')
         ->assertSeeHtml('reg-upload-meter')
         ->set('familyStatusDocument', $document)
@@ -512,6 +642,31 @@ it('rejects family booklet files that exceed the upload limit', function () {
         ->assertHasErrors(['familyStatusDocument' => 'max'])
         ->assertSee('حجم شهادة الوضع العائلي يجب ألا يتجاوز 50 م.ب')
         ->assertSet('hasFamilyDocument', false);
+});
+
+it('rejects employee photos that exceed the 10 megabyte limit', function () {
+    Storage::fake('local');
+
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1971);
+
+    Employee::factory()->create([
+        'employee_number' => '5022',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'صالح نوري',
+        'workplace' => 'general_admin',
+    ]);
+
+    $tooLarge = UploadedFile::fake()->image('employee.jpg')->size(RegistrationDocuments::photoMaxKilobytes() + 1);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('step', 5)
+        ->set('employeePhoto', $tooLarge)
+        ->assertHasErrors(['employeePhoto' => 'max'])
+        ->assertSee('حجم صورة الموظف يجب ألا يتجاوز 10 م.ب')
+        ->assertSet('hasEmployeePhoto', false);
 });
 
 it('raises livewire temporary upload limits for family booklet scans', function () {

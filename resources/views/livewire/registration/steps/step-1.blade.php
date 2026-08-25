@@ -55,7 +55,8 @@
                             type="text"
                             inputmode="numeric"
                             autocomplete="username"
-                            class="reg-input reg-login-input"
+                            @class(['reg-input', 'reg-login-input', 'reg-input-invalid' => $errors->has('nationalId')])
+                            data-reg-field="nationalId"
                             placeholder="119990000000"
                             maxlength="12"
                             dir="ltr"
@@ -65,7 +66,7 @@
                 </div>
             </div>
 
-            <label class="reg-consent mt-6">
+            <label class="reg-consent mt-6" data-reg-field="consent" @class(['reg-input-invalid' => $errors->has('consent')])>
                 <input wire:model.live="consent" type="checkbox" class="mt-1 size-5 shrink-0 rounded border-slate-300 text-teal-600 focus:ring-teal-500">
                 <span class="text-sm leading-relaxed text-slate-600">
                     أوافق على جمع ومعالجة بياناتي الشخصية والطبية لإدارة التغطية الصحية.
@@ -73,6 +74,8 @@
                 </span>
             </label>
             @error('consent') <p class="reg-field-error mt-2">{{ $message }}</p> @enderror
+
+            @include('livewire.registration.partials.validation-summary')
 
             <button
                 type="button"

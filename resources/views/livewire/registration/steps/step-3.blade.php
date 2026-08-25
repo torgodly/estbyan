@@ -39,7 +39,7 @@
                             </label>
                         @endforeach
                     </div>
-                    @error('chronicConditions') <p class="reg-field-error mt-3">{{ $message }}</p> @enderror
+                    @error('chronicConditions') <p class="reg-field-error mt-3" data-reg-field="chronicConditions">{{ $message }}</p> @enderror
                 </div>
             @endif
         </x-reg-medical-question>

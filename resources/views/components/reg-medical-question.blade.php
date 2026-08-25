@@ -1,12 +1,14 @@
 @props(['question', 'property', 'value'])
 
 <div
-    @class([
+    {{ $attributes->class([
         'reg-medical-block',
         'reg-medical-block-yes' => $value === true,
         'reg-medical-block-no' => $value === false,
-    ])
-    wire:key="medical-block-{{ $property }}"
+    ])->merge([
+        'data-reg-field' => $property,
+        'wire:key' => 'medical-block-'.$property,
+    ]) }}
 >
     <div class="reg-medical-block-head">
         <p class="reg-medical-question">{{ $question }}</p>

@@ -104,7 +104,8 @@ class MedicalRegistrationForm
                             ->directory('registrations')
                             ->visibility('private')
                             ->image()
-                            ->maxSize(RegistrationDocuments::maxKilobytes())
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/jpg'])
+                            ->maxSize(RegistrationDocuments::photoMaxKilobytes())
                             ->downloadable()
                             ->openable(),
                     ]),

@@ -21,7 +21,12 @@
 
     <div class="space-y-5">
         <div
-            @class(['reg-upload', 'reg-upload-done' => $hasFamilyDocument || $familyStatusDocument])
+            data-reg-field="familyStatusDocument"
+            @class([
+                'reg-upload',
+                'reg-upload-done' => $hasFamilyDocument || $familyStatusDocument,
+                'reg-input-invalid' => $errors->has('familyStatusDocument'),
+            ])
             x-data="{ uploading: false, progress: 0, error: false }"
             x-on:livewire-upload-start="uploading = true; error = false; progress = 0"
             x-on:livewire-upload-finish="uploading = false; progress = 100"
@@ -84,8 +89,9 @@
         </div>
         @error('familyStatusDocument') <p class="reg-field-error -mt-3 justify-center">{{ $message }}</p> @enderror
 
+        <x-reg-photo-requirements title-id="employee-photo-requirements" />
+
         <div
-            @class(['reg-upload', 'reg-upload-done' => $hasEmployeePhoto || $employeePhoto])
             x-data="{ uploading: false, progress: 0, error: false }"
             x-on:livewire-upload-start="uploading = true; error = false; progress = 0"
             x-on:livewire-upload-finish="uploading = false; progress = 100"
@@ -94,50 +100,63 @@
             x-on:livewire-upload-progress="progress = $event.detail.progress"
             wire:key="employee-photo-upload"
         >
-            <p class="font-bold text-slate-800">الصورة الشخصية للموظف <span class="reg-required">*</span></p>
-            <p class="mt-1 text-xs text-slate-500">JPG أو PNG أو WEBP — حد أقصى {{ $maxUploadMb }} م.ب — مطلوبة لإصدار بطاقة التأمين</p>
+            <p class="reg-label">الصورة الشخصية للموظف <span class="reg-required">*</span></p>
+            <p class="mt-1 text-xs text-slate-500">مطلوبة لإصدار بطاقة التأمين</p>
 
-            <div class="reg-photo-picker mt-4 !items-center">
-                <div @class([
-                    'reg-photo-preview',
-                    'reg-photo-preview-filled' => $employeePhoto || $hasEmployeePhoto,
-                ])>
-                    @if ($employeePhoto)
+            @php
+                $employeeHasPhoto = (bool) ($employeePhoto || $hasEmployeePhoto);
+            @endphp
+            <label
+                data-reg-field="employeePhoto"
+                @class([
+                    'reg-photo-dropzone relative mt-3 overflow-hidden',
+                    'reg-photo-dropzone-filled' => $employeeHasPhoto,
+                    'reg-photo-dropzone-invalid' => $errors->has('employeePhoto'),
+                ])
+            >
+                <input
+                    class="reg-upload-hit"
+                    type="file"
+                    accept="{{ $photoAccept }}"
+                    wire:model="employeePhoto"
+                    x-bind:disabled="uploading"
+                    aria-label="الصورة الشخصية للموظف"
+                >
+
+                @if ($employeePhoto)
+                    <div class="reg-photo-dropzone-frame pointer-events-none">
                         <img src="{{ $employeePhoto->temporaryUrl() }}" alt="معاينة صورة الموظف" class="size-full object-cover">
-                    @elseif ($hasEmployeePhoto && $employeePreviewUrl)
+                        <span class="reg-photo-badge">معاينة جديدة</span>
+                    </div>
+                @elseif ($hasEmployeePhoto && $employeePreviewUrl)
+                    <div class="reg-photo-dropzone-frame pointer-events-none">
                         <img src="{{ $employeePreviewUrl }}?v={{ $previewVersion }}" alt="صورة الموظف" class="size-full object-cover">
-                    @else
-                        <div class="flex flex-col items-center gap-2 px-4 text-center">
-                            <svg class="size-9 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"/></svg>
-                            <span class="text-xs text-slate-400">JPG أو PNG</span>
-                        </div>
-                    @endif
+                        <span class="reg-photo-badge">محفوظة</span>
+                    </div>
+                @elseif ($hasEmployeePhoto)
+                    <div class="reg-photo-dropzone-frame pointer-events-none">
+                        <span class="reg-photo-badge">محفوظة</span>
+                    </div>
+                @else
+                    <div class="reg-photo-dropzone-icon pointer-events-none" aria-hidden="true">
+                        <svg class="size-8" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"/></svg>
+                    </div>
+                @endif
 
-                    @if ($employeePhoto || $hasEmployeePhoto)
-                        <span class="reg-photo-badge">
-                            {{ $employeePhoto ? 'معاينة جديدة' : 'محفوظة' }}
+                <div class="reg-photo-dropzone-copy pointer-events-none">
+                    <p class="reg-photo-dropzone-title">
+                        <span x-show="!uploading">
+                            {{ $employeeHasPhoto ? 'تم اختيار صورة الموظف' : 'اضغط هنا لاختيار الصورة الشخصية' }}
                         </span>
-                    @endif
+                        <span x-show="uploading" x-cloak>جاري رفع الصورة…</span>
+                    </p>
+                    <p class="reg-photo-dropzone-hint">{{ \App\Support\RegistrationDocuments::photoSizeHint() }} — الوجه واضح على خلفية بيضاء</p>
+                    <span class="reg-photo-dropzone-cta">
+                        <span x-show="!uploading">{{ $employeeHasPhoto ? 'تغيير الصورة' : 'اختيار صورة' }}</span>
+                        <span x-show="uploading" x-cloak class="inline-flex items-center gap-2" x-text="'جاري الرفع… ' + Math.round(progress) + '%'"></span>
+                    </span>
                 </div>
-
-                <label class="reg-btn-secondary relative mt-3 !min-h-11 w-full cursor-pointer overflow-hidden sm:!w-auto sm:min-w-[10rem]">
-                    <input
-                        class="reg-upload-hit"
-                        type="file"
-                        accept="{{ $photoAccept }}"
-                        wire:model="employeePhoto"
-                        x-bind:disabled="uploading"
-                        aria-label="الصورة الشخصية للموظف"
-                    >
-                    <span x-show="!uploading" class="pointer-events-none">
-                        {{ ($employeePhoto || $hasEmployeePhoto) ? 'تغيير الصورة' : 'اختيار صورة' }}
-                    </span>
-                    <span x-show="uploading" x-cloak class="pointer-events-none inline-flex items-center gap-2">
-                        <svg class="size-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                        <span x-text="'جاري الرفع… ' + Math.round(progress) + '%'"></span>
-                    </span>
-                </label>
-            </div>
+            </label>
 
             <div x-show="uploading" x-cloak class="mx-auto mt-4 max-w-xs">
                 <div class="reg-upload-meter">

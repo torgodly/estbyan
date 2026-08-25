@@ -24,11 +24,11 @@
             <div>
                 <label class="reg-label">الإدارة <span class="reg-required">*</span></label>
                 @if ($identityLocked)
-                    <div class="reg-input bg-slate-50 font-bold text-navy-900">
+                    <div class="reg-input bg-slate-50 font-bold text-navy-900" data-reg-field="workplace">
                         {{ $workplaces[$workplace] ?? $workplace }}
                     </div>
                 @else
-                    <select wire:model.live="workplace" class="reg-select">
+                    <select wire:model.live="workplace" data-reg-field="workplace" @class(['reg-select', 'reg-input-invalid' => $errors->has('workplace')])>
                         <option value="">— اختر —</option>
                         @foreach ($workplaces as $key => $label)
                             <option value="{{ $key }}">{{ $label }}</option>
@@ -57,7 +57,7 @@
         <div class="reg-grid-2">
             <div>
                 <label class="reg-label">تاريخ الميلاد <span class="reg-required">*</span></label>
-                <input wire:model.blur="dateOfBirth" type="date" class="reg-input">
+                <input wire:model.blur="dateOfBirth" type="date" data-reg-field="dateOfBirth" @class(['reg-input', 'reg-input-invalid' => $errors->has('dateOfBirth')])>
                 @if (\App\Support\LibyanNationalId::isValid($nationalId))
                     <p class="mt-1 text-xs text-slate-400">يجب أن تكون سنة الميلاد {{ \App\Support\LibyanNationalId::birthYear($nationalId) }} حسب الرقم الوطني</p>
                 @endif
@@ -65,16 +65,17 @@
             </div>
             <div>
                 <label class="reg-label">الجنس <span class="reg-required">*</span></label>
-                <div class="reg-input bg-slate-50 font-bold text-navy-900">
+                <div class="reg-input bg-slate-50 font-bold text-navy-900" data-reg-field="gender">
                     {{ $gender === 'female' ? 'أنثى' : 'ذكر' }}
                 </div>
                 <p class="mt-1 text-xs text-slate-400">يُستخرج تلقائياً من الرقم الوطني ولا يمكن تعديله</p>
+                @error('gender') <p class="reg-field-error">{{ $message }}</p> @enderror
             </div>
         </div>
 
         <div>
             <label class="reg-label">الحالة الاجتماعية <span class="reg-required">*</span></label>
-            <select wire:model.live="maritalStatus" class="reg-select">
+            <select wire:model.live="maritalStatus" data-reg-field="maritalStatus" @class(['reg-select', 'reg-input-invalid' => $errors->has('maritalStatus')])>
                 <option value="single">أعزب / عزباء</option>
                 <option value="married">متزوج / متزوجة</option>
             </select>
@@ -98,6 +99,7 @@
                     يمكن إضافة الوالدين في خطوة المستفيدين
                 @endif
             </p>
+            @error('maritalStatus') <p class="reg-field-error">{{ $message }}</p> @enderror
         </div>
     </div>
 
@@ -110,7 +112,7 @@
             <div class="reg-grid-2">
                 <div>
                     <label class="reg-label">رقم الهاتف <span class="reg-required">*</span></label>
-                    <input wire:model.blur="phone" type="tel" inputmode="tel" class="reg-input" placeholder="09XXXXXXXX">
+                    <input wire:model.blur="phone" type="tel" inputmode="tel" data-reg-field="phone" @class(['reg-input', 'reg-input-invalid' => $errors->has('phone')]) placeholder="09XXXXXXXX">
                     @error('phone') <p class="reg-field-error">{{ $message }}</p> @enderror
                 </div>
                 <div>
@@ -120,7 +122,7 @@
             </div>
             <div>
                 <label class="reg-label">البريد الإلكتروني</label>
-                <input wire:model.blur="email" type="text" inputmode="email" autocomplete="email" dir="ltr" class="reg-input text-left" placeholder="name@example.com">
+                <input wire:model.blur="email" type="text" inputmode="email" autocomplete="email" dir="ltr" data-reg-field="email" @class(['reg-input', 'text-left', 'reg-input-invalid' => $errors->has('email')]) placeholder="name@example.com">
                 <p class="mt-1 text-xs text-slate-400">اختياري — اتركه فارغاً إن لم يكن لديك بريد</p>
                 @error('email') <p class="reg-field-error">{{ $message }}</p> @enderror
             </div>
@@ -132,12 +134,14 @@
                         :options="$cities"
                         placeholder="— اختر المدينة —"
                         search-placeholder="ابحث عن المدينة..."
+                        data-reg-field="city"
+                        @class(['reg-input-invalid' => $errors->has('city')])
                     />
                     @error('city') <p class="reg-field-error">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="reg-label">العنوان السكني <span class="reg-required">*</span></label>
-                    <input wire:model.blur="address" type="text" class="reg-input">
+                    <input wire:model.blur="address" type="text" data-reg-field="address" @class(['reg-input', 'reg-input-invalid' => $errors->has('address')])>
                     @error('address') <p class="reg-field-error">{{ $message }}</p> @enderror
                 </div>
             </div>

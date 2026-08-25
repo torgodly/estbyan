@@ -46,17 +46,18 @@
             <div class="space-y-4">
                 <div>
                     <label class="reg-label">الاسم الكامل <span class="reg-required">*</span></label>
-                    <input wire:model.blur="beneficiaryName" type="text" class="reg-input">
+                    <input wire:model.blur="beneficiaryName" type="text" data-reg-field="beneficiaryName" @class(['reg-input', 'reg-input-invalid' => $errors->has('beneficiaryName')])>
                     @error('beneficiaryName') <p class="reg-field-error">{{ $message }}</p> @enderror
                 </div>
                 <div class="reg-grid-2">
                     <div>
                         <label class="reg-label">القرابة</label>
-                        <select wire:model.live="beneficiaryRelationship" class="reg-select">
+                        <select wire:model.live="beneficiaryRelationship" data-reg-field="beneficiaryRelationship" @class(['reg-select', 'reg-input-invalid' => $errors->has('beneficiaryRelationship')])>
                             @foreach ($availableBeneficiaryRelationships as $relationship)
                                 <option value="{{ $relationship->value }}">{{ $relationship->label($employeeGender) }}</option>
                             @endforeach
                         </select>
+                        @error('beneficiaryRelationship') <p class="reg-field-error">{{ $message }}</p> @enderror
                         <p class="mt-1 text-xs text-slate-400">
                             @if ($maritalStatus === 'married')
                                 متاح: {{ $spouseLabel }}، الأبناء، والأب والأم
@@ -72,11 +73,12 @@
                     </div>
                     <div>
                         <label class="reg-label">فصيلة الدم</label>
-                        <select wire:model.live="beneficiaryBloodType" class="reg-select">
+                        <select wire:model.live="beneficiaryBloodType" data-reg-field="beneficiaryBloodType" @class(['reg-select', 'reg-input-invalid' => $errors->has('beneficiaryBloodType')])>
                             @foreach (\App\Enums\BloodType::cases() as $blood)
                                 <option value="{{ $blood->value }}">{{ $blood->label() }}</option>
                             @endforeach
                         </select>
+                        @error('beneficiaryBloodType') <p class="reg-field-error">{{ $message }}</p> @enderror
                     </div>
                 </div>
 
@@ -122,6 +124,7 @@
                                 @endif
                             </p>
                         @endif
+                        @error('beneficiaryIsLibyan') <p class="reg-field-error" data-reg-field="beneficiaryIsLibyan">{{ $message }}</p> @enderror
                     </div>
                 @endif
 
@@ -129,13 +132,13 @@
                     @if ($isLibyanBeneficiary)
                         <div>
                             <label class="reg-label">الرقم الوطني <span class="reg-required">*</span></label>
-                            <input wire:model.blur="beneficiaryNationalId" type="text" inputmode="numeric" maxlength="12" class="reg-input" placeholder="120020129499" dir="ltr">
+                            <input wire:model.blur="beneficiaryNationalId" type="text" inputmode="numeric" maxlength="12" data-reg-field="beneficiaryNationalId" @class(['reg-input', 'reg-input-invalid' => $errors->has('beneficiaryNationalId')]) placeholder="120020129499" dir="ltr">
                             <p class="mt-1 text-xs text-slate-400">12 رقماً — يبدأ بـ 1 للذكر أو 2 للأنثى</p>
                             @error('beneficiaryNationalId') <p class="reg-field-error">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="reg-label">تاريخ الميلاد <span class="reg-required">*</span></label>
-                            <input wire:model.blur="beneficiaryDateOfBirth" type="date" class="reg-input">
+                            <input wire:model.blur="beneficiaryDateOfBirth" type="date" data-reg-field="beneficiaryDateOfBirth" @class(['reg-input', 'reg-input-invalid' => $errors->has('beneficiaryDateOfBirth')])>
                             @error('beneficiaryDateOfBirth') <p class="reg-field-error">{{ $message }}</p> @enderror
                         </div>
                     @else
@@ -146,12 +149,14 @@
                                 :options="$nationalities"
                                 placeholder="— اختر الجنسية —"
                                 search-placeholder="ابحث عن الجنسية..."
+                                data-reg-field="beneficiaryNationality"
+                                @class(['reg-input-invalid' => $errors->has('beneficiaryNationality')])
                             />
                             @error('beneficiaryNationality') <p class="reg-field-error">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="reg-label">رقم جواز السفر <span class="reg-required">*</span></label>
-                            <input wire:model.blur="beneficiaryPassportNumber" type="text" class="reg-input" placeholder="A12345678" dir="ltr" maxlength="40">
+                            <input wire:model.blur="beneficiaryPassportNumber" type="text" data-reg-field="beneficiaryPassportNumber" @class(['reg-input', 'reg-input-invalid' => $errors->has('beneficiaryPassportNumber')]) placeholder="A12345678" dir="ltr" maxlength="40">
                             @error('beneficiaryPassportNumber') <p class="reg-field-error">{{ $message }}</p> @enderror
                         </div>
                     @endif
@@ -160,50 +165,62 @@
                 @unless ($isLibyanBeneficiary)
                     <div>
                         <label class="reg-label">تاريخ الميلاد <span class="reg-required">*</span></label>
-                        <input wire:model.blur="beneficiaryDateOfBirth" type="date" class="reg-input">
+                        <input wire:model.blur="beneficiaryDateOfBirth" type="date" data-reg-field="beneficiaryDateOfBirth" @class(['reg-input', 'reg-input-invalid' => $errors->has('beneficiaryDateOfBirth')])>
                         @error('beneficiaryDateOfBirth') <p class="reg-field-error">{{ $message }}</p> @enderror
                     </div>
                 @endunless
 
                 <div>
                     <label class="reg-label">صورة المستفيد <span class="reg-required">*</span></label>
-                    <div class="reg-photo-picker">
-                        <div @class([
-                            'reg-photo-preview',
-                            'reg-photo-preview-filled' => $beneficiaryPhoto || $beneficiaryExistingPhotoPath,
-                        ])>
-                            @if ($beneficiaryPhoto)
+                    <x-reg-photo-requirements title-id="beneficiary-photo-requirements" class="mt-2 mb-4" />
+                    @php
+                        $beneficiaryHasPhoto = (bool) ($beneficiaryPhoto || $beneficiaryExistingPhotoPath);
+                    @endphp
+                    <label
+                        data-reg-field="beneficiaryPhoto"
+                        @class([
+                            'reg-photo-dropzone',
+                            'reg-photo-dropzone-filled' => $beneficiaryHasPhoto,
+                            'reg-photo-dropzone-invalid' => $errors->has('beneficiaryPhoto'),
+                        ])
+                    >
+                        @if ($beneficiaryPhoto)
+                            <div class="reg-photo-dropzone-frame">
                                 <img src="{{ $beneficiaryPhoto->temporaryUrl() }}" alt="معاينة صورة المستفيد" class="size-full object-cover">
-                            @elseif ($beneficiaryExistingPhotoPath && $editingBeneficiaryIndex !== null)
+                                <span class="reg-photo-badge">معاينة جديدة</span>
+                            </div>
+                        @elseif ($beneficiaryExistingPhotoPath && $editingBeneficiaryIndex !== null)
+                            <div class="reg-photo-dropzone-frame">
                                 <img src="{{ $this->beneficiaryPhotoUrl($beneficiaries[$editingBeneficiaryIndex] ?? null) }}" alt="صورة المستفيد" class="size-full object-cover">
-                            @else
-                                <div class="flex flex-col items-center gap-2 px-4 text-center">
-                                    <svg class="size-9 text-slate-300" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"/></svg>
-                                    <span class="text-xs text-slate-400">JPG أو PNG</span>
-                                </div>
-                            @endif
+                                <span class="reg-photo-badge">محفوظة</span>
+                            </div>
+                        @else
+                            <div class="reg-photo-dropzone-icon" aria-hidden="true">
+                                <svg class="size-8" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"/></svg>
+                            </div>
+                        @endif
 
-                            @if ($beneficiaryPhoto || $beneficiaryExistingPhotoPath)
-                                <span class="reg-photo-badge">
-                                    @if ($beneficiaryPhoto)
-                                        معاينة جديدة
-                                    @else
-                                        محفوظة
-                                    @endif
+                        <div class="reg-photo-dropzone-copy">
+                            <p class="reg-photo-dropzone-title">
+                                <span wire:loading.remove wire:target="beneficiaryPhoto">
+                                    {{ $beneficiaryHasPhoto ? 'تم اختيار صورة المستفيد' : 'اضغط هنا لاختيار الصورة الشخصية' }}
                                 </span>
-                            @endif
+                                <span wire:loading wire:target="beneficiaryPhoto">جاري رفع الصورة…</span>
+                            </p>
+                            <p class="reg-photo-dropzone-hint">{{ \App\Support\RegistrationDocuments::photoSizeHint() }} — الوجه واضح على خلفية بيضاء</p>
+                            <span class="reg-photo-dropzone-cta">
+                                {{ $beneficiaryHasPhoto ? 'تغيير الصورة' : 'اختيار صورة' }}
+                            </span>
                         </div>
 
-                        <label class="reg-btn-secondary mt-3 !min-h-11 w-full cursor-pointer sm:!w-auto sm:min-w-[10rem]">
-                            <span wire:loading.remove wire:target="beneficiaryPhoto">
-                                {{ ($beneficiaryPhoto || $beneficiaryExistingPhotoPath) ? 'تغيير الصورة' : 'اختيار صورة' }}
-                            </span>
-                            <span wire:loading wire:target="beneficiaryPhoto">جاري الرفع…</span>
-                            <input wire:model="beneficiaryPhoto" type="file" accept="image/jpeg,image/png" class="sr-only">
-                        </label>
-
-                        @error('beneficiaryPhoto') <p class="reg-field-error mt-2">{{ $message }}</p> @enderror
-                    </div>
+                        <input
+                            wire:model="beneficiaryPhoto"
+                            type="file"
+                            accept="{{ \App\Support\RegistrationDocuments::photoAcceptAttribute() }}"
+                            class="sr-only"
+                        >
+                    </label>
+                    @error('beneficiaryPhoto') <p class="reg-field-error mt-2">{{ $message }}</p> @enderror
                 </div>
 
                 <div class="rounded-2xl border border-slate-200 bg-white p-4">
@@ -332,7 +349,7 @@
 </section>
 
 @error('beneficiaries')
-    <p class="reg-field-error px-1">{{ $message }}</p>
+    <p class="reg-field-error px-1" data-reg-field="beneficiaries">{{ $message }}</p>
 @enderror
 
 @include('livewire.registration.partials.actions', [

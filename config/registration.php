@@ -107,8 +107,9 @@ return [
     */
     'uploads' => [
         'max_kilobytes' => (int) env('REGISTRATION_UPLOAD_MAX_KB', 51200),
+        'photo_max_kilobytes' => (int) env('REGISTRATION_PHOTO_MAX_KB', 10240),
         'family_mimes' => ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'],
-        'photo_mimes' => ['jpg', 'jpeg', 'png', 'webp'],
+        'photo_mimes' => ['jpg', 'jpeg', 'png'],
     ],
 
     /*
