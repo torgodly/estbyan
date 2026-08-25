@@ -1,5 +1,6 @@
 @props([
     'titleId' => 'photo-requirements-title',
+    'showChildren' => false,
 ])
 
 @php
@@ -111,6 +112,7 @@
             </ol>
         </section>
 
+        @if ($showChildren)
         <section class="rounded-2xl bg-white p-4 ring-1 ring-slate-200" aria-labelledby="{{ $titleId }}-children">
             <h4 id="{{ $titleId }}-children" class="mb-3 flex items-center gap-2 text-sm font-extrabold text-navy-900 sm:text-base">
                 <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-navy-900 text-xs font-extrabold text-white">4</span>
@@ -133,6 +135,7 @@
                 </li>
             </ol>
         </section>
+        @endif
     </div>
 
     <p class="mt-3 rounded-xl bg-amber-50 px-3 py-2.5 text-sm font-medium leading-relaxed text-amber-950 ring-1 ring-amber-100">
