@@ -14,9 +14,11 @@ use App\Rules\LibyanNationalId;
 use App\Support\LibyanNationalId as LibyanNationalIdSupport;
 use App\Support\RegistrationDocuments;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
@@ -30,6 +32,7 @@ class MedicalRegistrationForm extends Component
 
     public int $step = 1;
 
+    #[Locked]
     public ?int $registrationId = null;
 
     public string $employeeNumber = '';
@@ -194,13 +197,13 @@ class MedicalRegistrationForm extends Component
             $this->syncBeneficiaryIdentityFieldsToCitizenship();
         }
 
-        if ($this->isStepOneField($property) && ! $this->registrationId) {
+        if ($this->isStepOneField($property) && ! $this->hasRegistrationSession()) {
             $this->persistStepOneDraft();
 
             return;
         }
 
-        if ($this->registrationId && $this->isAutoPersistField($property)) {
+        if ($this->hasRegistrationSession() && $this->isAutoPersistField($property)) {
             $this->autoPersistToDatabase();
         }
     }
@@ -262,6 +265,8 @@ class MedicalRegistrationForm extends Component
 
     public function verifyIdentity(): void
     {
+        $this->throttleIdentityVerification();
+
         $this->validateRules([
             'nationalId' => ['required', 'string', new LibyanNationalId],
             'consent' => ['accepted'],
@@ -768,7 +773,7 @@ class MedicalRegistrationForm extends Component
             return;
         }
 
-        if ($this->registrationId) {
+        if ($this->hasRegistrationSession()) {
             $this->autoPersistToDatabase();
         } elseif ($this->step === 1) {
             $this->persistStepOneDraft();
@@ -907,11 +912,35 @@ class MedicalRegistrationForm extends Component
     {
         $this->step = $step;
 
-        if ($this->registrationId) {
-            MedicalRegistration::query()
-                ->whereKey($this->registrationId)
-                ->update(['current_step' => $step]);
+        if ($this->hasRegistrationSession()) {
+            $this->registration()?->update(['current_step' => $step]);
         }
+    }
+
+    protected function hasRegistrationSession(): bool
+    {
+        return is_numeric(session('registration_id'));
+    }
+
+    protected function throttleIdentityVerification(): void
+    {
+        $ipKey = 'registration-verify:ip:'.request()->ip();
+        $nationalIdKey = 'registration-verify:nid:'.preg_replace('/\D+/', '', $this->nationalId);
+
+        if (RateLimiter::tooManyAttempts($ipKey, 10)) {
+            $this->failValidation([
+                'nationalId' => 'محاولات تحقق كثيرة من هذا الجهاز. يرجى الانتظار '.RateLimiter::availableIn($ipKey).' ثانية.',
+            ]);
+        }
+
+        if ($nationalIdKey !== 'registration-verify:nid:' && RateLimiter::tooManyAttempts($nationalIdKey, 5)) {
+            $this->failValidation([
+                'nationalId' => 'محاولات كثيرة لهذا الرقم الوطني. يرجى المحاولة لاحقاً.',
+            ]);
+        }
+
+        RateLimiter::hit($ipKey, 60);
+        RateLimiter::hit($nationalIdKey, 900);
     }
 
     protected function restoreFromSession(): void
@@ -1029,11 +1058,25 @@ class MedicalRegistrationForm extends Component
 
     protected function registration(): ?MedicalRegistration
     {
-        if (! $this->registrationId) {
+        $sessionId = session('registration_id');
+
+        if (! is_numeric($sessionId)) {
             return null;
         }
 
-        return MedicalRegistration::query()->find($this->registrationId);
+        $registration = MedicalRegistration::query()->find((int) $sessionId);
+
+        if ($registration === null) {
+            session()->forget('registration_id');
+
+            return null;
+        }
+
+        if ($this->registrationId !== $registration->id) {
+            $this->registrationId = $registration->id;
+        }
+
+        return $registration;
     }
 
     public function beneficiaryPhotoUrl(?array $beneficiary): ?string
@@ -1108,6 +1151,10 @@ class MedicalRegistrationForm extends Component
     {
         $registration->loadMissing(['beneficiaries', 'employee']);
         $this->registrationId = $registration->id;
+        session([
+            'registration_id' => $registration->id,
+            'registration_gate_passed' => true,
+        ]);
         $this->employeeNumber = $registration->employee_number;
         $this->nationalId = $registration->national_id;
         $this->dateOfBirth = $registration->date_of_birth?->format('Y-m-d') ?? '';
