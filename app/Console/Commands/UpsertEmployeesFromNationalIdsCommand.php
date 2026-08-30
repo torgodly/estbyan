@@ -7,22 +7,19 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 #[Signature('employees:upsert-national-ids')]
-#[Description('Create or update employees from storage/app/imports/national-ids.xlsx')]
+#[Description('Create or update employees from database/data/national-ids.xlsx')]
 class UpsertEmployeesFromNationalIdsCommand extends Command
 {
-    public const RELATIVE_PATH = 'imports/national-ids.xlsx';
-
     public function handle(): int
     {
-        $path = Storage::disk('local')->path(self::RELATIVE_PATH);
+        $path = database_path('data/national-ids.xlsx');
 
         if (! is_file($path)) {
-            $this->error('File not found: storage/app/'.self::RELATIVE_PATH);
+            $this->error("File not found: {$path}");
 
             return self::FAILURE;
         }

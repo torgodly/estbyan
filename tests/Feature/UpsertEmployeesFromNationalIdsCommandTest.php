@@ -1,18 +1,29 @@
 <?php
 
-use App\Console\Commands\UpsertEmployeesFromNationalIdsCommand;
 use App\Models\Employee;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 beforeEach(function () {
-    Storage::disk('local')->makeDirectory('imports');
+    $path = database_path('data/national-ids.xlsx');
+
+    if (is_file($path)) {
+        rename($path, $path.'.bak');
+    }
 });
 
 afterEach(function () {
-    Storage::disk('local')->delete(UpsertEmployeesFromNationalIdsCommand::RELATIVE_PATH);
+    $path = database_path('data/national-ids.xlsx');
+    $backup = $path.'.bak';
+
+    if (is_file($path)) {
+        unlink($path);
+    }
+
+    if (is_file($backup)) {
+        rename($backup, $path);
+    }
 });
 
 it('creates new employees and updates existing ones from the national ids spreadsheet', function () {
@@ -33,7 +44,7 @@ it('creates new employees and updates existing ones from the national ids spread
         ['12037', 'حسن احمد عبدالرحيم', ''],
     ], null, 'A1');
 
-    (new Xlsx($spreadsheet))->save(Storage::disk('local')->path(UpsertEmployeesFromNationalIdsCommand::RELATIVE_PATH));
+    (new Xlsx($spreadsheet))->save(database_path('data/national-ids.xlsx'));
 
     Artisan::call('employees:upsert-national-ids');
 
@@ -77,7 +88,7 @@ it('skips rows whose national id already belongs to another employee', function 
         ['1642', 'عبدالحكيم سالم عمار الهنشيري', '119780100766'],
     ], null, 'A1');
 
-    (new Xlsx($spreadsheet))->save(Storage::disk('local')->path(UpsertEmployeesFromNationalIdsCommand::RELATIVE_PATH));
+    (new Xlsx($spreadsheet))->save(database_path('data/national-ids.xlsx'));
 
     Artisan::call('employees:upsert-national-ids');
 
