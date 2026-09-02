@@ -2,11 +2,12 @@
 
 namespace App\Filament\Resources\Employees\Schemas;
 
-use Filament\Forms\Components\Select;
+use App\Models\Employee;
+use Closure;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Model;
 
 class EmployeeForm
 {
@@ -15,7 +16,6 @@ class EmployeeForm
         return $schema
             ->components([
                 Section::make('بيانات الموظف')
-                    ->description('تحديث بيانات أساسية فقط. الاستيراد الجماعي يتم عبر الأمر: php artisan employees:import')
                     ->schema([
                         TextInput::make('full_name')
                             ->label('الاسم الكامل')
@@ -24,27 +24,46 @@ class EmployeeForm
                         TextInput::make('employee_number')
                             ->label('الرقم الوظيفي')
                             ->required()
-                            ->maxLength(50),
+                            ->numeric()
+                            ->maxLength(50)
+                            ->rule(static function (TextInput $component): Closure {
+                                return function (string $attribute, mixed $value, Closure $fail) use ($component): void {
+                                    if ($value === null || $value === '') {
+                                        return;
+                                    }
+
+                                    $employeeNumber = ctype_digit((string) $value)
+                                        ? str_pad((string) $value, 6, '0', STR_PAD_LEFT)
+                                        : (string) $value;
+
+                                    $query = Employee::query()->where('employee_number', $employeeNumber);
+
+                                    $record = $component->getRecord();
+
+                                    if ($record instanceof Model) {
+                                        $query->whereKeyNot($record->getKey());
+                                    }
+
+                                    if ($query->exists()) {
+                                        $fail(__('validation.unique', ['attribute' => $attribute]));
+                                    }
+                                };
+                            })
+                            ->dehydrateStateUsing(function (?string $state): ?string {
+                                if ($state === null || $state === '' || ! ctype_digit($state)) {
+                                    return $state;
+                                }
+
+                                return str_pad($state, 6, '0', STR_PAD_LEFT);
+                            }),
                         TextInput::make('national_id')
                             ->label('الرقم الوطني')
                             ->required()
-                            ->maxLength(20),
-                        Select::make('workplace')
-                            ->label('الإدارة')
-                            ->options(fn (): array => config('registration.workplaces', []))
-                            ->searchable()
-                            ->nullable(),
-                        TextInput::make('office')
-                            ->label('المكتب')
-                            ->maxLength(255)
-                            ->nullable(),
-                        Toggle::make('is_active')
-                            ->label('نشط')
-                            ->default(true)
-                            ->required()
-                            ->inline(false),
+                            ->rule('digits:12')
+                            ->unique(ignoreRecord: true)
+                            ->dehydrateStateUsing(fn (?string $state): ?string => filled($state) ? trim($state) : $state),
                     ])
-                    ->columns(2),
+                    ->columns(1),
             ]);
     }
 }

@@ -1,6 +1,8 @@
 <?php
 
 use App\Filament\Resources\Employees\EmployeeResource;
+use App\Filament\Resources\Employees\Pages\CreateEmployee;
+use App\Filament\Resources\Employees\Pages\EditEmployee;
 use App\Filament\Resources\Employees\Pages\ListEmployees;
 use App\Filament\Resources\Employees\Pages\ViewEmployee;
 use App\Models\Employee;
@@ -8,12 +10,161 @@ use App\Models\MedicalRegistration;
 use App\Models\User;
 use Livewire\Livewire;
 
-it('does not allow creating or editing employees from the admin panel', function () {
+use function Pest\Laravel\assertDatabaseHas;
+
+it('allows creating and editing employees from the admin panel', function () {
     $employee = Employee::factory()->create();
 
-    expect(EmployeeResource::canCreate())->toBeFalse()
-        ->and(EmployeeResource::canEdit($employee))->toBeFalse()
-        ->and(EmployeeResource::getPages())->not->toHaveKeys(['create', 'edit']);
+    expect(EmployeeResource::canCreate())->toBeTrue()
+        ->and(EmployeeResource::canEdit($employee))->toBeTrue()
+        ->and(EmployeeResource::getPages())->toHaveKeys(['create', 'edit', 'view', 'index']);
+});
+
+it('creates an employee from the admin form', function () {
+    $admin = User::factory()->create();
+
+    $this->actingAs($admin);
+
+    Livewire::test(CreateEmployee::class)
+        ->fillForm([
+            'full_name' => 'موظف جديد من اللوحة',
+            'employee_number' => '28105',
+            'national_id' => '119880045493',
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors()
+        ->assertRedirect(EmployeeResource::getUrl('view', [
+            'record' => Employee::query()->where('employee_number', '028105')->firstOrFail(),
+        ]));
+
+    assertDatabaseHas(Employee::class, [
+        'employee_number' => '028105',
+        'national_id' => '119880045493',
+        'full_name' => 'موظف جديد من اللوحة',
+        'is_active' => true,
+    ]);
+});
+
+it('edits an employee from the admin form', function () {
+    $admin = User::factory()->create();
+    $employee = Employee::factory()->create([
+        'employee_number' => '028104',
+        'national_id' => '11750300015',
+        'full_name' => 'عصام المبروك قشوط',
+        'workplace' => 'gharyan',
+        'office' => 'مكتب قديم',
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(EditEmployee::class, ['record' => $employee->getRouteKey()])
+        ->fillForm([
+            'full_name' => 'عصام المبروك انطاط قشوط',
+            'employee_number' => '028104',
+            'national_id' => '119750300015',
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors()
+        ->assertRedirect(EmployeeResource::getUrl('view', ['record' => $employee]));
+
+    expect($employee->fresh())
+        ->full_name->toBe('عصام المبروك انطاط قشوط')
+        ->national_id->toBe('119750300015')
+        ->workplace->toBe('gharyan')
+        ->office->toBe('مكتب قديم')
+        ->is_active->toBeTrue();
+});
+
+it('validates required fields and national id length when creating an employee', function () {
+    $admin = User::factory()->create();
+
+    $this->actingAs($admin);
+
+    Livewire::test(CreateEmployee::class)
+        ->fillForm([
+            'full_name' => null,
+            'employee_number' => null,
+            'national_id' => '123',
+        ])
+        ->call('create')
+        ->assertHasFormErrors([
+            'full_name' => 'required',
+            'employee_number' => 'required',
+            'national_id',
+        ])
+        ->assertNotNotified();
+});
+
+it('rejects duplicate employee numbers and national ids on create', function () {
+    $admin = User::factory()->create();
+
+    Employee::factory()->create([
+        'employee_number' => '028104',
+        'national_id' => '119750300015',
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(CreateEmployee::class)
+        ->fillForm([
+            'full_name' => 'موظف مكرر',
+            'employee_number' => '28104',
+            'national_id' => '119880045493',
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['employee_number']);
+
+    Livewire::test(CreateEmployee::class)
+        ->fillForm([
+            'full_name' => 'موظف مكرر رقم وطني',
+            'employee_number' => '28106',
+            'national_id' => '119750300015',
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['national_id']);
+});
+
+it('allows keeping the same employee number and national id when editing', function () {
+    $admin = User::factory()->create();
+    $employee = Employee::factory()->create([
+        'employee_number' => '028107',
+        'national_id' => '119910066223',
+        'full_name' => 'اسم قديم',
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(EditEmployee::class, ['record' => $employee->getRouteKey()])
+        ->fillForm([
+            'full_name' => 'اسم محدّث',
+            'employee_number' => '028107',
+            'national_id' => '119910066223',
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    expect($employee->fresh())
+        ->full_name->toBe('اسم محدّث')
+        ->national_id->toBe('119910066223')
+        ->employee_number->toBe('028107')
+        ->is_active->toBeTrue();
+});
+
+it('shows edit action on the employees table', function () {
+    $admin = User::factory()->create();
+    $employee = Employee::factory()->create([
+        'full_name' => 'موظف للتعديل',
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ListEmployees::class)
+        ->assertSuccessful()
+        ->assertCanSeeTableRecords([$employee])
+        ->assertTableActionExists('edit')
+        ->assertTableActionVisible('edit', $employee);
 });
 
 it('lists employees and supports search', function () {
@@ -36,6 +187,7 @@ it('lists employees and supports search', function () {
         ->assertSuccessful()
         ->assertSee('الإدارة')
         ->assertSee('المكتب')
+        ->assertSee('إضافة موظف')
         ->assertCanSeeTableRecords([$target])
         ->searchTable('77881')
         ->assertCanSeeTableRecords([$target])
@@ -113,7 +265,8 @@ it('shows the employee dossier with registration history and submission state', 
         ->assertSee('أرسل النموذج')
         ->assertSee('سجل طلبات التسجيل')
         ->assertSee('SC26-12345')
-        ->assertSee('فتح الملف');
+        ->assertSee('فتح الملف')
+        ->assertSee('تعديل');
 
     expect($registration->employee_id)->toBe($employee->id)
         ->and($employee->fresh()->hasSubmittedForm())->toBeTrue();

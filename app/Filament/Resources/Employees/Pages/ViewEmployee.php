@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Employees\Pages;
 
 use App\Enums\RegistrationStatus;
 use App\Filament\Resources\Employees\EmployeeResource;
+use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Schema;
 use Illuminate\Contracts\Support\Htmlable;
@@ -46,7 +47,10 @@ class ViewEmployee extends ViewRecord
 
     protected function getHeaderActions(): array
     {
-        return [];
+        return [
+            EditAction::make()
+                ->label('تعديل'),
+        ];
     }
 
     public function hasSubmittedForm(): bool

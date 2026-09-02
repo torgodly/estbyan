@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Employees\Tables;
 
 use App\Enums\RegistrationStatus;
 use App\Models\Employee;
+use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -100,6 +101,8 @@ class EmployeesTable
             ->recordActions([
                 ViewAction::make()
                     ->label('الملف'),
+                EditAction::make()
+                    ->label('تعديل'),
             ])
             ->toolbarActions([]);
     }
