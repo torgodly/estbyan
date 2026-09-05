@@ -1,7 +1,9 @@
 <?php
 
+use App\Filament\Widgets\CoverageStatsOverview;
 use App\Filament\Widgets\EmployeeStatsOverview;
 use App\Filament\Widgets\RegistrationStatsOverview;
+use App\Models\Beneficiary;
 use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Models\User;
@@ -14,7 +16,8 @@ use Livewire\Livewire;
 it('registers custom stats widgets on the dashboard and removes defaults', function () {
     $widgets = Filament::getWidgets();
 
-    expect($widgets)->toContain(RegistrationStatsOverview::class)
+    expect($widgets)->toContain(CoverageStatsOverview::class)
+        ->and($widgets)->toContain(RegistrationStatsOverview::class)
         ->and($widgets)->toContain(EmployeeStatsOverview::class)
         ->and($widgets)->not->toContain(AccountWidget::class)
         ->and($widgets)->not->toContain(FilamentInfoWidget::class);
@@ -37,6 +40,7 @@ it('renders registration and employee stats overview content', function () {
 
     Livewire::test(Dashboard::class)
         ->assertSuccessful()
+        ->assertSeeLivewire(CoverageStatsOverview::class)
         ->assertSeeLivewire(RegistrationStatsOverview::class)
         ->assertSeeLivewire(EmployeeStatsOverview::class)
         ->assertDontSeeLivewire(AccountWidget::class)
@@ -55,4 +59,38 @@ it('renders registration and employee stats overview content', function () {
         ->assertSee('نشطون')
         ->assertSee('قدّموا طلباً')
         ->assertSee('لديهم طلب معلّق');
+
+    Livewire::test(CoverageStatsOverview::class)
+        ->assertSuccessful()
+        ->assertSee('الموظفون المسجّلون')
+        ->assertSee('أفراد العائلة')
+        ->assertSee('إجمالي المسجّلين');
+});
+
+it('counts registered employees and family members excluding drafts', function () {
+    $admin = User::factory()->create();
+    $submitted = MedicalRegistration::factory()->submitted()->create();
+    $approved = MedicalRegistration::factory()->approved()->create();
+    $draft = MedicalRegistration::factory()->create();
+
+    Beneficiary::factory()->count(2)->create([
+        'medical_registration_id' => $submitted->id,
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $approved->id,
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $draft->id,
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(CoverageStatsOverview::class)
+        ->assertSuccessful()
+        ->assertSee('الموظفون المسجّلون')
+        ->assertSee('أفراد العائلة')
+        ->assertSee('إجمالي المسجّلين')
+        ->assertSee('2')
+        ->assertSee('3')
+        ->assertSee('5');
 });

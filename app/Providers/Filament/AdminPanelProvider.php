@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Widgets\CoverageStatsOverview;
 use App\Filament\Widgets\EmployeeStatsOverview;
 use App\Filament\Widgets\RegistrationStatsOverview;
 use Filament\Http\Middleware\Authenticate;
@@ -48,6 +49,7 @@ class AdminPanelProvider extends PanelProvider
                 Dashboard::class,
             ])
             ->widgets([
+                CoverageStatsOverview::class,
                 RegistrationStatsOverview::class,
                 EmployeeStatsOverview::class,
             ])

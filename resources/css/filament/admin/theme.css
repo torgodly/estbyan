@@ -777,3 +777,123 @@
     font-weight: 700;
     color: var(--hr-muted);
 }
+
+.hr-report-lead {
+    margin: 0 0 1rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    line-height: 1.7;
+    color: var(--hr-muted);
+}
+
+.hr-kpis--report {
+    margin-top: 0;
+}
+
+@media (min-width: 768px) {
+    .hr-kpis--report {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.hr-report-table-wrap {
+    overflow-x: auto;
+}
+
+.hr-report-table th,
+.hr-report-table td {
+    width: auto;
+    white-space: nowrap;
+}
+
+.hr-report-table td .hr-report-share {
+    white-space: normal;
+}
+
+.hr-report-table th:first-child,
+.hr-report-table td:first-child {
+    width: 40%;
+    white-space: normal;
+}
+
+.hr-report-disease {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.hr-report-bar {
+    display: block;
+    height: 0.4rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--hr-soft);
+}
+
+.hr-report-bar__fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--hr-teal);
+}
+
+.hr-report-count {
+    display: block;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--hr-ink);
+}
+
+.hr-report-share {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--hr-muted);
+}
+
+.hr-report-empty {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--hr-muted);
+}
+
+.hr-report-people {
+    display: grid;
+    gap: 0.65rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.hr-report-person {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.85rem 0.95rem;
+    border: 1px solid var(--hr-line);
+    border-radius: 0.85rem;
+    background: var(--hr-soft);
+    text-decoration: none;
+    color: inherit;
+}
+
+.hr-report-person:hover {
+    border-color: var(--hr-teal);
+}
+
+.hr-report-person__name {
+    margin: 0;
+    font-size: 0.98rem;
+    font-weight: 800;
+    color: var(--hr-navy);
+}
+
+.hr-report-person__detail {
+    margin: 0.2rem 0 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--hr-muted);
+}
