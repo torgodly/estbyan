@@ -64,7 +64,10 @@ it('renders registration and employee stats overview content', function () {
         ->assertSuccessful()
         ->assertSee('الموظفون المسجّلون')
         ->assertSee('أفراد العائلة')
-        ->assertSee('إجمالي المسجّلين');
+        ->assertSee('الإجمالي')
+        ->assertSee('عدد الموظفين الذين أكملوا التسجيل فقط')
+        ->assertSee('عدد أفراد العائلة المسجّلين فقط')
+        ->assertSee('الموظفون المسجّلون + أفراد العائلة');
 });
 
 it('counts registered employees and family members excluding drafts', function () {
@@ -89,7 +92,7 @@ it('counts registered employees and family members excluding drafts', function (
         ->assertSuccessful()
         ->assertSee('الموظفون المسجّلون')
         ->assertSee('أفراد العائلة')
-        ->assertSee('إجمالي المسجّلين')
+        ->assertSee('الإجمالي')
         ->assertSee('2')
         ->assertSee('3')
         ->assertSee('5');

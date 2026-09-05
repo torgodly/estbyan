@@ -21,11 +21,11 @@ class CoverageStatsOverview extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $registeredEmployees = MedicalRegistration::query()
+        $registeredEmployees = (int) MedicalRegistration::query()
             ->whereNotNull('employee_id')
             ->where('status', '!=', RegistrationStatus::Draft)
-            ->distinct('employee_id')
-            ->count('employee_id');
+            ->selectRaw('count(distinct employee_id) as aggregate')
+            ->value('aggregate');
 
         $familyMembers = Beneficiary::query()
             ->whereHas(
@@ -36,15 +36,15 @@ class CoverageStatsOverview extends StatsOverviewWidget
 
         return [
             Stat::make('الموظفون المسجّلون', (string) $registeredEmployees)
-                ->description('أكملوا الاستبيان')
+                ->description('عدد الموظفين الذين أكملوا التسجيل فقط')
                 ->color('success')
                 ->icon('heroicon-o-user-group'),
             Stat::make('أفراد العائلة', (string) $familyMembers)
-                ->description('المستفيدون المسجّلون مع الموظفين')
+                ->description('عدد أفراد العائلة المسجّلين فقط')
                 ->color('info')
                 ->icon('heroicon-o-home'),
-            Stat::make('إجمالي المسجّلين', (string) ($registeredEmployees + $familyMembers))
-                ->description('موظفون + أفراد العائلة')
+            Stat::make('الإجمالي', (string) ($registeredEmployees + $familyMembers))
+                ->description('الموظفون المسجّلون + أفراد العائلة')
                 ->color('primary')
                 ->icon('heroicon-o-users'),
         ];
