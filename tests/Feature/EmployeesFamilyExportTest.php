@@ -110,13 +110,21 @@ it('groups each employee with their family members and writes arabic excel colum
         expect($sheet->getTitle())->toBe('الموظفون والعائلة')
             ->and($sheet->getRightToLeft())->toBeTrue()
             ->and($sheet->rangeToArray('A1:D1')[0])->toBe(EmployeesFamilyExport::headings())
+            ->and($sheet->getCell('A1')->getValue())->toBe('الاسم')
+            ->and($sheet->getCell('B1')->getValue())->toBe('الرقم الوطني')
             ->and($sheet->getCell('A2')->getValue())->toBe('أحمد الموظف')
             ->and($sheet->getCell('B2')->getValue())->toBe('119800111111')
             ->and($sheet->getCell('C2')->getValue())->toBe('موظف')
             ->and($sheet->getCell('D2')->getValue())->toBe('—')
             ->and($sheet->getCell('A3')->getValue())->toBe('منى الزوجة')
+            ->and($sheet->getCell('B3')->getValue())->toBe('219800111111')
             ->and($sheet->getCell('C3')->getValue())->toBe('فرد عائلة')
-            ->and($sheet->getCell('D3')->getValue())->toBe('زوجة');
+            ->and($sheet->getCell('D3')->getValue())->toBe('زوجة')
+            ->and($sheet->getColumnDimension('A')->getWidth())->toBe(36.0)
+            ->and($sheet->getColumnDimension('B')->getWidth())->toBe(18.0)
+            ->and($sheet->getColumnDimension('C')->getWidth())->toBe(14.0)
+            ->and($sheet->getColumnDimension('D')->getWidth())->toBe(16.0)
+            ->and($sheet->getColumnDimension('A')->getAutoSize())->toBeFalse();
     } finally {
         if (is_file($path)) {
             unlink($path);

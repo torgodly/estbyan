@@ -68,12 +68,16 @@ class EmployeesFamilyExport
     public function spreadsheet(EloquentCollection|Collection|null $employees = null): Spreadsheet
     {
         $spreadsheet = new Spreadsheet;
+        $spreadsheet->getDefaultStyle()->getFont()->setName('Tahoma')->setSize(11);
+
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('الموظفون والعائلة');
         $sheet->setRightToLeft(true);
         $sheet->freezePane('A2');
+        $sheet->getDefaultRowDimension()->setRowHeight(18);
 
         $this->writeHeadingRow($sheet);
+        $this->applyColumnLayout($sheet);
 
         $rowNumber = 2;
 
@@ -94,13 +98,9 @@ class EmployeesFamilyExport
             $rowNumber++;
         }
 
-        foreach (range('A', 'D') as $column) {
-            $sheet->getColumnDimension($column)->setAutoSize(true);
-        }
-
-        $sheet->getStyle('A1:D'.max(1, $rowNumber - 1))
-            ->getAlignment()
-            ->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $lastRow = max(1, $rowNumber - 1);
+        $sheet->getStyle('A1:A'.$lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle('B1:D'.$lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
         return $spreadsheet;
     }
@@ -176,11 +176,20 @@ class EmployeesFamilyExport
             );
         }
 
+        $sheet->getRowDimension(1)->setRowHeight(22);
         $sheet->getStyle('A1:D1')->getFont()->setBold(true);
         $sheet->getStyle('A1:D1')->getFill()
             ->setFillType(Fill::FILL_SOLID)
             ->getStartColor()
             ->setRGB('1E3A5F');
         $sheet->getStyle('A1:D1')->getFont()->getColor()->setRGB('FFFFFF');
+    }
+
+    protected function applyColumnLayout(Worksheet $sheet): void
+    {
+        $sheet->getColumnDimension('A')->setWidth(36);
+        $sheet->getColumnDimension('B')->setWidth(18);
+        $sheet->getColumnDimension('C')->setWidth(14);
+        $sheet->getColumnDimension('D')->setWidth(16);
     }
 }
