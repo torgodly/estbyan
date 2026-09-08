@@ -192,6 +192,10 @@
                                     <div class="hr-kpi__value">{{ $registration->national_id ?: '—' }}</div>
                                 </div>
                                 <div class="hr-kpi">
+                                    <span class="hr-kpi__label">فصيلة الدم</span>
+                                    <div class="hr-kpi__value">{{ $registration->blood_type?->label() ?? '—' }}</div>
+                                </div>
+                                <div class="hr-kpi">
                                     <span class="hr-kpi__label">تاريخ الإرسال</span>
                                     <div class="hr-kpi__value">{{ $registration->submitted_at?->format('Y-m-d H:i') ?: '—' }}</div>
                                 </div>
@@ -223,6 +227,7 @@
                                 'الإدارة' => $registration->workplaceLabel() ?? '—',
                                 'المكتب' => $registration->officeLabel() ?? '—',
                                 'تاريخ الميلاد' => $registration->date_of_birth?->format('Y-m-d') ?: '—',
+                                'فصيلة الدم' => $registration->blood_type?->label() ?? '—',
                                 'الجنس' => $registration->gender?->label() ?? '—',
                                 'الحالة الاجتماعية' => $registration->marital_status?->label() ?? '—',
                                 'الهاتف' => $registration->phone ?: '—',

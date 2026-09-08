@@ -73,33 +73,45 @@
             </div>
         </div>
 
-        <div>
-            <label class="reg-label">الحالة الاجتماعية <span class="reg-required">*</span></label>
-            <select wire:model.live="maritalStatus" data-reg-field="maritalStatus" @class(['reg-select', 'reg-input-invalid' => $errors->has('maritalStatus')])>
-                <option value="single">أعزب / عزباء</option>
-                <option value="married">متزوج / متزوجة</option>
-            </select>
-            <p class="mt-1 text-xs text-slate-400">
-                @if ($maritalStatus === 'married')
-                    @php
-                        $employeeGenderEnum = \App\Enums\Gender::tryFrom($gender);
-                        $spouseHint = \App\Enums\BeneficiaryRelationship::Spouse->label($employeeGenderEnum);
-                        $spouseLimit = $employeeGenderEnum
-                            ? \App\Enums\BeneficiaryRelationship::maxSpousesFor($employeeGenderEnum)
-                            : 4;
-                    @endphp
-                    يمكن إضافة {{ $spouseHint }}
-                    @if ($employeeGenderEnum === \App\Enums\Gender::Male)
-                        (حتى {{ $spouseLimit }})
-                    @elseif ($employeeGenderEnum === \App\Enums\Gender::Female)
-                        (واحد فقط)
+        <div class="reg-grid-2">
+            <div>
+                <label class="reg-label">الحالة الاجتماعية <span class="reg-required">*</span></label>
+                <select wire:model.live="maritalStatus" data-reg-field="maritalStatus" @class(['reg-select', 'reg-input-invalid' => $errors->has('maritalStatus')])>
+                    <option value="single">أعزب / عزباء</option>
+                    <option value="married">متزوج / متزوجة</option>
+                </select>
+                <p class="mt-1 text-xs text-slate-400">
+                    @if ($maritalStatus === 'married')
+                        @php
+                            $employeeGenderEnum = \App\Enums\Gender::tryFrom($gender);
+                            $spouseHint = \App\Enums\BeneficiaryRelationship::Spouse->label($employeeGenderEnum);
+                            $spouseLimit = $employeeGenderEnum
+                                ? \App\Enums\BeneficiaryRelationship::maxSpousesFor($employeeGenderEnum)
+                                : 4;
+                        @endphp
+                        يمكن إضافة {{ $spouseHint }}
+                        @if ($employeeGenderEnum === \App\Enums\Gender::Male)
+                            (حتى {{ $spouseLimit }})
+                        @elseif ($employeeGenderEnum === \App\Enums\Gender::Female)
+                            (واحد فقط)
+                        @endif
+                        والأبناء والوالدين في خطوة المستفيدين
+                    @else
+                        يمكن إضافة الوالدين في خطوة المستفيدين
                     @endif
-                    والأبناء والوالدين في خطوة المستفيدين
-                @else
-                    يمكن إضافة الوالدين في خطوة المستفيدين
-                @endif
-            </p>
-            @error('maritalStatus') <p class="reg-field-error">{{ $message }}</p> @enderror
+                </p>
+                @error('maritalStatus') <p class="reg-field-error">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <label class="reg-label">فصيلة الدم <span class="reg-required">*</span></label>
+                <select wire:model.live="bloodType" data-reg-field="bloodType" @class(['reg-select', 'reg-input-invalid' => $errors->has('bloodType')])>
+                    <option value="">— اختر —</option>
+                    @foreach (\App\Enums\BloodType::cases() as $blood)
+                        <option value="{{ $blood->value }}">{{ $blood->label() }}</option>
+                    @endforeach
+                </select>
+                @error('bloodType') <p class="reg-field-error">{{ $message }}</p> @enderror
+            </div>
         </div>
     </div>
 

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\MedicalRegistrations\Schemas;
 
+use App\Enums\BloodType;
 use App\Enums\Gender;
 use App\Enums\MaritalStatus;
 use App\Enums\RegistrationStatus;
@@ -28,6 +29,11 @@ class MedicalRegistrationForm
                         TextInput::make('employee_number')->label('الرقم الوظيفي')->required(),
                         TextInput::make('national_id')->label('الرقم الوطني')->required(),
                         DatePicker::make('date_of_birth')->label('تاريخ الميلاد'),
+                        Select::make('blood_type')
+                            ->label('فصيلة الدم')
+                            ->options(collect(BloodType::cases())->mapWithKeys(
+                                fn (BloodType $type) => [$type->value => $type->label()]
+                            )),
                         Select::make('status')
                             ->label('الحالة')
                             ->options(collect(RegistrationStatus::cases())->mapWithKeys(

@@ -55,7 +55,7 @@ final readonly class EmployeeInsuranceCard
             dateOfBirth: self::formatCardDate($registration->date_of_birth),
             issuedAt: self::formatCardDate(self::issuedAtFor($registration)),
             jobTitle: $registration->jobTitleLabel() ?: 'موظف',
-            bloodType: '—',
+            bloodType: $registration->blood_type?->cardLabel() ?? '—',
             kind: 'employee',
             barcodeSvg: InsuranceCardNumber::isValid($cardNumber)
                 ? Code128Barcode::svg($cardNumber)

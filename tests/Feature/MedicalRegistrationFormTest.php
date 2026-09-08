@@ -156,9 +156,10 @@ it('shows validation summary messages in the form when step two fails', function
         ->call('verifyIdentity')
         ->set('workplace', '')
         ->call('saveEmployeeDetails')
-        ->assertHasErrors(['workplace', 'dateOfBirth', 'phone', 'city', 'address'])
+        ->assertHasErrors(['workplace', 'dateOfBirth', 'bloodType', 'phone', 'city', 'address'])
         ->assertSee('يرجى تصحيح الأخطاء التالية', false)
         ->assertSee('مكان العمل مطلوب', false)
+        ->assertSee('فصيلة الدم مطلوبة', false)
         ->assertSee('رقم الهاتف مطلوب', false)
         ->assertSee('data-reg-jump="dateOfBirth"', false)
         ->assertSee('data-reg-field="dateOfBirth"', false)
@@ -228,6 +229,7 @@ it('restores registration after refresh simulation', function () {
         ->set('consent', true)
         ->call('verifyIdentity')
         ->set('dateOfBirth', '1980-01-01')
+        ->set('bloodType', 'o_positive')
         ->set('city', 'tripoli')
         ->set('address', 'طرابلس')
         ->set('phone', '0912345678')
@@ -238,12 +240,14 @@ it('restores registration after refresh simulation', function () {
 
     expect($registration)->not->toBeNull()
         ->and($registration->phone)->toBe('0912345678')
+        ->and($registration->blood_type?->value)->toBe('o_positive')
         ->and($registration->beneficiaries_count)->toBe(0)
         ->and($registration->current_step)->toBe(3);
 
     Livewire::test(MedicalRegistrationForm::class)
         ->assertSet('step', 3)
         ->assertSet('phone', '0912345678')
+        ->assertSet('bloodType', 'o_positive')
         ->assertSet('verifiedFullName', 'سارة علي')
         ->assertSet('workplace', 'tripoli');
 });
@@ -262,6 +266,7 @@ it('requires date of birth year to match national id', function () {
         ->set('consent', true)
         ->call('verifyIdentity')
         ->set('dateOfBirth', '1990-01-01')
+        ->set('bloodType', 'a_positive')
         ->set('city', 'tripoli')
         ->set('address', 'طرابلس')
         ->set('phone', '0912345678')
@@ -284,6 +289,7 @@ it('blocks a website typed as email and continues after the field is cleared', f
         ->set('consent', true)
         ->call('verifyIdentity')
         ->set('dateOfBirth', '1984-09-01')
+        ->set('bloodType', 'b_positive')
         ->set('jobTitle', 'section_head')
         ->set('maritalStatus', 'married')
         ->set('phone', '0927758220')

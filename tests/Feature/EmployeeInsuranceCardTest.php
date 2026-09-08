@@ -17,6 +17,7 @@ it('maps registration identity fields onto the insurance card', function () {
         'full_name' => 'إبراهيم صالح القدافي',
         'reference_number' => 'SC26-00999',
         'date_of_birth' => '1961-08-02',
+        'blood_type' => BloodType::OPositive,
         'job_title' => 'employee',
         'submitted_at' => '2026-09-01 09:00:00',
         'employee_photo_path' => null,
@@ -30,7 +31,7 @@ it('maps registration identity fields onto the insurance card', function () {
         ->and($card->dateOfBirth)->toBe('1961 / 08 / 02')
         ->and($card->issuedAt)->toBe('2026 / 09 / 01')
         ->and($card->jobTitle)->toBe('موظف')
-        ->and($card->bloodType)->toBe('—')
+        ->and($card->bloodType)->toBe('O+')
         ->and($card->kind)->toBe('employee')
         ->and($card->barcodeSvg)->toContain('aria-label="'.$cardNumber.'"')
         ->and($card->barcodeSvg)->not->toContain('SC-')
@@ -128,6 +129,7 @@ it('renders somar sans text fields in the printable card view', function () {
         'full_name' => 'منى العابد',
         'reference_number' => 'SC26-00123',
         'date_of_birth' => '1985-04-15',
+        'blood_type' => BloodType::BPositive,
         'job_title' => 'section_head',
         'gender' => Gender::Female,
         'submitted_at' => '2026-03-20 12:00:00',
@@ -162,6 +164,7 @@ it('renders somar sans text fields in the printable card view', function () {
         ->toContain('2026 / 03 / 20')
         ->toContain('رئيس قسم')
         ->toContain('ابن')
+        ->toContain('B+')
         ->toContain('A+')
         ->toContain('aria-label="'.$employeeCardNumber.'"')
         ->toContain('aria-label="'.$familyCardNumber.'"')

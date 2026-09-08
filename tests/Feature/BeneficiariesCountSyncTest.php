@@ -54,6 +54,7 @@ it('syncs beneficiaries_count from the family list when adding and deleting memb
         ->set('consent', true)
         ->call('verifyIdentity')
         ->set('dateOfBirth', '1977-05-10')
+        ->set('bloodType', 'o_positive')
         ->set('city', 'benghazi')
         ->set('address', 'بنغازي')
         ->set('phone', '0911112233')

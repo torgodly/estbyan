@@ -47,6 +47,10 @@
                 <dd>{{ $dateOfBirth ?: '—' }}</dd>
             </div>
             <div class="reg-report-item">
+                <dt>فصيلة الدم</dt>
+                <dd>{{ \App\Enums\BloodType::tryFrom($bloodType)?->label() ?? '—' }}</dd>
+            </div>
+            <div class="reg-report-item">
                 <dt>الجنس</dt>
                 <dd>{{ $genderLabel }}</dd>
             </div>

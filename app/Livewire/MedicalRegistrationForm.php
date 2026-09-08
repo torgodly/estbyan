@@ -42,6 +42,8 @@ class MedicalRegistrationForm extends Component
 
     public string $dateOfBirth = '';
 
+    public string $bloodType = '';
+
     public bool $consent = false;
 
     public string $fullName = '';
@@ -404,6 +406,7 @@ class MedicalRegistrationForm extends Component
             'workplace' => ['required', Rule::in(array_keys(config('registration.workplaces')))],
             'jobTitle' => ['nullable', Rule::in(array_keys(config('registration.job_titles')))],
             'gender' => ['required', Rule::in(array_map(fn (Gender $g) => $g->value, Gender::cases()))],
+            'bloodType' => ['required', Rule::in(array_map(fn (BloodType $b) => $b->value, BloodType::cases()))],
             'maritalStatus' => ['required', Rule::in(array_map(fn (MaritalStatus $s) => $s->value, MaritalStatus::cases()))],
             'phone' => ['required', 'string', 'min:9', 'max:15'],
             'whatsapp' => ['nullable', 'string', 'max:15'],
@@ -412,6 +415,7 @@ class MedicalRegistrationForm extends Component
             'address' => ['required', 'string', 'max:500'],
         ], [
             'dateOfBirth.required' => 'تاريخ الميلاد مطلوب',
+            'bloodType.required' => 'فصيلة الدم مطلوبة',
             'workplace.required' => 'مكان العمل مطلوب',
             'phone.required' => 'رقم الهاتف مطلوب',
             'city.required' => 'المدينة مطلوبة',
@@ -1008,7 +1012,7 @@ class MedicalRegistrationForm extends Component
     protected function isAutoPersistField(string $property): bool
     {
         return in_array($property, [
-            'dateOfBirth', 'workplace', 'jobTitle', 'gender', 'maritalStatus',
+            'dateOfBirth', 'bloodType', 'workplace', 'jobTitle', 'gender', 'maritalStatus',
             'phone', 'whatsapp', 'email', 'city', 'address',
             'hasChronicConditions', 'chronicConditions', 'hasTumor', 'hasSurgeryHistory',
             'usesMedicalDevices', 'hospitalizedRecently', 'traveledForTreatment',
@@ -1035,6 +1039,7 @@ class MedicalRegistrationForm extends Component
             'national_id' => $this->nationalId ?: $registration->national_id,
             'employee_number' => $this->employeeNumber ?: $registration->employee_number,
             'date_of_birth' => $this->dateOfBirth ?: null,
+            'blood_type' => $this->bloodType ?: null,
             'workplace' => $this->workplace ?: null,
             'job_title' => $this->jobTitle ?: null,
             'gender' => $this->gender ?: null,
@@ -1197,6 +1202,7 @@ class MedicalRegistrationForm extends Component
         $this->employeeNumber = $registration->employee_number;
         $this->nationalId = $registration->national_id;
         $this->dateOfBirth = $registration->date_of_birth?->format('Y-m-d') ?? '';
+        $this->bloodType = $registration->blood_type?->value ?? '';
         $this->consent = (bool) $registration->consent_at;
         $this->fullName = $registration->full_name;
         $this->verifiedFullName = $registration->full_name;
@@ -1259,7 +1265,7 @@ class MedicalRegistrationForm extends Component
     protected function resetFormState(): void
     {
         $this->reset([
-            'step', 'registrationId', 'fullName', 'employeeNumber', 'nationalId', 'dateOfBirth', 'consent',
+            'step', 'registrationId', 'fullName', 'employeeNumber', 'nationalId', 'dateOfBirth', 'bloodType', 'consent',
             'verifiedFullName', 'workplace', 'office', 'jobTitle', 'gender', 'maritalStatus',
             'beneficiariesCount', 'phone', 'whatsapp', 'email', 'city', 'address',
             'hasChronicConditions', 'chronicConditions', 'hasTumor', 'hasSurgeryHistory',

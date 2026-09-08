@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\BloodType;
 use App\Enums\Gender;
 use App\Enums\MaritalStatus;
 use App\Enums\RegistrationStatus;
@@ -26,6 +27,7 @@ use Illuminate\Support\Str;
     'employee_number',
     'national_id',
     'date_of_birth',
+    'blood_type',
     'full_name',
     'consent_at',
     'workplace',
@@ -58,6 +60,7 @@ class MedicalRegistration extends Model
     {
         return [
             'date_of_birth' => 'date',
+            'blood_type' => BloodType::class,
             'consent_at' => 'datetime',
             'submitted_at' => 'datetime',
             'reviewed_at' => 'datetime',
