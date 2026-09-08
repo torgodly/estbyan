@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\BeneficiaryRelationship;
 use App\Enums\BloodType;
+use App\Services\InsuranceCardNumberAssigner;
+use App\Support\InsuranceCardNumber;
 use Database\Factories\BeneficiaryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'nationality',
     'national_id',
     'passport_number',
+    'card_number',
     'date_of_birth',
     'blood_type',
     'has_chronic_condition',
@@ -89,8 +92,17 @@ class Beneficiary extends Model
         return $parts !== [] ? implode(' · ', $parts) : '—';
     }
 
+    public function cardNumberLabel(): string
+    {
+        return InsuranceCardNumber::display($this->card_number);
+    }
+
     protected static function booted(): void
     {
+        static::creating(function (Beneficiary $beneficiary): void {
+            app(InsuranceCardNumberAssigner::class)->fillBeneficiary($beneficiary);
+        });
+
         static::saving(function (Beneficiary $beneficiary): void {
             $beneficiary->has_chronic_condition = (bool) $beneficiary->has_chronic_conditions;
         });

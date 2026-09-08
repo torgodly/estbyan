@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Employees\Tables;
 
 use App\Enums\RegistrationStatus;
 use App\Models\Employee;
+use App\Support\InsuranceCardNumber;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
@@ -29,6 +30,11 @@ class EmployeesTable
                     ->searchable()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('card_number')
+                    ->label('رقم البطاقة')
+                    ->formatStateUsing(fn (?string $state): string => InsuranceCardNumber::display($state))
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('national_id')
                     ->label('الرقم الوطني')
                     ->searchable()

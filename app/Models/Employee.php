@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\RegistrationStatus;
+use App\Services\InsuranceCardNumberAssigner;
+use App\Support\InsuranceCardNumber;
 use App\Support\WorkplaceOptions;
 use Database\Factories\EmployeeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -14,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'employee_number',
+    'card_number',
     'national_id',
     'date_of_birth',
     'full_name',
@@ -73,6 +76,18 @@ class Employee extends Model
     public function officeLabel(): ?string
     {
         return filled($this->office) ? $this->office : null;
+    }
+
+    public function cardNumberLabel(): string
+    {
+        return InsuranceCardNumber::display($this->card_number);
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (Employee $employee): void {
+            app(InsuranceCardNumberAssigner::class)->fillEmployee($employee);
+        });
     }
 
     public function hasSubmittedForm(): bool

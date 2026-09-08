@@ -43,16 +43,19 @@ final readonly class EmployeeInsuranceCard
 
     public static function from(MedicalRegistration $registration): self
     {
+        $registration->loadMissing('employee');
+        $cardNumber = $registration->employee?->card_number;
+
         return new self(
             name: $registration->full_name ?: '—',
-            reference: $registration->reference_number ?: '—',
+            reference: InsuranceCardNumber::display($cardNumber),
             dateOfBirth: self::formatCardDate($registration->date_of_birth),
             issuedAt: self::formatCardDate(self::issuedAtFor($registration)),
             jobTitle: $registration->jobTitleLabel() ?: 'موظف',
             bloodType: '—',
             kind: 'employee',
-            barcodeSvg: filled($registration->reference_number)
-                ? Code128Barcode::svg($registration->reference_number)
+            barcodeSvg: InsuranceCardNumber::isValid($cardNumber)
+                ? Code128Barcode::svg($cardNumber)
                 : null,
             photoDataUri: self::photoDataUriFromPath($registration->employee_photo_path),
             photoUrl: RegistrationDocuments::url($registration, RegistrationDocuments::EMPLOYEE_PHOTO),
@@ -65,16 +68,18 @@ final readonly class EmployeeInsuranceCard
 
     public static function fromBeneficiary(MedicalRegistration $registration, Beneficiary $beneficiary): self
     {
+        $cardNumber = $beneficiary->card_number;
+
         return new self(
             name: $beneficiary->full_name ?: '—',
-            reference: $registration->reference_number ?: '—',
+            reference: InsuranceCardNumber::display($cardNumber),
             dateOfBirth: self::formatCardDate($beneficiary->date_of_birth),
             issuedAt: self::formatCardDate(self::issuedAtFor($registration)),
             jobTitle: $beneficiary->relationship?->label($registration->gender) ?: 'مستفيد',
             bloodType: $beneficiary->blood_type?->cardLabel() ?? '—',
             kind: 'beneficiary',
-            barcodeSvg: filled($registration->reference_number)
-                ? Code128Barcode::svg($registration->reference_number)
+            barcodeSvg: InsuranceCardNumber::isValid($cardNumber)
+                ? Code128Barcode::svg($cardNumber)
                 : null,
             photoDataUri: self::photoDataUriFromPath($beneficiary->photo_path),
             photoUrl: RegistrationDocuments::beneficiaryUrl($registration, $beneficiary),
@@ -95,11 +100,9 @@ final readonly class EmployeeInsuranceCard
 
     public function filename(): string
     {
-        $reference = $this->reference !== '—'
-            ? $this->reference
-            : 'draft';
+        $cardNumber = InsuranceCardNumber::normalize($this->reference);
 
-        return 'employee-card-'.$reference;
+        return 'employee-card-'.($cardNumber ?? 'draft');
     }
 
     public static function packFilename(MedicalRegistration $registration): string

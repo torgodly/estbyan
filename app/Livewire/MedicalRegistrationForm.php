@@ -11,6 +11,7 @@ use App\Models\Beneficiary;
 use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Rules\LibyanNationalId;
+use App\Support\InsuranceCardNumber;
 use App\Support\LibyanNationalId as LibyanNationalIdSupport;
 use App\Support\RegistrationDocuments;
 use Illuminate\Support\Facades\DB;
@@ -1100,9 +1101,18 @@ class MedicalRegistrationForm extends Component
             return;
         }
 
+        $preservedCardNumbers = $this->preservedBeneficiaryCardNumbers($registration);
+
         $registration->beneficiaries()->delete();
 
         foreach ($this->beneficiaries as $beneficiary) {
+            $identityKey = InsuranceCardNumber::identityKey(
+                $beneficiary['national_id'] ?? null,
+                $beneficiary['passport_number'] ?? null,
+                $beneficiary['full_name'] ?? null,
+                $beneficiary['date_of_birth'] ?? null,
+            );
+
             Beneficiary::query()->create([
                 'medical_registration_id' => $registration->id,
                 'full_name' => $beneficiary['full_name'],
@@ -1111,6 +1121,8 @@ class MedicalRegistrationForm extends Component
                 'nationality' => $beneficiary['nationality'] ?? null,
                 'national_id' => $beneficiary['national_id'] ?? null,
                 'passport_number' => $beneficiary['passport_number'] ?? null,
+                'card_number' => $preservedCardNumbers[$identityKey]
+                    ?? InsuranceCardNumber::normalize($beneficiary['card_number'] ?? null),
                 'date_of_birth' => $beneficiary['date_of_birth'] ?: null,
                 'blood_type' => $beneficiary['blood_type'],
                 'has_chronic_condition' => (bool) ($beneficiary['has_chronic_conditions'] ?? $beneficiary['has_chronic_condition'] ?? false),
@@ -1133,6 +1145,29 @@ class MedicalRegistrationForm extends Component
         $this->syncFamilyBeneficiariesCount($registration);
         $registration->update(['current_step' => $this->step]);
         $this->hasSavedDraft = true;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function preservedBeneficiaryCardNumbers(MedicalRegistration $registration): array
+    {
+        $numbers = [];
+
+        foreach ($registration->beneficiaries()->get() as $beneficiary) {
+            if (! InsuranceCardNumber::isValid($beneficiary->card_number)) {
+                continue;
+            }
+
+            $numbers[InsuranceCardNumber::identityKey(
+                $beneficiary->national_id,
+                $beneficiary->passport_number,
+                $beneficiary->full_name,
+                $beneficiary->date_of_birth,
+            )] = $beneficiary->card_number;
+        }
+
+        return $numbers;
     }
 
     protected function syncFamilyBeneficiariesCount(?MedicalRegistration $registration = null): void
@@ -1389,6 +1424,7 @@ class MedicalRegistrationForm extends Component
             'nationality' => $beneficiary->nationality,
             'national_id' => $beneficiary->national_id,
             'passport_number' => $beneficiary->passport_number,
+            'card_number' => $beneficiary->card_number,
             'date_of_birth' => $beneficiary->date_of_birth?->format('Y-m-d'),
             'blood_type' => $beneficiary->blood_type?->value,
             'has_chronic_condition' => $beneficiary->has_chronic_condition || $beneficiary->has_chronic_conditions,

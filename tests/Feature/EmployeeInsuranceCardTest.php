@@ -8,6 +8,7 @@ use App\Models\Beneficiary;
 use App\Models\MedicalRegistration;
 use App\Models\User;
 use App\Support\EmployeeInsuranceCard;
+use App\Support\InsuranceCardNumber;
 use App\Support\RegistrationDocuments;
 use Livewire\Livewire;
 
@@ -22,18 +23,20 @@ it('maps registration identity fields onto the insurance card', function () {
     ]);
 
     $card = EmployeeInsuranceCard::from($registration);
+    $cardNumber = $registration->employee->card_number;
 
     expect($card->name)->toBe('إبراهيم صالح القدافي')
-        ->and($card->reference)->toBe('SC26-00999')
+        ->and($card->reference)->toBe(InsuranceCardNumber::display($cardNumber))
         ->and($card->dateOfBirth)->toBe('1961 / 08 / 02')
         ->and($card->issuedAt)->toBe('2026 / 09 / 01')
         ->and($card->jobTitle)->toBe('موظف')
         ->and($card->bloodType)->toBe('—')
         ->and($card->kind)->toBe('employee')
-        ->and($card->barcodeSvg)->toContain('aria-label="SC26-00999"')
+        ->and($card->barcodeSvg)->toContain('aria-label="'.$cardNumber.'"')
+        ->and($card->barcodeSvg)->not->toContain('SC-')
         ->and($card->barcodeSvg)->toContain('<rect ')
         ->and($card->photoDataUri)->toBeNull()
-        ->and($card->filename())->toBe('employee-card-SC26-00999')
+        ->and($card->filename())->toBe('employee-card-'.$cardNumber)
         ->and(EmployeeInsuranceCard::packFilename($registration))->toBe('insurance-cards-SC26-00999')
         ->and($card->fontDataUri)->toStartWith('data:font/truetype;base64,')
         ->and($card->fontUrl)->toContain('fonts/SomarSans-SemiBold.ttf')
@@ -71,13 +74,14 @@ it('builds a family card with the beneficiary name, blood type, and shared issue
     $card = EmployeeInsuranceCard::fromBeneficiary($registration->fresh('beneficiaries'), $beneficiary);
 
     expect($card->name)->toBe('فاطمة محمد علي')
-        ->and($card->reference)->toBe('SC26-00001')
+        ->and($card->reference)->toBe(InsuranceCardNumber::display($beneficiary->card_number))
         ->and($card->dateOfBirth)->toBe('1988 / 03 / 14')
         ->and($card->issuedAt)->toBe('2026 / 09 / 07')
         ->and($card->jobTitle)->toBe('زوجة')
         ->and($card->bloodType)->toBe('O+')
         ->and($card->kind)->toBe('beneficiary')
         ->and($card->heading())->toBe('بطاقة المستفيد')
+        ->and($card->barcodeSvg)->toContain('aria-label="'.$beneficiary->card_number.'"')
         ->and($card->photoDataUri)->toBeNull();
 });
 
@@ -137,8 +141,12 @@ it('renders somar sans text fields in the printable card view', function () {
         'blood_type' => BloodType::APositive,
     ]);
 
+    $registration = $registration->fresh(['beneficiaries', 'employee']);
+    $employeeCardNumber = $registration->employee->card_number;
+    $familyCardNumber = $registration->beneficiaries->first()->card_number;
+
     $html = view('cards.employee-insurance-card', [
-        'cards' => EmployeeInsuranceCard::collection($registration->fresh('beneficiaries')),
+        'cards' => EmployeeInsuranceCard::collection($registration),
         'embedAssets' => true,
         'preview' => false,
     ])->render();
@@ -146,14 +154,17 @@ it('renders somar sans text fields in the printable card view', function () {
     expect($html)
         ->toContain('منى العابد')
         ->toContain('يوسف منى')
-        ->toContain('SC26-00123')
+        ->toContain(InsuranceCardNumber::display($employeeCardNumber))
+        ->toContain(InsuranceCardNumber::display($familyCardNumber))
+        ->not->toContain('SC26-00123')
         ->toContain('1985 / 04 / 15')
         ->toContain('2010 / 01 / 02')
         ->toContain('2026 / 03 / 20')
         ->toContain('رئيس قسم')
         ->toContain('ابن')
         ->toContain('A+')
-        ->toContain('aria-label="SC26-00123"')
+        ->toContain('aria-label="'.$employeeCardNumber.'"')
+        ->toContain('aria-label="'.$familyCardNumber.'"')
         ->toContain('employee-id-card__barcode')
         ->toContain('employee-id-card__data')
         ->toContain('employee-id-card__name')
@@ -223,15 +234,32 @@ it('ships raster artwork so pdf export does not parse the svg logo', function ()
         ->and(getimagesize($back)[1])->toBe(1268);
 });
 
-it('uses a draft filename when the request has no reference number', function () {
+it('uses a draft pack filename when the request has no reference number', function () {
     $registration = MedicalRegistration::factory()->create([
         'reference_number' => null,
         'full_name' => 'مسودة بدون مرجع',
     ]);
 
     $card = EmployeeInsuranceCard::from($registration);
+    $cardNumber = $registration->employee->card_number;
+
+    expect($card->filename())->toBe('employee-card-'.$cardNumber)
+        ->and(EmployeeInsuranceCard::packFilename($registration))->toBe('insurance-cards-draft')
+        ->and($card->reference)->toBe(InsuranceCardNumber::display($cardNumber))
+        ->and($card->barcodeSvg)->toContain('aria-label="'.$cardNumber.'"');
+});
+
+it('omits the barcode when the employee has no card number', function () {
+    $registration = MedicalRegistration::factory()->create([
+        'reference_number' => null,
+        'full_name' => 'مسودة بدون بطاقة',
+    ]);
+
+    $registration->employee->forceFill(['card_number' => null])->saveQuietly();
+
+    $card = EmployeeInsuranceCard::from($registration->fresh('employee'));
 
     expect($card->filename())->toBe('employee-card-draft')
-        ->and(EmployeeInsuranceCard::packFilename($registration))->toBe('insurance-cards-draft')
+        ->and($card->reference)->toBe('—')
         ->and($card->barcodeSvg)->toBeNull();
 });

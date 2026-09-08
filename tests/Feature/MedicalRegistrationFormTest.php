@@ -426,15 +426,71 @@ it('saves a beneficiary with photo medical record and validated national id', fu
     $registration = MedicalRegistration::query()->where('employee_number', '5001')->first();
     $beneficiary = $registration->beneficiaries()->first();
 
+    $employee = $registration->employee;
+    $stem = $employee->card_number ? substr($employee->card_number, 0, 6) : null;
+
     expect($beneficiary)->not->toBeNull()
         ->and($beneficiary->full_name)->toBe('محمد حسن')
         ->and($beneficiary->national_id)->toBe('119880112233')
         ->and($beneficiary->has_chronic_conditions)->toBeTrue()
         ->and($beneficiary->chronic_conditions)->toBe(['heart_disease'])
         ->and($beneficiary->photo_path)->not->toBeNull()
+        ->and($employee->card_number)->toMatch('/^\d{6}00$/')
+        ->and($beneficiary->card_number)->toBe($stem.'01')
         ->and($registration->fresh()->beneficiaries_count)->toBe(1);
 
     Storage::disk('local')->assertExists($beneficiary->photo_path);
+});
+
+it('keeps the same family card number when a beneficiary is edited', function () {
+    Storage::fake('local');
+
+    $employeeNationalId = LibyanNationalId::generate(Gender::Female, 1989);
+    $beneficiaryNationalId = LibyanNationalId::generate(Gender::Male, 1988);
+
+    Employee::factory()->create([
+        'employee_number' => '5003',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'نادية حسن',
+        'workplace' => 'general_admin',
+    ]);
+
+    $photo = UploadedFile::fake()->image('spouse.jpg');
+
+    $component = Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '5003')
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('showBeneficiaryForm', true)
+        ->set('beneficiaryName', 'محمد حسن')
+        ->set('beneficiaryRelationship', 'spouse')
+        ->set('beneficiaryNationalId', $beneficiaryNationalId)
+        ->set('beneficiaryDateOfBirth', '1988-03-15')
+        ->set('beneficiaryBloodType', 'a_positive')
+        ->set('beneficiaryHasChronicConditions', false)
+        ->set('beneficiaryHasTumor', false)
+        ->set('beneficiaryPhoto', $photo)
+        ->call('saveBeneficiary')
+        ->assertHasNoErrors();
+
+    $registration = MedicalRegistration::query()->where('employee_number', '5003')->first();
+    $original = $registration->beneficiaries()->first();
+    $cardNumber = $original->card_number;
+
+    expect($cardNumber)->toMatch('/^\d{6}01$/');
+
+    $component
+        ->call('editBeneficiary', 0)
+        ->set('beneficiaryBloodType', 'b_positive')
+        ->call('saveBeneficiary')
+        ->assertHasNoErrors();
+
+    $updated = $registration->fresh('beneficiaries')->beneficiaries->first();
+
+    expect($updated->card_number)->toBe($cardNumber)
+        ->and($updated->id)->not->toBe($original->id)
+        ->and($updated->blood_type->value)->toBe('b_positive');
 });
 
 it('hides the beneficiary card while its edit form is open', function () {

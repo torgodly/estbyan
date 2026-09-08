@@ -259,6 +259,8 @@ it('shows the employee dossier with registration history and submission state', 
         ->assertSuccessful()
         ->assertSee('نادية الملف')
         ->assertSee('33445')
+        ->assertSee('رقم البطاقة')
+        ->assertSee($employee->cardNumberLabel())
         ->assertSee('الإدارة')
         ->assertSee('المكتب')
         ->assertSee('مكتب نائب المدير العام')

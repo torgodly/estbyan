@@ -153,6 +153,9 @@
                                 @if (filled($registration->reference_number))
                                     <span class="hr-chip">{{ $registration->reference_number }}</span>
                                 @endif
+                                @if (filled($registration->employee?->card_number))
+                                    <span class="hr-chip">{{ $registration->employee->cardNumberLabel() }}</span>
+                                @endif
                                 <span class="hr-chip">{{ $registration->beneficiaries->count() }} مستفيد</span>
                             </div>
 
