@@ -8,6 +8,7 @@ use App\Services\InsuranceCardNumberAssigner;
 use App\Support\InsuranceCardNumber;
 use Database\Factories\BeneficiaryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -95,6 +96,17 @@ class Beneficiary extends Model
     public function cardNumberLabel(): string
     {
         return InsuranceCardNumber::display($this->card_number);
+    }
+
+    /**
+     * @param  Builder<Beneficiary>  $query
+     * @return Builder<Beneficiary>
+     */
+    public function scopeNeedsCardNumberAssignment(Builder $query): Builder
+    {
+        InsuranceCardNumber::constrainNeedsAssignment($query);
+
+        return $query;
     }
 
     protected static function booted(): void

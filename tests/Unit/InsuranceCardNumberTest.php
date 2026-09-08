@@ -6,26 +6,25 @@ use Tests\TestCase;
 uses(TestCase::class);
 
 it('displays an eight-digit card number with the SC prefix', function () {
-    expect(InsuranceCardNumber::display('12345600'))->toBe('SC-12345600')
-        ->and(InsuranceCardNumber::display('SC-12345601'))->toBe('SC-12345601')
+    expect(InsuranceCardNumber::display('15893427'))->toBe('SC-15893427')
+        ->and(InsuranceCardNumber::display('SC-58473921'))->toBe('SC-58473921')
         ->and(InsuranceCardNumber::display(null))->toBe('—')
         ->and(InsuranceCardNumber::display('SC26-02278'))->toBe('—');
 });
 
 it('normalizes printed labels back to the stored digits', function () {
-    expect(InsuranceCardNumber::normalize('SC-00000100'))->toBe('00000100')
-        ->and(InsuranceCardNumber::normalize('00000101'))->toBe('00000101')
+    expect(InsuranceCardNumber::normalize('SC-15893427'))->toBe('15893427')
+        ->and(InsuranceCardNumber::normalize('58473921'))->toBe('58473921')
         ->and(InsuranceCardNumber::normalize('SC26-02278'))->toBeNull();
 });
 
-it('composes a family code from a stem and member index', function () {
-    expect(InsuranceCardNumber::compose(1, 0))->toBe('00000100')
-        ->and(InsuranceCardNumber::compose('000001', 2))->toBe('00000102')
-        ->and(InsuranceCardNumber::stem('00000102'))->toBe('000001')
-        ->and(InsuranceCardNumber::memberIndex('00000102'))->toBe(2)
-        ->and(InsuranceCardNumber::employeeNumberFromFamily('00000102'))->toBe('00000100')
-        ->and(InsuranceCardNumber::isEmployeeNumber('00000100'))->toBeTrue()
-        ->and(InsuranceCardNumber::isEmployeeNumber('00000101'))->toBeFalse();
+it('treats zero-padded family-stem codes as legacy numbers that need upgrading', function () {
+    expect(InsuranceCardNumber::isValid('00158900'))->toBeTrue()
+        ->and(InsuranceCardNumber::isCurrent('00158900'))->toBeFalse()
+        ->and(InsuranceCardNumber::needsAssignment('00158900'))->toBeTrue()
+        ->and(InsuranceCardNumber::isCurrent('15893427'))->toBeTrue()
+        ->and(InsuranceCardNumber::needsAssignment('15893427'))->toBeFalse()
+        ->and(InsuranceCardNumber::needsAssignment(null))->toBeTrue();
 });
 
 it('builds an identity key from national id, passport, or name and date of birth', function () {

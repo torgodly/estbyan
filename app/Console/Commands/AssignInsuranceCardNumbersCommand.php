@@ -11,7 +11,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 #[Signature('insurance-cards:assign-numbers')]
-#[Description('Assign 8-digit insurance card numbers to employees and their registered family members')]
+#[Description('Assign or upgrade insurance card numbers for employees and their registered family members')]
 class AssignInsuranceCardNumbersCommand extends Command
 {
     public function handle(InsuranceCardNumberAssigner $assigner): int
@@ -21,24 +21,24 @@ class AssignInsuranceCardNumbersCommand extends Command
         $beneficiariesSkipped = 0;
 
         Employee::query()
-            ->whereNull('card_number')
+            ->needsCardNumberAssignment()
             ->orderBy('id')
             ->chunkById(100, function ($employees) use ($assigner, &$employeesAssigned): void {
                 foreach ($employees as $employee) {
-                    $assigner->ensureEmployee($employee);
+                    $assigner->ensureEmployee($employee, replaceLegacy: true);
                     $employeesAssigned++;
                 }
             });
 
         Beneficiary::query()
-            ->whereNull('card_number')
+            ->needsCardNumberAssignment()
             ->with('medicalRegistration.employee')
             ->orderBy('id')
             ->chunkById(100, function ($beneficiaries) use ($assigner, &$beneficiariesAssigned, &$beneficiariesSkipped): void {
                 foreach ($beneficiaries as $beneficiary) {
-                    $assigner->ensureBeneficiary($beneficiary);
+                    $assigner->ensureBeneficiary($beneficiary, replaceLegacy: true);
 
-                    if (InsuranceCardNumber::isValid($beneficiary->card_number)) {
+                    if (InsuranceCardNumber::isCurrent($beneficiary->card_number)) {
                         $beneficiariesAssigned++;
 
                         continue;

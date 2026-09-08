@@ -3,7 +3,7 @@
 namespace App\Support;
 
 use DateTimeInterface;
-use InvalidArgumentException;
+use Illuminate\Database\Eloquent\Builder;
 
 final class InsuranceCardNumber
 {
@@ -11,11 +11,23 @@ final class InsuranceCardNumber
 
     public const LENGTH = 8;
 
-    public const STEM_LENGTH = 6;
+    public const MIN = '10000000';
+
+    public const MAX = '99999999';
 
     public static function isValid(?string $number): bool
     {
         return is_string($number) && preg_match('/^\d{8}$/', $number) === 1;
+    }
+
+    public static function isCurrent(?string $number): bool
+    {
+        return self::isValid($number) && ! str_starts_with($number, '0');
+    }
+
+    public static function needsAssignment(?string $number): bool
+    {
+        return ! self::isCurrent($number);
     }
 
     public static function normalize(?string $value): ?string
@@ -36,39 +48,15 @@ final class InsuranceCardNumber
         return $digits === null ? '—' : self::DISPLAY_PREFIX.$digits;
     }
 
-    public static function compose(int|string $stem, int $memberIndex): string
+    /**
+     * @param  Builder<*>  $query
+     */
+    public static function constrainNeedsAssignment(Builder $query): void
     {
-        if ($memberIndex < 0 || $memberIndex > 99) {
-            throw new InvalidArgumentException('Family card index must be between 0 and 99.');
-        }
-
-        $stemInt = (int) (preg_replace('/\D+/', '', (string) $stem) ?? '');
-
-        if ($stemInt < 1 || $stemInt > 999999) {
-            throw new InvalidArgumentException('Insurance card stem must be between 1 and 999999.');
-        }
-
-        return sprintf('%06d%02d', $stemInt, $memberIndex);
-    }
-
-    public static function stem(string $number): string
-    {
-        return substr(self::validated($number), 0, self::STEM_LENGTH);
-    }
-
-    public static function memberIndex(string $number): int
-    {
-        return (int) substr(self::validated($number), self::STEM_LENGTH, 2);
-    }
-
-    public static function employeeNumberFromFamily(string $number): string
-    {
-        return self::compose(self::stem($number), 0);
-    }
-
-    public static function isEmployeeNumber(?string $number): bool
-    {
-        return self::isValid($number) && self::memberIndex($number) === 0;
+        $query->where(function (Builder $query): void {
+            $query->whereNull('card_number')
+                ->orWhere('card_number', '<', self::MIN);
+        });
     }
 
     public static function identityKey(
@@ -90,16 +78,5 @@ final class InsuranceCardNumber
             : trim((string) $dateOfBirth);
 
         return 'name:'.mb_strtolower(trim((string) $fullName)).'|'.$date;
-    }
-
-    private static function validated(string $number): string
-    {
-        $digits = self::normalize($number);
-
-        if ($digits === null) {
-            throw new InvalidArgumentException('Invalid insurance card number.');
-        }
-
-        return $digits;
     }
 }

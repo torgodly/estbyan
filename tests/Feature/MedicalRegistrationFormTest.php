@@ -427,7 +427,6 @@ it('saves a beneficiary with photo medical record and validated national id', fu
     $beneficiary = $registration->beneficiaries()->first();
 
     $employee = $registration->employee;
-    $stem = $employee->card_number ? substr($employee->card_number, 0, 6) : null;
 
     expect($beneficiary)->not->toBeNull()
         ->and($beneficiary->full_name)->toBe('محمد حسن')
@@ -435,8 +434,9 @@ it('saves a beneficiary with photo medical record and validated national id', fu
         ->and($beneficiary->has_chronic_conditions)->toBeTrue()
         ->and($beneficiary->chronic_conditions)->toBe(['heart_disease'])
         ->and($beneficiary->photo_path)->not->toBeNull()
-        ->and($employee->card_number)->toMatch('/^\d{6}00$/')
-        ->and($beneficiary->card_number)->toBe($stem.'01')
+        ->and($employee->card_number)->toMatch('/^[1-9]\d{7}$/')
+        ->and($beneficiary->card_number)->toMatch('/^[1-9]\d{7}$/')
+        ->and($beneficiary->card_number)->not->toBe($employee->card_number)
         ->and($registration->fresh()->beneficiaries_count)->toBe(1);
 
     Storage::disk('local')->assertExists($beneficiary->photo_path);
@@ -478,7 +478,7 @@ it('keeps the same family card number when a beneficiary is edited', function ()
     $original = $registration->beneficiaries()->first();
     $cardNumber = $original->card_number;
 
-    expect($cardNumber)->toMatch('/^\d{6}01$/');
+    expect($cardNumber)->toMatch('/^[1-9]\d{7}$/');
 
     $component
         ->call('editBeneficiary', 0)

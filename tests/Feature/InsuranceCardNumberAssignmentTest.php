@@ -5,14 +5,14 @@ use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Support\InsuranceCardNumber;
 
-it('assigns an employee card number ending in 00 on create', function () {
+it('assigns a random eight-digit employee card number with no leading zero', function () {
     $employee = Employee::factory()->create();
 
-    expect($employee->card_number)->toMatch('/^\d{6}00$/')
+    expect(InsuranceCardNumber::isCurrent($employee->card_number))->toBeTrue()
         ->and($employee->cardNumberLabel())->toBe('SC-'.$employee->card_number);
 });
 
-it('assigns family card numbers that share the employee stem', function () {
+it('assigns unguessable family card numbers that are not derived from the employee card', function () {
     $registration = MedicalRegistration::factory()->create();
     $spouse = Beneficiary::factory()->create([
         'medical_registration_id' => $registration->id,
@@ -21,13 +21,16 @@ it('assigns family card numbers that share the employee stem', function () {
         'medical_registration_id' => $registration->id,
     ]);
 
-    $stem = InsuranceCardNumber::stem($registration->employee->card_number);
+    $employeeNumber = $registration->employee->card_number;
+    $employeePrefix = substr($employeeNumber, 0, 6);
 
-    expect($registration->employee->card_number)->toBe($stem.'00')
-        ->and($spouse->card_number)->toBe($stem.'01')
-        ->and($child->card_number)->toBe($stem.'02')
-        ->and(InsuranceCardNumber::employeeNumberFromFamily($spouse->card_number))
-        ->toBe($registration->employee->card_number);
+    expect(InsuranceCardNumber::isCurrent($spouse->card_number))->toBeTrue()
+        ->and(InsuranceCardNumber::isCurrent($child->card_number))->toBeTrue()
+        ->and($spouse->card_number)->not->toBe($employeeNumber)
+        ->and($child->card_number)->not->toBe($employeeNumber)
+        ->and($child->card_number)->not->toBe($spouse->card_number)
+        ->and(str_starts_with($spouse->card_number, $employeePrefix))->toBeFalse()
+        ->and(str_starts_with($child->card_number, $employeePrefix))->toBeFalse();
 });
 
 it('reuses the same family card number for the same person under the same employee', function () {
@@ -49,7 +52,7 @@ it('reuses the same family card number for the same person under the same employ
     expect($second->card_number)->toBe($first->card_number);
 });
 
-it('gives a different family stem when the same person belongs to another employee', function () {
+it('gives a different family card number when the same person belongs to another employee', function () {
     $first = Beneficiary::factory()->create([
         'national_id' => '219880112233',
     ]);
@@ -57,7 +60,5 @@ it('gives a different family stem when the same person belongs to another employ
         'national_id' => '219880112233',
     ]);
 
-    expect($second->card_number)->not->toBe($first->card_number)
-        ->and(InsuranceCardNumber::stem($second->card_number))
-        ->not->toBe(InsuranceCardNumber::stem($first->card_number));
+    expect($second->card_number)->not->toBe($first->card_number);
 });

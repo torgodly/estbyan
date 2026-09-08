@@ -11,18 +11,18 @@ use RuntimeException;
 
 class InsuranceCardNumberAssigner
 {
-    public function fillEmployee(Employee $employee): void
+    public function fillEmployee(Employee $employee, bool $replaceLegacy = false): void
     {
-        if (InsuranceCardNumber::isValid($employee->card_number)) {
+        if (! $this->shouldReplace($employee->card_number, $replaceLegacy)) {
             return;
         }
 
-        $employee->card_number = $this->nextEmployeeCardNumber();
+        $employee->card_number = $this->nextUniqueCardNumber();
     }
 
-    public function ensureEmployee(Employee $employee): ?string
+    public function ensureEmployee(Employee $employee, bool $replaceLegacy = false): ?string
     {
-        $this->fillEmployee($employee);
+        $this->fillEmployee($employee, $replaceLegacy);
 
         if ($employee->exists && $employee->isDirty('card_number')) {
             $employee->save();
@@ -31,9 +31,9 @@ class InsuranceCardNumberAssigner
         return $employee->card_number;
     }
 
-    public function fillBeneficiary(Beneficiary $beneficiary): void
+    public function fillBeneficiary(Beneficiary $beneficiary, bool $replaceLegacy = false): void
     {
-        if (InsuranceCardNumber::isValid($beneficiary->card_number)) {
+        if (! $this->shouldReplace($beneficiary->card_number, $replaceLegacy)) {
             return;
         }
 
@@ -45,75 +45,56 @@ class InsuranceCardNumberAssigner
 
         $this->ensureEmployee($employee);
 
-        if (! InsuranceCardNumber::isValid($employee->card_number)) {
-            return;
-        }
-
         $reused = $this->reusedMemberNumber($employee, $beneficiary);
 
-        $beneficiary->card_number = $reused ?? $this->nextMemberCardNumber($employee);
+        $beneficiary->card_number = $reused ?? $this->nextUniqueCardNumber();
     }
 
-    public function ensureBeneficiary(Beneficiary $beneficiary): void
+    public function ensureBeneficiary(Beneficiary $beneficiary, bool $replaceLegacy = false): void
     {
-        $this->fillBeneficiary($beneficiary);
+        $this->fillBeneficiary($beneficiary, $replaceLegacy);
 
         if ($beneficiary->exists && $beneficiary->isDirty('card_number')) {
             $beneficiary->save();
         }
     }
 
-    public function nextEmployeeCardNumber(): string
+    public function nextUniqueCardNumber(): string
     {
         return DB::transaction(function (): string {
-            $latest = Employee::query()
-                ->whereNotNull('card_number')
-                ->orderByDesc('card_number')
-                ->lockForUpdate()
-                ->value('card_number');
+            for ($attempt = 0; $attempt < 25; $attempt++) {
+                $number = (string) random_int((int) InsuranceCardNumber::MIN, (int) InsuranceCardNumber::MAX);
 
-            $nextStem = InsuranceCardNumber::isValid($latest)
-                ? ((int) InsuranceCardNumber::stem($latest)) + 1
-                : 1;
-
-            if ($nextStem > 999999) {
-                throw new RuntimeException('Insurance card numbers are exhausted.');
+                if (! $this->cardNumberTaken($number)) {
+                    return $number;
+                }
             }
 
-            return InsuranceCardNumber::compose($nextStem, 0);
+            throw new RuntimeException('Unable to allocate a unique insurance card number.');
         });
     }
 
-    public function nextMemberCardNumber(Employee $employee): string
+    private function shouldReplace(?string $number, bool $replaceLegacy): bool
     {
-        $stem = InsuranceCardNumber::stem($employee->card_number);
+        if (InsuranceCardNumber::isCurrent($number)) {
+            return false;
+        }
 
-        return DB::transaction(function () use ($stem): string {
-            $latest = Beneficiary::query()
-                ->where('card_number', 'like', $stem.'%')
-                ->orderByDesc('card_number')
-                ->lockForUpdate()
-                ->value('card_number');
+        if (! $replaceLegacy && InsuranceCardNumber::isValid($number)) {
+            return false;
+        }
 
-            $nextIndex = InsuranceCardNumber::isValid($latest)
-                ? InsuranceCardNumber::memberIndex($latest) + 1
-                : 1;
-
-            if ($nextIndex > 99) {
-                throw new RuntimeException('This employee already has 99 family card numbers.');
-            }
-
-            return InsuranceCardNumber::compose($stem, $nextIndex);
-        });
+        return true;
     }
 
     private function reusedMemberNumber(Employee $employee, Beneficiary $beneficiary): ?string
     {
-        $stem = InsuranceCardNumber::stem($employee->card_number);
-
         $query = Beneficiary::query()
-            ->where('card_number', 'like', $stem.'%')
-            ->whereNotNull('card_number');
+            ->whereHas(
+                'medicalRegistration',
+                fn ($query) => $query->where('employee_id', $employee->id),
+            )
+            ->where('card_number', '>=', InsuranceCardNumber::MIN);
 
         if ($beneficiary->exists) {
             $query->whereKeyNot($beneficiary->id);
@@ -132,7 +113,13 @@ class InsuranceCardNumberAssigner
 
         $number = $query->value('card_number');
 
-        return InsuranceCardNumber::isValid($number) ? $number : null;
+        return InsuranceCardNumber::isCurrent($number) ? $number : null;
+    }
+
+    private function cardNumberTaken(string $number): bool
+    {
+        return Employee::query()->where('card_number', $number)->exists()
+            || Beneficiary::query()->where('card_number', $number)->exists();
     }
 
     private function employeeFor(Beneficiary $beneficiary): ?Employee

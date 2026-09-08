@@ -83,6 +83,17 @@ class Employee extends Model
         return InsuranceCardNumber::display($this->card_number);
     }
 
+    /**
+     * @param  Builder<Employee>  $query
+     * @return Builder<Employee>
+     */
+    public function scopeNeedsCardNumberAssignment(Builder $query): Builder
+    {
+        InsuranceCardNumber::constrainNeedsAssignment($query);
+
+        return $query;
+    }
+
     protected static function booted(): void
     {
         static::creating(function (Employee $employee): void {
