@@ -106,7 +106,7 @@ class MedicalRegistrationForm extends Component
 
     public string $beneficiaryDateOfBirth = '';
 
-    public string $beneficiaryBloodType = 'a_positive';
+    public string $beneficiaryBloodType = '';
 
     public bool $beneficiaryHasChronicConditions = false;
 
@@ -508,6 +508,7 @@ class MedicalRegistrationForm extends Component
             'beneficiaryPassportNumber.required' => 'رقم جواز السفر مطلوب للمستفيد غير الليبي',
             'beneficiaryPassportNumber.regex' => 'رقم جواز السفر يجب أن يحتوي على أحرف وأرقام فقط',
             'beneficiaryDateOfBirth.required' => 'تاريخ ميلاد المستفيد مطلوب',
+            'beneficiaryBloodType.required' => 'فصيلة دم المستفيد مطلوبة',
             'beneficiaryPhoto.required' => 'صورة المستفيد مطلوبة',
             'beneficiaryChronicConditions.required' => 'يرجى تحديد الأمراض المزمنة على الأقل',
         ]));
@@ -636,7 +637,7 @@ class MedicalRegistrationForm extends Component
         $this->beneficiaryNationalId = $beneficiary['national_id'] ?? '';
         $this->beneficiaryPassportNumber = $beneficiary['passport_number'] ?? '';
         $this->beneficiaryDateOfBirth = $beneficiary['date_of_birth'] ?? '';
-        $this->beneficiaryBloodType = $beneficiary['blood_type'];
+        $this->beneficiaryBloodType = $beneficiary['blood_type'] ?? '';
         $this->beneficiaryHasChronicConditions = (bool) ($beneficiary['has_chronic_conditions'] ?? $beneficiary['has_chronic_condition'] ?? false);
         $this->beneficiaryChronicConditions = $beneficiary['chronic_conditions'] ?? [];
         $this->beneficiaryHasTumor = (bool) ($beneficiary['has_tumor'] ?? false);
@@ -1289,7 +1290,7 @@ class MedicalRegistrationForm extends Component
         $this->maritalStatus = 'married';
         $this->beneficiaryRelationship = BeneficiaryRelationship::Spouse->value;
         $this->beneficiaryIsLibyan = true;
-        $this->beneficiaryBloodType = 'a_positive';
+        $this->beneficiaryBloodType = '';
     }
 
     protected function resetBeneficiaryForm(): void
@@ -1302,7 +1303,7 @@ class MedicalRegistrationForm extends Component
         $this->beneficiaryNationalId = '';
         $this->beneficiaryPassportNumber = '';
         $this->beneficiaryDateOfBirth = '';
-        $this->beneficiaryBloodType = 'a_positive';
+        $this->beneficiaryBloodType = '';
         $this->beneficiaryHasChronicConditions = false;
         $this->beneficiaryChronicConditions = [];
         $this->beneficiaryHasTumor = false;

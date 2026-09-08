@@ -188,8 +188,11 @@ it('unlocks the form for a valid employee and prefills locked fields', function 
         ->assertSet('workplace', 'general_admin')
         ->assertSet('office', 'مكتب نائب المدير العام')
         ->assertSet('gender', 'male')
+        ->assertSet('bloodType', '')
+        ->assertSet('beneficiaryBloodType', '')
         ->assertSet('identityLocked', true)
         ->assertSee('الإدارة')
+        ->assertSee('— اختر —')
         ->assertSee('المكتب')
         ->assertSee('مكتب نائب المدير العام')
         ->assertDontSee('مكان العمل');
@@ -446,6 +449,39 @@ it('saves a beneficiary with photo medical record and validated national id', fu
         ->and($registration->fresh()->beneficiaries_count)->toBe(1);
 
     Storage::disk('local')->assertExists($beneficiary->photo_path);
+});
+
+it('does not preselect a beneficiary blood type and requires a choice', function () {
+    Storage::fake('local');
+
+    $employeeNationalId = LibyanNationalId::generate(Gender::Female, 1989);
+    $beneficiaryNationalId = LibyanNationalId::generate(Gender::Male, 1988);
+
+    Employee::factory()->create([
+        'employee_number' => '5004',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'نادية حسن',
+        'workplace' => 'general_admin',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('step', 4)
+        ->call('toggleBeneficiaryForm')
+        ->assertSet('showBeneficiaryForm', true)
+        ->assertSet('beneficiaryBloodType', '')
+        ->assertSee('— اختر —')
+        ->set('beneficiaryName', 'محمد حسن')
+        ->set('beneficiaryRelationship', 'spouse')
+        ->set('beneficiaryNationalId', $beneficiaryNationalId)
+        ->set('beneficiaryDateOfBirth', '1988-03-15')
+        ->set('beneficiaryPhoto', UploadedFile::fake()->image('spouse.jpg'))
+        ->call('saveBeneficiary')
+        ->assertHasErrors(['beneficiaryBloodType'])
+        ->assertSee('فصيلة دم المستفيد مطلوبة', false)
+        ->assertCount('beneficiaries', 0);
 });
 
 it('keeps the same family card number when a beneficiary is edited', function () {

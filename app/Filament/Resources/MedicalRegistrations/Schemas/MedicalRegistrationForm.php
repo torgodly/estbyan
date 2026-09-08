@@ -31,6 +31,7 @@ class MedicalRegistrationForm
                         DatePicker::make('date_of_birth')->label('تاريخ الميلاد'),
                         Select::make('blood_type')
                             ->label('فصيلة الدم')
+                            ->placeholder('— اختر —')
                             ->options(collect(BloodType::cases())->mapWithKeys(
                                 fn (BloodType $type) => [$type->value => $type->label()]
                             )),

@@ -72,8 +72,9 @@
                         </p>
                     </div>
                     <div>
-                        <label class="reg-label">فصيلة الدم</label>
+                        <label class="reg-label">فصيلة الدم <span class="reg-required">*</span></label>
                         <select wire:model.live="beneficiaryBloodType" data-reg-field="beneficiaryBloodType" @class(['reg-select', 'reg-input-invalid' => $errors->has('beneficiaryBloodType')])>
+                            <option value="">— اختر —</option>
                             @foreach (\App\Enums\BloodType::cases() as $blood)
                                 <option value="{{ $blood->value }}">{{ $blood->label() }}</option>
                             @endforeach
@@ -290,7 +291,7 @@
 
             @php
                 $rel = \App\Enums\BeneficiaryRelationship::from($beneficiary['relationship']);
-                $blood = \App\Enums\BloodType::from($beneficiary['blood_type']);
+                $blood = \App\Enums\BloodType::tryFrom($beneficiary['blood_type'] ?? '');
             @endphp
             <article class="reg-beneficiary-card" wire:key="beneficiary-{{ $index }}">
                 <div class="flex items-start justify-between gap-4">
@@ -319,7 +320,7 @@
                     @if ($beneficiary['date_of_birth'] ?? null)
                         <div><dt class="text-xs text-slate-400">تاريخ الميلاد</dt><dd class="font-bold text-slate-800">{{ $beneficiary['date_of_birth'] }}</dd></div>
                     @endif
-                    <div><dt class="text-xs text-slate-400">فصيلة الدم</dt><dd class="font-bold text-slate-800">{{ $blood->label() }}</dd></div>
+                    <div><dt class="text-xs text-slate-400">فصيلة الدم</dt><dd class="font-bold text-slate-800">{{ $blood?->label() ?? '—' }}</dd></div>
                 </dl>
                 <div class="flex gap-2 border-t border-slate-100 pt-4">
                     <button wire:click="editBeneficiary({{ $index }})" type="button" wire:loading.attr="disabled" wire:target="editBeneficiary,deleteBeneficiary,saveBeneficiary" class="reg-btn-secondary flex-1 !min-h-[2.75rem] text-xs">تعديل</button>
