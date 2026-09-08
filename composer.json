@@ -11,7 +11,8 @@
         "laravel/framework": "^13.8",
         "laravel/tinker": "^3.0",
         "phpoffice/phpspreadsheet": "^5.9",
-        "spatie/laravel-settings": "^3.9"
+        "spatie/laravel-settings": "^3.9",
+        "torgodly/html2media": "^2.1"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

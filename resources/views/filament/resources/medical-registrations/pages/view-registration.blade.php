@@ -434,6 +434,51 @@
                         @endforelse
                     </div>
                 </section>
+
+                @php
+                    $insuranceCards = $this->insuranceCards();
+                    $beneficiaryCardCount = $insuranceCards->where('kind', 'beneficiary')->count();
+                @endphp
+                <section class="hr-panel" id="insurance-cards">
+                    <div class="hr-panel__head">
+                        <div>
+                            <h3 class="hr-panel__title">بطاقات التأمين</h3>
+                            <p class="hr-panel__meta" style="margin-top: 0.2rem;">
+                                موظف
+                                @if ($beneficiaryCardCount > 0)
+                                    + {{ $beneficiaryCardCount }} مستفيد
+                                @endif
+                            </p>
+                        </div>
+                        <div class="hr-card-actions">
+                            <button
+                                type="button"
+                                class="hr-card-action"
+                                wire:click="mountAction('downloadInsuranceCards')"
+                                wire:loading.attr="disabled"
+                                wire:target="mountAction('downloadInsuranceCards')"
+                            >
+                                تحميل PDF
+                            </button>
+                            <button
+                                type="button"
+                                class="hr-card-action"
+                                wire:click="mountAction('printInsuranceCards')"
+                                wire:loading.attr="disabled"
+                                wire:target="mountAction('printInsuranceCards')"
+                            >
+                                طباعة
+                            </button>
+                        </div>
+                    </div>
+                    <div class="hr-panel__body hr-panel__body--cards">
+                        @include('cards.employee-insurance-card', [
+                            'cards' => $insuranceCards,
+                            'embedAssets' => false,
+                            'preview' => true,
+                        ])
+                    </div>
+                </section>
             </div>
 
             {{-- Sticky review rail --}}

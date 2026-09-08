@@ -4,17 +4,21 @@ namespace App\Filament\Resources\MedicalRegistrations\Pages;
 
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\MedicalRegistrations\MedicalRegistrationResource;
+use App\Models\MedicalRegistration;
 use App\Models\User;
 use App\Services\ReferenceCardGenerator;
 use App\Services\RegistrationReviewService;
+use App\Support\EmployeeInsuranceCard;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Schema;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Torgodly\Html2Media\Actions\Html2MediaAction;
 
 class ViewMedicalRegistration extends ViewRecord
 {
@@ -119,6 +123,18 @@ class ViewMedicalRegistration extends ViewRecord
                     ? EmployeeResource::getUrl('view', ['record' => $this->record->employee_id])
                     : null)
                 ->visible(fn (): bool => filled($this->record->employee_id)),
+            $this->insuranceCardMediaAction(
+                name: 'downloadInsuranceCards',
+                label: 'تحميل PDF',
+                icon: 'heroicon-o-arrow-down-tray',
+                download: true,
+            ),
+            $this->insuranceCardMediaAction(
+                name: 'printInsuranceCards',
+                label: 'طباعة',
+                icon: 'heroicon-o-printer',
+                download: false,
+            ),
             Action::make('downloadReferenceCard')
                 ->label('تحميل بطاقة المراجعة')
                 ->icon('heroicon-o-arrow-down-tray')
@@ -137,5 +153,39 @@ class ViewMedicalRegistration extends ViewRecord
                     );
                 }),
         ];
+    }
+
+    /**
+     * @return Collection<int, EmployeeInsuranceCard>
+     */
+    public function insuranceCards(): Collection
+    {
+        return EmployeeInsuranceCard::collection($this->getRecord());
+    }
+
+    protected function insuranceCardMediaAction(string $name, string $label, string $icon, bool $download): Html2MediaAction
+    {
+        return Html2MediaAction::make($name)
+            ->label($label)
+            ->icon($icon)
+            ->color('gray')
+            ->modal(false)
+            ->preview(false)
+            ->savePdf($download)
+            ->print(! $download)
+            ->enableLinks(false)
+            ->showPageNumbers(false)
+            ->pageBreakMode('class')
+            ->selector('.employee-id-card')
+            ->format([1004, 634])
+            ->orientation('landscape')
+            ->margins(0)
+            ->overflow('cut')
+            ->filename(fn (MedicalRegistration $record): string => EmployeeInsuranceCard::packFilename($record))
+            ->content(fn (MedicalRegistration $record) => view('cards.employee-insurance-card', [
+                'cards' => EmployeeInsuranceCard::collection($record),
+                'embedAssets' => true,
+                'preview' => false,
+            ]));
     }
 }

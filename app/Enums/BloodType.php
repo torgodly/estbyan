@@ -26,4 +26,18 @@ enum BloodType: string
             self::ABNegative => 'AB سالب',
         };
     }
+
+    public function cardLabel(): string
+    {
+        return match ($this) {
+            self::APositive => 'A+',
+            self::ANegative => 'A-',
+            self::OPositive => 'O+',
+            self::ONegative => 'O-',
+            self::BPositive => 'B+',
+            self::BNegative => 'B-',
+            self::ABPositive => 'AB+',
+            self::ABNegative => 'AB-',
+        };
+    }
 }
