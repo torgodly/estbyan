@@ -3,11 +3,12 @@
     $cards = isset($cards) ? $cards : collect([$card]);
     $embedAssets = $embedAssets ?? true;
     $preview = $preview ?? false;
+    $printPack = $printPack ?? false;
     $fontSrc = $embedAssets
         ? $cards->first()?->fontDataUri
         : $cards->first()?->fontUrl;
 @endphp
-<div @class(['employee-insurance-cards', 'employee-insurance-cards--preview' => $preview]) dir="ltr" lang="ar">
+<div @class(['employee-insurance-cards', 'employee-insurance-cards--preview' => $preview, 'employee-insurance-cards--print' => $printPack]) dir="ltr" lang="ar">
     <style>
         @font-face {
             font-family: 'Somar Sans';

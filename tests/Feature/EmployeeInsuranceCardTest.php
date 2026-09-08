@@ -187,6 +187,8 @@ it('shows card previews and direct pdf and print actions on the request page', f
         ->assertSuccessful()
         ->assertSee('بطاقات التأمين')
         ->assertSee('employee-insurance-cards--preview', false)
+        ->assertSee('insurance-cards-print', false)
+        ->assertSee('insurance-cards-SC26-04444', false)
         ->assertSee('تحميل PDF')
         ->assertSee('طباعة')
         ->assertSee('أحمد علي البطاقة')
@@ -198,6 +200,13 @@ it('shows card previews and direct pdf and print actions on the request page', f
         ->assertActionVisible('printInsuranceCards')
         ->callAction('downloadInsuranceCards')
         ->assertHasNoActionErrors();
+});
+
+it('ships a client-side pdf exporter for the on-page insurance cards', function () {
+    expect(public_path('js/insurance-cards-pdf.js'))->toBeFile()
+        ->and(file_get_contents(public_path('js/insurance-cards-pdf.js')))
+        ->toContain('exportInsuranceCards')
+        ->toContain('scale: 1');
 });
 
 it('ships raster artwork so pdf export does not parse the svg logo', function () {

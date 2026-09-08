@@ -72,6 +72,12 @@
         : 'pdf';
 @endphp
 
+@assets
+    <script src="{{ asset('js/html2media/html2canvas-pro-script.js') }}"></script>
+    <script src="{{ asset('js/html2media/jspdf-script.js') }}"></script>
+    <script src="{{ asset('js/insurance-cards-pdf.js') }}"></script>
+@endassets
+
 <x-filament-panels::page>
     <div
         dir="rtl"
@@ -81,6 +87,20 @@
             previewUrl: null,
             previewType: null,
             previewTitle: '',
+            insuranceCardsBusy: false,
+            async exportInsuranceCards(output) {
+                if (this.insuranceCardsBusy || typeof window.exportInsuranceCards !== 'function') {
+                    return
+                }
+
+                this.insuranceCardsBusy = true
+
+                try {
+                    await window.exportInsuranceCards(output)
+                } finally {
+                    this.insuranceCardsBusy = false
+                }
+            },
             openMedical: @js($defaultOpen),
             openBeneficiary: {},
             openPreview(url, type, title) {
@@ -454,18 +474,16 @@
                             <button
                                 type="button"
                                 class="hr-card-action"
-                                wire:click="mountAction('downloadInsuranceCards')"
-                                wire:loading.attr="disabled"
-                                wire:target="mountAction('downloadInsuranceCards')"
+                                x-on:click="exportInsuranceCards('download')"
+                                x-bind:disabled="insuranceCardsBusy"
                             >
-                                تحميل PDF
+                                <span x-text="insuranceCardsBusy ? 'جاري التجهيز…' : 'تحميل PDF'"></span>
                             </button>
                             <button
                                 type="button"
                                 class="hr-card-action"
-                                wire:click="mountAction('printInsuranceCards')"
-                                wire:loading.attr="disabled"
-                                wire:target="mountAction('printInsuranceCards')"
+                                x-on:click="exportInsuranceCards('print')"
+                                x-bind:disabled="insuranceCardsBusy"
                             >
                                 طباعة
                             </button>
@@ -476,6 +494,19 @@
                             'cards' => $insuranceCards,
                             'embedAssets' => false,
                             'preview' => true,
+                        ])
+                    </div>
+                    <div
+                        id="insurance-cards-print"
+                        class="insurance-cards-print"
+                        data-filename="{{ \App\Support\EmployeeInsuranceCard::packFilename($registration) }}"
+                        aria-hidden="true"
+                    >
+                        @include('cards.employee-insurance-card', [
+                            'cards' => $insuranceCards,
+                            'embedAssets' => false,
+                            'preview' => false,
+                            'printPack' => true,
                         ])
                     </div>
                 </section>
