@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\BeneficiaryRelationship;
 use App\Enums\BloodType;
+use App\Models\Concerns\HasInsuranceCardPrint;
 use App\Services\InsuranceCardNumberAssigner;
 use App\Support\InsuranceCardNumber;
 use Database\Factories\BeneficiaryFactory;
@@ -22,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'national_id',
     'passport_number',
     'card_number',
+    'card_printed_at',
     'date_of_birth',
     'blood_type',
     'has_chronic_condition',
@@ -39,6 +41,8 @@ class Beneficiary extends Model
     /** @use HasFactory<BeneficiaryFactory> */
     use HasFactory;
 
+    use HasInsuranceCardPrint;
+
     protected $attributes = [
         'is_libyan' => true,
     ];
@@ -47,6 +51,7 @@ class Beneficiary extends Model
     {
         return [
             'date_of_birth' => 'date',
+            'card_printed_at' => 'datetime',
             'relationship' => BeneficiaryRelationship::class,
             'blood_type' => BloodType::class,
             'is_libyan' => 'boolean',

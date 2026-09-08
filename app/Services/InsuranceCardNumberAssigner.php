@@ -45,9 +45,19 @@ class InsuranceCardNumberAssigner
 
         $this->ensureEmployee($employee);
 
-        $reused = $this->reusedMemberNumber($employee, $beneficiary);
+        $reused = $this->reusedMember($employee, $beneficiary);
 
-        $beneficiary->card_number = $reused ?? $this->nextUniqueCardNumber();
+        if ($reused) {
+            $beneficiary->card_number = $reused->card_number;
+
+            if ($beneficiary->card_printed_at === null) {
+                $beneficiary->card_printed_at = $reused->card_printed_at;
+            }
+
+            return;
+        }
+
+        $beneficiary->card_number = $this->nextUniqueCardNumber();
     }
 
     public function ensureBeneficiary(Beneficiary $beneficiary, bool $replaceLegacy = false): void
@@ -87,7 +97,7 @@ class InsuranceCardNumberAssigner
         return true;
     }
 
-    private function reusedMemberNumber(Employee $employee, Beneficiary $beneficiary): ?string
+    private function reusedMember(Employee $employee, Beneficiary $beneficiary): ?Beneficiary
     {
         $query = Beneficiary::query()
             ->whereHas(
@@ -111,9 +121,11 @@ class InsuranceCardNumberAssigner
             return null;
         }
 
-        $number = $query->value('card_number');
+        $existing = $query->first();
 
-        return InsuranceCardNumber::isCurrent($number) ? $number : null;
+        return $existing && InsuranceCardNumber::isCurrent($existing->card_number)
+            ? $existing
+            : null;
     }
 
     private function cardNumberTaken(string $number): bool

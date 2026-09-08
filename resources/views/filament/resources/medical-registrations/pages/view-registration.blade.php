@@ -88,7 +88,7 @@
             previewType: null,
             previewTitle: '',
             insuranceCardsBusy: false,
-            async exportInsuranceCards(output) {
+            async exportInsuranceCards(output, personKey = null) {
                 if (this.insuranceCardsBusy || typeof window.exportInsuranceCards !== 'function') {
                     return
                 }
@@ -96,7 +96,7 @@
                 this.insuranceCardsBusy = true
 
                 try {
-                    await window.exportInsuranceCards(output)
+                    await window.exportInsuranceCards(output, personKey)
                 } finally {
                     this.insuranceCardsBusy = false
                 }
@@ -156,6 +156,18 @@
                                 @if (filled($registration->employee?->card_number))
                                     <span class="hr-chip">{{ $registration->employee->cardNumberLabel() }}</span>
                                 @endif
+                                <button
+                                    type="button"
+                                    class="hr-print-toggle {{ $registration->employee?->cardIsPrinted() ? 'hr-print-toggle--on' : '' }}"
+                                    wire:click="toggleInsuranceCardPrinted('employee')"
+                                    wire:loading.attr="disabled"
+                                    wire:target="toggleInsuranceCardPrinted"
+                                    role="switch"
+                                    aria-checked="{{ $registration->employee?->cardIsPrinted() ? 'true' : 'false' }}"
+                                >
+                                    <span class="hr-print-toggle__switch" aria-hidden="true"></span>
+                                    <span>{{ $registration->employee?->cardPrintedLabel() ?? 'لم تُطبع' }}</span>
+                                </button>
                                 <span class="hr-chip">{{ $registration->beneficiaries->count() }} مستفيد</span>
                             </div>
 
@@ -387,6 +399,23 @@
                                 <div>
                                     <h4 class="hr-ben__name">{{ $index + 1 }}. {{ $beneficiary->full_name }}</h4>
                                     <p class="hr-ben__rel">{{ $beneficiary->relationship?->label($registration->gender) ?? '—' }}</p>
+                                    <div class="hr-chips" style="margin-bottom: 0.65rem;">
+                                        @if (filled($beneficiary->card_number))
+                                            <span class="hr-chip">{{ $beneficiary->cardNumberLabel() }}</span>
+                                        @endif
+                                        <button
+                                            type="button"
+                                            class="hr-print-toggle {{ $beneficiary->cardIsPrinted() ? 'hr-print-toggle--on' : '' }}"
+                                            wire:click="toggleInsuranceCardPrinted({{ \Illuminate\Support\Js::from('beneficiary-'.$beneficiary->id) }})"
+                                            wire:loading.attr="disabled"
+                                            wire:target="toggleInsuranceCardPrinted"
+                                            role="switch"
+                                            aria-checked="{{ $beneficiary->cardIsPrinted() ? 'true' : 'false' }}"
+                                        >
+                                            <span class="hr-print-toggle__switch" aria-hidden="true"></span>
+                                            <span>{{ $beneficiary->cardPrintedLabel() }}</span>
+                                        </button>
+                                    </div>
 
                                     <div class="hr-kpis" style="margin-top: 0;">
                                         @if ($beneficiary->is_libyan)
@@ -461,6 +490,8 @@
                 @php
                     $insuranceCards = $this->insuranceCards();
                     $beneficiaryCardCount = $insuranceCards->where('kind', 'beneficiary')->count();
+                    $printedCardCount = $this->printedInsuranceCardCount();
+                    $totalCardCount = $insuranceCards->count();
                 @endphp
                 <section class="hr-panel" id="insurance-cards">
                     <div class="hr-panel__head">
@@ -471,6 +502,7 @@
                                 @if ($beneficiaryCardCount > 0)
                                     + {{ $beneficiaryCardCount }} مستفيد
                                 @endif
+                                · طُبع {{ $printedCardCount }} من {{ $totalCardCount }}
                             </p>
                         </div>
                         <div class="hr-card-actions">
@@ -488,7 +520,7 @@
                                 x-on:click="exportInsuranceCards('print')"
                                 x-bind:disabled="insuranceCardsBusy"
                             >
-                                طباعة
+                                طباعة الكل
                             </button>
                         </div>
                     </div>
@@ -497,6 +529,7 @@
                             'cards' => $insuranceCards,
                             'embedAssets' => false,
                             'preview' => true,
+                            'cardActions' => true,
                         ])
                     </div>
                     <div

@@ -4,6 +4,7 @@
     $embedAssets = $embedAssets ?? true;
     $preview = $preview ?? false;
     $printPack = $printPack ?? false;
+    $cardActions = $cardActions ?? false;
     $fontSrc = $embedAssets
         ? $cards->first()?->fontDataUri
         : $cards->first()?->fontUrl;
@@ -164,14 +165,44 @@
         @if ($preview)
             <div class="insurance-card-preview-person">
                 <div class="insurance-card-preview-person__head">
-                    <h4 class="insurance-card-preview-person__title">{{ $card->heading() }}</h4>
-                    <p class="insurance-card-preview-person__meta">{{ $card->name }} · {{ $card->jobTitle }}</p>
+                    <div>
+                        <h4 class="insurance-card-preview-person__title">{{ $card->heading() }}</h4>
+                        <p class="insurance-card-preview-person__meta">{{ $card->name }} · {{ $card->jobTitle }}</p>
+                    </div>
+                    <div class="insurance-card-preview-person__status">
+                        @if ($cardActions)
+                            <button
+                                type="button"
+                                class="hr-print-toggle {{ $card->isPrinted ? 'hr-print-toggle--on' : '' }}"
+                                wire:click="toggleInsuranceCardPrinted({{ \Illuminate\Support\Js::from($card->personKey) }})"
+                                wire:loading.attr="disabled"
+                                wire:target="toggleInsuranceCardPrinted"
+                                role="switch"
+                                aria-checked="{{ $card->isPrinted ? 'true' : 'false' }}"
+                            >
+                                <span class="hr-print-toggle__switch" aria-hidden="true"></span>
+                                <span>{{ $card->printedAtLabel }}</span>
+                            </button>
+                            <button
+                                type="button"
+                                class="hr-card-action"
+                                x-on:click="exportInsuranceCards('print', {{ \Illuminate\Support\Js::from($card->personKey) }})"
+                                x-bind:disabled="insuranceCardsBusy"
+                            >
+                                طباعة هذه البطاقة
+                            </button>
+                        @else
+                            <span @class(['hr-chip', 'hr-chip--approved' => $card->isPrinted, 'hr-chip--editing' => ! $card->isPrinted])>
+                                {{ $card->printedAtLabel }}
+                            </span>
+                        @endif
+                    </div>
                 </div>
                 <div class="insurance-card-preview-person__faces">
         @endif
 
         <div @class(['insurance-card-frame' => $preview])>
-            <section class="employee-id-card employee-id-card--front">
+            <section class="employee-id-card employee-id-card--front" data-card-person="{{ $card->personKey }}">
                 <div class="employee-id-card__canvas">
                     <img
                         class="employee-id-card__art"
@@ -207,7 +238,7 @@
         </div>
 
         <div @class(['insurance-card-frame' => $preview])>
-            <section class="employee-id-card employee-id-card--back">
+            <section class="employee-id-card employee-id-card--back" data-card-person="{{ $card->personKey }}">
                 <div class="employee-id-card__canvas">
                     <img
                         class="employee-id-card__art"

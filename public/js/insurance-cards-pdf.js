@@ -1,4 +1,4 @@
-async function exportInsuranceCards(output) {
+async function exportInsuranceCards(output, personKey) {
     const root = document.getElementById('insurance-cards-print');
 
     if (! root) {
@@ -22,7 +22,12 @@ async function exportInsuranceCards(output) {
         });
     }));
 
-    const pages = [...root.querySelectorAll('.employee-id-card')];
+    const pages = [...root.querySelectorAll('.employee-id-card')]
+        .filter((page) => ! personKey || page.dataset.cardPerson === personKey);
+
+    if (pages.length === 0) {
+        throw new Error('No insurance cards match the print selection.');
+    }
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({
         unit: 'px',

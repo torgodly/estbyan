@@ -1101,7 +1101,7 @@ class MedicalRegistrationForm extends Component
             return;
         }
 
-        $preservedCardNumbers = $this->preservedBeneficiaryCardNumbers($registration);
+        $preservedCardState = $this->preservedBeneficiaryCardState($registration);
 
         $registration->beneficiaries()->delete();
 
@@ -1121,8 +1121,11 @@ class MedicalRegistrationForm extends Component
                 'nationality' => $beneficiary['nationality'] ?? null,
                 'national_id' => $beneficiary['national_id'] ?? null,
                 'passport_number' => $beneficiary['passport_number'] ?? null,
-                'card_number' => $preservedCardNumbers[$identityKey]
+                'card_number' => $preservedCardState[$identityKey]['card_number']
                     ?? InsuranceCardNumber::normalize($beneficiary['card_number'] ?? null),
+                'card_printed_at' => $preservedCardState[$identityKey]['card_printed_at']
+                    ?? $beneficiary['card_printed_at']
+                    ?? null,
                 'date_of_birth' => $beneficiary['date_of_birth'] ?: null,
                 'blood_type' => $beneficiary['blood_type'],
                 'has_chronic_condition' => (bool) ($beneficiary['has_chronic_conditions'] ?? $beneficiary['has_chronic_condition'] ?? false),
@@ -1148,26 +1151,27 @@ class MedicalRegistrationForm extends Component
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, array{card_number: ?string, card_printed_at: ?string}>
      */
-    protected function preservedBeneficiaryCardNumbers(MedicalRegistration $registration): array
+    protected function preservedBeneficiaryCardState(MedicalRegistration $registration): array
     {
-        $numbers = [];
+        $state = [];
 
         foreach ($registration->beneficiaries()->get() as $beneficiary) {
-            if (! InsuranceCardNumber::isValid($beneficiary->card_number)) {
-                continue;
-            }
-
-            $numbers[InsuranceCardNumber::identityKey(
+            $state[InsuranceCardNumber::identityKey(
                 $beneficiary->national_id,
                 $beneficiary->passport_number,
                 $beneficiary->full_name,
                 $beneficiary->date_of_birth,
-            )] = $beneficiary->card_number;
+            )] = [
+                'card_number' => InsuranceCardNumber::isValid($beneficiary->card_number)
+                    ? $beneficiary->card_number
+                    : null,
+                'card_printed_at' => $beneficiary->card_printed_at?->toDateTimeString(),
+            ];
         }
 
-        return $numbers;
+        return $state;
     }
 
     protected function syncFamilyBeneficiariesCount(?MedicalRegistration $registration = null): void
@@ -1425,6 +1429,7 @@ class MedicalRegistrationForm extends Component
             'national_id' => $beneficiary->national_id,
             'passport_number' => $beneficiary->passport_number,
             'card_number' => $beneficiary->card_number,
+            'card_printed_at' => $beneficiary->card_printed_at?->toDateTimeString(),
             'date_of_birth' => $beneficiary->date_of_birth?->format('Y-m-d'),
             'blood_type' => $beneficiary->blood_type?->value,
             'has_chronic_condition' => $beneficiary->has_chronic_condition || $beneficiary->has_chronic_conditions,

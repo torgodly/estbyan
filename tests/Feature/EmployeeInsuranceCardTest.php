@@ -172,6 +172,8 @@ it('renders somar sans text fields in the printable card view', function () {
         ->toContain("font-family: 'Somar Sans'")
         ->toContain('employee-id-card--front')
         ->toContain('employee-id-card--back')
+        ->toContain('data-card-person="employee"')
+        ->toContain('data-card-person="beneficiary-')
         ->toContain('cards/card-front.png')
         ->toContain('cards/card-back.png');
 });
@@ -201,7 +203,11 @@ it('shows card previews and direct pdf and print actions on the request page', f
         ->assertSee('insurance-cards-print', false)
         ->assertSee('insurance-cards-SC26-04444', false)
         ->assertSee('تحميل PDF')
-        ->assertSee('طباعة')
+        ->assertSee('طباعة الكل')
+        ->assertSee('طباعة هذه البطاقة')
+        ->assertSee('hr-print-toggle', false)
+        ->assertSee('لم تُطبع')
+        ->assertSee('طُبع 0 من 2')
         ->assertSee('أحمد علي البطاقة')
         ->assertSee('ليلى أحمد علي')
         ->assertSee('بطاقة الموظف')
@@ -217,6 +223,7 @@ it('ships a client-side pdf exporter for the on-page insurance cards', function 
     expect(public_path('js/insurance-cards-pdf.js'))->toBeFile()
         ->and(file_get_contents(public_path('js/insurance-cards-pdf.js')))
         ->toContain('exportInsuranceCards')
+        ->toContain('dataset.cardPerson')
         ->toContain('scale: 1');
 });
 

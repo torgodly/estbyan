@@ -25,6 +25,9 @@ final readonly class EmployeeInsuranceCard
         public string $backArtworkUrl,
         public string $fontDataUri,
         public string $fontUrl,
+        public string $personKey,
+        public bool $isPrinted,
+        public ?string $printedAtLabel,
     ) {}
 
     /**
@@ -63,6 +66,9 @@ final readonly class EmployeeInsuranceCard
             backArtworkUrl: asset('cards/card-back.png'),
             fontDataUri: self::fontDataUri(),
             fontUrl: asset('fonts/SomarSans-SemiBold.ttf'),
+            personKey: 'employee',
+            isPrinted: (bool) $registration->employee?->cardIsPrinted(),
+            printedAtLabel: $registration->employee?->cardPrintedLabel() ?? 'لم تُطبع',
         );
     }
 
@@ -87,6 +93,9 @@ final readonly class EmployeeInsuranceCard
             backArtworkUrl: asset('cards/card-back.png'),
             fontDataUri: self::fontDataUri(),
             fontUrl: asset('fonts/SomarSans-SemiBold.ttf'),
+            personKey: 'beneficiary-'.$beneficiary->id,
+            isPrinted: $beneficiary->cardIsPrinted(),
+            printedAtLabel: $beneficiary->cardPrintedLabel(),
         );
     }
 

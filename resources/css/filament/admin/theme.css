@@ -961,8 +961,78 @@
 }
 
 .insurance-card-preview-person__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.insurance-card-preview-person__status {
     display: grid;
-    gap: 0.15rem;
+    justify-items: end;
+    gap: 0.45rem;
+}
+
+.hr-print-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid var(--hr-line);
+    background: var(--hr-panel);
+    color: var(--hr-ink);
+    border-radius: 999px;
+    padding: 0.28rem 0.7rem 0.28rem 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.hr-print-toggle__switch {
+    position: relative;
+    width: 2.05rem;
+    height: 1.15rem;
+    border-radius: 999px;
+    background: #cbd5e1;
+    flex: none;
+}
+
+.hr-print-toggle__switch::after {
+    content: "";
+    position: absolute;
+    top: 0.125rem;
+    inset-inline-start: 0.125rem;
+    width: 0.9rem;
+    height: 0.9rem;
+    border-radius: 999px;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.18);
+}
+
+.hr-print-toggle--on {
+    border-color: #6ee7b7;
+    background: #ecfdf5;
+    color: #065f46;
+}
+
+.hr-print-toggle--on .hr-print-toggle__switch {
+    background: #059669;
+}
+
+.hr-print-toggle--on .hr-print-toggle__switch::after {
+    inset-inline-start: auto;
+    inset-inline-end: 0.125rem;
+}
+
+.hr-print-toggle:disabled {
+    opacity: 0.55;
+    cursor: wait;
+}
+
+.dark .hr-print-toggle--on {
+    border-color: #059669;
+    background: #064e3b;
+    color: #a7f3d0;
 }
 
 .insurance-card-preview-person__title {

@@ -35,6 +35,14 @@ class EmployeesTable
                     ->formatStateUsing(fn (?string $state): string => InsuranceCardNumber::display($state))
                     ->searchable()
                     ->toggleable(),
+                TextColumn::make('card_printed_at')
+                    ->label('طباعة البطاقة')
+                    ->badge()
+                    ->getStateUsing(fn (Employee $record): bool => $record->cardIsPrinted())
+                    ->formatStateUsing(fn (bool $state): string => $state ? 'طُبعت' : 'لم تُطبع')
+                    ->color(fn (bool $state): string => $state ? 'success' : 'warning')
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('national_id')
                     ->label('الرقم الوطني')
                     ->searchable()
@@ -103,6 +111,16 @@ class EmployeesTable
                     ->trueLabel('نشط')
                     ->falseLabel('غير نشط')
                     ->placeholder('الكل'),
+                TernaryFilter::make('card_printed_at')
+                    ->label('طباعة البطاقة')
+                    ->placeholder('الكل')
+                    ->trueLabel('طُبعت')
+                    ->falseLabel('لم تُطبع')
+                    ->queries(
+                        true: fn ($query) => $query->whereNotNull('card_printed_at'),
+                        false: fn ($query) => $query->whereNull('card_printed_at'),
+                        blank: fn ($query) => $query,
+                    ),
             ])
             ->recordActions([
                 ViewAction::make()

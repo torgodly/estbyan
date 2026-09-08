@@ -4,7 +4,9 @@ namespace App\Filament\Resources\MedicalRegistrations\Pages;
 
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\MedicalRegistrations\MedicalRegistrationResource;
+use App\Models\Beneficiary;
 use App\Models\User;
+use App\Services\InsuranceCardPrintMarker;
 use App\Services\ReferenceCardGenerator;
 use App\Services\RegistrationReviewService;
 use App\Support\EmployeeInsuranceCard;
@@ -157,5 +159,29 @@ class ViewMedicalRegistration extends ViewRecord
     public function insuranceCards(): Collection
     {
         return EmployeeInsuranceCard::collection($this->getRecord());
+    }
+
+    public function toggleInsuranceCardPrinted(string $personKey): void
+    {
+        app(InsuranceCardPrintMarker::class)->toggle($this->getRecord(), $personKey);
+
+        $this->refreshInsuranceCardRecords();
+    }
+
+    public function printedInsuranceCardCount(): int
+    {
+        $registration = $this->getRecord();
+        $registration->loadMissing(['employee', 'beneficiaries']);
+
+        $count = $registration->employee?->cardIsPrinted() ? 1 : 0;
+
+        return $count + $registration->beneficiaries->filter(
+            fn (Beneficiary $beneficiary): bool => $beneficiary->cardIsPrinted(),
+        )->count();
+    }
+
+    private function refreshInsuranceCardRecords(): void
+    {
+        $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer']);
     }
 }

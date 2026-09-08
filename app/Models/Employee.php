@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\RegistrationStatus;
+use App\Models\Concerns\HasInsuranceCardPrint;
 use App\Services\InsuranceCardNumberAssigner;
 use App\Support\InsuranceCardNumber;
 use App\Support\WorkplaceOptions;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'employee_number',
     'card_number',
+    'card_printed_at',
     'national_id',
     'date_of_birth',
     'full_name',
@@ -28,6 +30,8 @@ class Employee extends Model
 {
     /** @use HasFactory<EmployeeFactory> */
     use HasFactory;
+
+    use HasInsuranceCardPrint;
 
     /**
      * @return list<string>
@@ -46,6 +50,7 @@ class Employee extends Model
     {
         return [
             'date_of_birth' => 'date',
+            'card_printed_at' => 'datetime',
             'is_active' => 'boolean',
         ];
     }
