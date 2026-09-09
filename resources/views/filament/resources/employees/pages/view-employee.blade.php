@@ -38,10 +38,12 @@
                             <span class="hr-kpi__label">رقم البطاقة</span>
                             <div class="hr-kpi__value">{{ $employee->cardNumberLabel() }}</div>
                         </div>
-                        <div class="hr-kpi">
-                            <span class="hr-kpi__label">طباعة البطاقة</span>
-                            <div class="hr-kpi__value">{{ $employee->cardPrintedLabel() }}</div>
-                        </div>
+                        @if (auth()->user()?->canManageInsuranceCards())
+                            <div class="hr-kpi">
+                                <span class="hr-kpi__label">طباعة البطاقة</span>
+                                <div class="hr-kpi__value">{{ $employee->cardPrintedLabel() }}</div>
+                            </div>
+                        @endif
                         <div class="hr-kpi">
                             <span class="hr-kpi__label">الرقم الوطني</span>
                             <div class="hr-kpi__value">{{ $employee->national_id }}</div>

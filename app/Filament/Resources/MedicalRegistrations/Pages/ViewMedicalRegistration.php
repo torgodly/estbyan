@@ -127,11 +127,13 @@ class ViewMedicalRegistration extends ViewRecord
                 ->label('تحميل PDF')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
+                ->visible(fn (): bool => $this->canManageInsuranceCards())
                 ->action(fn (): mixed => $this->js('window.exportInsuranceCards("download")')),
             Action::make('printInsuranceCards')
                 ->label('طباعة')
                 ->icon('heroicon-o-printer')
                 ->color('gray')
+                ->visible(fn (): bool => $this->canManageInsuranceCards())
                 ->action(fn (): mixed => $this->js('window.exportInsuranceCards("print")')),
             Action::make('downloadReferenceCard')
                 ->label('تحميل بطاقة المراجعة')
@@ -153,6 +155,13 @@ class ViewMedicalRegistration extends ViewRecord
         ];
     }
 
+    public function canManageInsuranceCards(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof User && $user->canManageInsuranceCards();
+    }
+
     /**
      * @return Collection<int, EmployeeInsuranceCard>
      */
@@ -163,6 +172,8 @@ class ViewMedicalRegistration extends ViewRecord
 
     public function toggleInsuranceCardPrinted(string $personKey): void
     {
+        abort_unless($this->canManageInsuranceCards(), 403);
+
         app(InsuranceCardPrintMarker::class)->toggle($this->getRecord(), $personKey);
 
         $this->refreshInsuranceCardRecords();

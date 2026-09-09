@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Models\Employee;
 use App\Models\User;
 use App\Support\TestEmployees;
@@ -15,6 +16,8 @@ it('seeds the tax authority hr admin for the filament panel', function () {
 
     expect($admin)->not->toBeNull()
         ->and($admin->name)->toBe('مصلحة الضرائب · الموارد البشرية')
+        ->and($admin->role)->toBe(UserRole::Hr)
+        ->and($admin->canManageInsuranceCards())->toBeFalse()
         ->and(Hash::check(TaxHrAdminSeeder::PASSWORD, $admin->password))->toBeTrue();
 });
 

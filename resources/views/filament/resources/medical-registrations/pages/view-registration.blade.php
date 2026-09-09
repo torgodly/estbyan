@@ -72,11 +72,13 @@
         : 'pdf';
 @endphp
 
-@assets
-    <script src="{{ asset('js/html2media/html2canvas-pro-script.js') }}"></script>
-    <script src="{{ asset('js/html2media/jspdf-script.js') }}"></script>
-    <script src="{{ asset('js/insurance-cards-pdf.js') }}"></script>
-@endassets
+@if ($this->canManageInsuranceCards())
+    @assets
+        <script src="{{ asset('js/html2media/html2canvas-pro-script.js') }}"></script>
+        <script src="{{ asset('js/html2media/jspdf-script.js') }}"></script>
+        <script src="{{ asset('js/insurance-cards-pdf.js') }}"></script>
+    @endassets
+@endif
 
 <x-filament-panels::page>
     <div
@@ -156,18 +158,20 @@
                                 @if (filled($registration->employee?->card_number))
                                     <span class="hr-chip">{{ $registration->employee->cardNumberLabel() }}</span>
                                 @endif
-                                <button
-                                    type="button"
-                                    class="hr-print-toggle {{ $registration->employee?->cardIsPrinted() ? 'hr-print-toggle--on' : '' }}"
-                                    wire:click="toggleInsuranceCardPrinted('employee')"
-                                    wire:loading.attr="disabled"
-                                    wire:target="toggleInsuranceCardPrinted"
-                                    role="switch"
-                                    aria-checked="{{ $registration->employee?->cardIsPrinted() ? 'true' : 'false' }}"
-                                >
-                                    <span class="hr-print-toggle__switch" aria-hidden="true"></span>
-                                    <span>{{ $registration->employee?->cardPrintedLabel() ?? 'لم تُطبع' }}</span>
-                                </button>
+                                @if ($this->canManageInsuranceCards())
+                                    <button
+                                        type="button"
+                                        class="hr-print-toggle {{ $registration->employee?->cardIsPrinted() ? 'hr-print-toggle--on' : '' }}"
+                                        wire:click="toggleInsuranceCardPrinted('employee')"
+                                        wire:loading.attr="disabled"
+                                        wire:target="toggleInsuranceCardPrinted"
+                                        role="switch"
+                                        aria-checked="{{ $registration->employee?->cardIsPrinted() ? 'true' : 'false' }}"
+                                    >
+                                        <span class="hr-print-toggle__switch" aria-hidden="true"></span>
+                                        <span>{{ $registration->employee?->cardPrintedLabel() ?? 'لم تُطبع' }}</span>
+                                    </button>
+                                @endif
                                 <span class="hr-chip">{{ $registration->beneficiaries->count() }} مستفيد</span>
                             </div>
 
@@ -408,18 +412,20 @@
                                         @if (filled($beneficiary->card_number))
                                             <span class="hr-chip">{{ $beneficiary->cardNumberLabel() }}</span>
                                         @endif
-                                        <button
-                                            type="button"
-                                            class="hr-print-toggle {{ $beneficiary->cardIsPrinted() ? 'hr-print-toggle--on' : '' }}"
-                                            wire:click="toggleInsuranceCardPrinted({{ \Illuminate\Support\Js::from('beneficiary-'.$beneficiary->id) }})"
-                                            wire:loading.attr="disabled"
-                                            wire:target="toggleInsuranceCardPrinted"
-                                            role="switch"
-                                            aria-checked="{{ $beneficiary->cardIsPrinted() ? 'true' : 'false' }}"
-                                        >
-                                            <span class="hr-print-toggle__switch" aria-hidden="true"></span>
-                                            <span>{{ $beneficiary->cardPrintedLabel() }}</span>
-                                        </button>
+                                        @if ($this->canManageInsuranceCards())
+                                            <button
+                                                type="button"
+                                                class="hr-print-toggle {{ $beneficiary->cardIsPrinted() ? 'hr-print-toggle--on' : '' }}"
+                                                wire:click="toggleInsuranceCardPrinted({{ \Illuminate\Support\Js::from('beneficiary-'.$beneficiary->id) }})"
+                                                wire:loading.attr="disabled"
+                                                wire:target="toggleInsuranceCardPrinted"
+                                                role="switch"
+                                                aria-checked="{{ $beneficiary->cardIsPrinted() ? 'true' : 'false' }}"
+                                            >
+                                                <span class="hr-print-toggle__switch" aria-hidden="true"></span>
+                                                <span>{{ $beneficiary->cardPrintedLabel() }}</span>
+                                            </button>
+                                        @endif
                                     </div>
 
                                     <div class="hr-kpis" style="margin-top: 0;">
@@ -492,6 +498,7 @@
                     </div>
                 </section>
 
+                @if ($this->canManageInsuranceCards())
                 @php
                     $insuranceCards = $this->insuranceCards();
                     $beneficiaryCardCount = $insuranceCards->where('kind', 'beneficiary')->count();
@@ -551,6 +558,7 @@
                         ])
                     </div>
                 </section>
+                @endif
             </div>
 
             {{-- Sticky review rail --}}

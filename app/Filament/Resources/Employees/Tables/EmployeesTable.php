@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Employees\Tables;
 
 use App\Enums\RegistrationStatus;
 use App\Models\Employee;
+use App\Models\User;
 use App\Support\InsuranceCardNumber;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
@@ -12,11 +13,14 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class EmployeesTable
 {
     public static function configure(Table $table): Table
     {
+        $canManageInsuranceCards = self::canManageInsuranceCards();
+
         return $table
             ->defaultSort('full_name')
             ->columns([
@@ -42,7 +46,8 @@ class EmployeesTable
                     ->formatStateUsing(fn (bool $state): string => $state ? 'طُبعت' : 'لم تُطبع')
                     ->color(fn (bool $state): string => $state ? 'success' : 'warning')
                     ->sortable()
-                    ->toggleable(),
+                    ->toggleable()
+                    ->visible($canManageInsuranceCards),
                 TextColumn::make('national_id')
                     ->label('الرقم الوطني')
                     ->searchable()
@@ -116,6 +121,7 @@ class EmployeesTable
                     ->placeholder('الكل')
                     ->trueLabel('طُبعت')
                     ->falseLabel('لم تُطبع')
+                    ->visible($canManageInsuranceCards)
                     ->queries(
                         true: fn ($query) => $query->whereNotNull('card_printed_at'),
                         false: fn ($query) => $query->whereNull('card_printed_at'),
@@ -129,5 +135,12 @@ class EmployeesTable
                     ->label('تعديل'),
             ])
             ->toolbarActions([]);
+    }
+
+    private static function canManageInsuranceCards(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof User && $user->canManageInsuranceCards();
     }
 }

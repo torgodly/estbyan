@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 it('does not mark cards as printed when the pack is printed', function () {
-    $admin = User::factory()->create();
+    $admin = User::factory()->smartCare()->create();
     $registration = MedicalRegistration::factory()->submitted()->create();
     $beneficiary = Beneficiary::factory()->create([
         'medical_registration_id' => $registration->id,
@@ -35,7 +35,7 @@ it('does not mark cards as printed when the pack is printed', function () {
 });
 
 it('toggles only the selected family card', function () {
-    $admin = User::factory()->create();
+    $admin = User::factory()->smartCare()->create();
     $registration = MedicalRegistration::factory()->submitted()->create();
     $spouse = Beneficiary::factory()->create([
         'medical_registration_id' => $registration->id,
@@ -58,7 +58,7 @@ it('toggles only the selected family card', function () {
 });
 
 it('can clear a printed mark without printing again', function () {
-    $admin = User::factory()->create();
+    $admin = User::factory()->smartCare()->create();
     $registration = MedicalRegistration::factory()->submitted()->create();
     $registration->employee->markCardPrinted();
 

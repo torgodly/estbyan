@@ -182,7 +182,7 @@ it('renders somar sans text fields in the printable card view', function () {
 });
 
 it('shows card previews and direct pdf and print actions on the request page', function () {
-    $admin = User::factory()->create();
+    $admin = User::factory()->smartCare()->create();
     $registration = MedicalRegistration::factory()->submitted()->create([
         'full_name' => 'أحمد علي البطاقة',
         'reference_number' => 'SC26-04444',

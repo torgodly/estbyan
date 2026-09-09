@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\UserRole;
 use App\Models\Employee;
 use App\Models\User;
 use Database\Seeders\EmployeeSeeder;
@@ -15,6 +16,8 @@ it('seeds a support admin and prints the hard password', function () {
 
     expect($admin)->not->toBeNull()
         ->and($admin->name)->toBe('Support Admin')
+        ->and($admin->role)->toBe(UserRole::SmartCare)
+        ->and($admin->canManageInsuranceCards())->toBeTrue()
         ->and(Hash::check(SupportAdminSeeder::PASSWORD, $admin->password))->toBeTrue()
         ->and($output)->toContain(SupportAdminSeeder::EMAIL)
         ->and($output)->toContain(SupportAdminSeeder::PASSWORD);

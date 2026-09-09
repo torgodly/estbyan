@@ -168,7 +168,7 @@ it('shows edit action on the employees table', function () {
 });
 
 it('lists employees and supports search', function () {
-    $admin = User::factory()->create();
+    $admin = User::factory()->smartCare()->create();
 
     $target = Employee::factory()->create([
         'full_name' => 'خالد المستهدف',
@@ -240,7 +240,7 @@ it('filters employees who submitted the form versus those who have not', functio
 });
 
 it('shows the employee dossier with registration history and submission state', function () {
-    $admin = User::factory()->create();
+    $admin = User::factory()->smartCare()->create();
     $employee = Employee::factory()->create([
         'full_name' => 'نادية الملف',
         'employee_number' => '33445',
