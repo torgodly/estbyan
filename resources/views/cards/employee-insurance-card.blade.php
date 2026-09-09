@@ -76,7 +76,6 @@
             height: 368.18px;
             object-fit: cover;
             border-radius: 16.12px;
-            filter: grayscale(1);
         }
 
         .employee-id-card__data {
