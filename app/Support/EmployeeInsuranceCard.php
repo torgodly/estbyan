@@ -60,7 +60,7 @@ final readonly class EmployeeInsuranceCard
             barcodeSvg: InsuranceCardNumber::isValid($cardNumber)
                 ? Code128Barcode::svg($cardNumber)
                 : null,
-            photoDataUri: self::photoDataUriFromPath($registration->employee_photo_path),
+            photoDataUri: null,
             photoUrl: RegistrationDocuments::url($registration, RegistrationDocuments::EMPLOYEE_PHOTO),
             frontArtworkUrl: asset('cards/card-front.svg'),
             backArtworkUrl: asset('cards/card-back.svg'),
@@ -87,7 +87,7 @@ final readonly class EmployeeInsuranceCard
             barcodeSvg: InsuranceCardNumber::isValid($cardNumber)
                 ? Code128Barcode::svg($cardNumber)
                 : null,
-            photoDataUri: self::photoDataUriFromPath($beneficiary->photo_path),
+            photoDataUri: null,
             photoUrl: RegistrationDocuments::beneficiaryUrl($registration, $beneficiary),
             frontArtworkUrl: asset('cards/card-front.svg'),
             backArtworkUrl: asset('cards/card-back.svg'),

@@ -222,6 +222,8 @@
                         alt=""
                         width="972"
                         height="602"
+                        loading="lazy"
+                        decoding="async"
                     >
                     @if ($card->photoSrc($embedAssets))
                         <img
@@ -230,6 +232,8 @@
                             alt=""
                             width="304"
                             height="368"
+                            loading="lazy"
+                            decoding="async"
                         >
                     @endif
                     <div class="employee-id-card__data">
@@ -262,6 +266,8 @@
                         alt=""
                         width="1004"
                         height="634"
+                        loading="lazy"
+                        decoding="async"
                     >
                 </div>
             </section>

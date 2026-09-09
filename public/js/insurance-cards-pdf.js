@@ -16,15 +16,14 @@ async function exportInsuranceCards(output, personKey) {
         throw new Error('PDF libraries are not loaded.');
     }
 
-    await document.fonts.ready;
-    await waitForPrintImages(root);
-
-    const pages = [...root.querySelectorAll('.employee-id-card')]
-        .filter((page) => ! personKey || page.dataset.cardPerson === personKey);
+    const pages = collectPrintPages(root, personKey);
 
     if (pages.length === 0) {
         throw new Error('No insurance cards match the print selection.');
     }
+
+    await document.fonts.ready;
+    await waitForPrintImages(root);
 
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({
@@ -34,22 +33,26 @@ async function exportInsuranceCards(output, personKey) {
         compress: true,
     });
 
-    for (const [index, page] of pages.entries()) {
-        if (index > 0) {
-            pdf.addPage([CARD_WIDTH_MM, CARD_HEIGHT_MM], 'landscape');
-        }
+    try {
+        for (const [index, page] of pages.entries()) {
+            if (index > 0) {
+                pdf.addPage([CARD_WIDTH_MM, CARD_HEIGHT_MM], 'landscape');
+            }
 
-        const canvas = await captureCard(page);
-        pdf.addImage(
-            canvas.toDataURL('image/jpeg', JPEG_QUALITY),
-            'JPEG',
-            0,
-            0,
-            CARD_WIDTH_MM,
-            CARD_HEIGHT_MM,
-            undefined,
-            'MEDIUM',
-        );
+            const canvas = await captureCard(page);
+            pdf.addImage(
+                canvas.toDataURL('image/jpeg', JPEG_QUALITY),
+                'JPEG',
+                0,
+                0,
+                CARD_WIDTH_MM,
+                CARD_HEIGHT_MM,
+                undefined,
+                'MEDIUM',
+            );
+        }
+    } finally {
+        root.replaceChildren();
     }
 
     const filename = (root.dataset.filename || 'insurance-cards') + '.pdf';
@@ -81,6 +84,30 @@ async function exportInsuranceCards(output, personKey) {
     }
 
     pdf.save(filename);
+}
+
+function collectPrintPages(host, personKey) {
+    const preview = document.querySelector('.employee-insurance-cards--preview');
+
+    if (! preview) {
+        throw new Error('Insurance card preview is missing.');
+    }
+
+    const sources = [...preview.querySelectorAll('.employee-id-card')]
+        .filter((page) => ! personKey || page.dataset.cardPerson === personKey);
+
+    host.replaceChildren();
+
+    return sources.map((page) => {
+        const clone = page.cloneNode(true);
+        clone.style.position = 'relative';
+        clone.style.top = '0';
+        clone.style.left = '0';
+        clone.style.transform = 'none';
+        host.appendChild(clone);
+
+        return clone;
+    });
 }
 
 async function waitForPrintImages(root) {

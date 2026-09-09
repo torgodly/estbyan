@@ -76,7 +76,7 @@
     @assets
         <script src="{{ asset('js/html2media/html2canvas-pro-script.js') }}"></script>
         <script src="{{ asset('js/html2media/jspdf-script.js') }}"></script>
-        <script src="{{ asset('js/insurance-cards-pdf.js') }}?v=card-5"></script>
+        <script src="{{ asset('js/insurance-cards-pdf.js') }}?v=card-6"></script>
     @endassets
 @endif
 
@@ -327,7 +327,7 @@
                                 <div class="hr-doc__frame">
                                     @if ($familyDocUrl)
                                         @if ($familyDocType === 'image')
-                                            <img src="{{ $familyDocUrl }}" alt="صورة من شهادة الوضع العائلي">
+                                            <img src="{{ $familyDocUrl }}" alt="صورة من شهادة الوضع العائلي" loading="lazy" decoding="async">
                                         @else
                                             <iframe src="{{ $familyDocUrl }}#toolbar=0" title="صورة من شهادة الوضع العائلي"></iframe>
                                         @endif
@@ -355,7 +355,7 @@
                                 </div>
                                 <div class="hr-doc__frame">
                                     @if ($photoUrl)
-                                        <img src="{{ $photoUrl }}" alt="صورة الموظف">
+                                        <img src="{{ $photoUrl }}" alt="صورة الموظف" loading="lazy" decoding="async">
                                     @else
                                         <div class="hr-doc__missing">
                                             <x-filament::icon icon="heroicon-o-photo" class="h-7 w-7" />
@@ -399,7 +399,7 @@
                                             class="hr-hero__photo-btn"
                                             @click="openPreview(@js($beneficiaryPhoto), 'image', @js($beneficiary->full_name))"
                                         >
-                                            <img src="{{ $beneficiaryPhoto }}" alt="" class="hr-ben__photo">
+                                            <img src="{{ $beneficiaryPhoto }}" alt="" class="hr-ben__photo" loading="lazy" decoding="async">
                                         </button>
                                     @else
                                         <div class="hr-ben__photo-empty">بدون صورة</div>
@@ -550,14 +550,7 @@
                         data-filename="{{ \App\Support\EmployeeInsuranceCard::packFilename($registration) }}"
                         data-font-url="{{ $insuranceCards->first()?->fontUrl }}"
                         aria-hidden="true"
-                    >
-                        @include('cards.employee-insurance-card', [
-                            'cards' => $insuranceCards,
-                            'embedAssets' => true,
-                            'preview' => false,
-                            'printPack' => true,
-                        ])
-                    </div>
+                    ></div>
                 </section>
                 @endif
             </div>
