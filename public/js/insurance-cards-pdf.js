@@ -28,31 +28,49 @@ async function exportInsuranceCards(output, personKey) {
     if (pages.length === 0) {
         throw new Error('No insurance cards match the print selection.');
     }
+
+    const cardWidthPx = 1004;
+    const cardHeightPx = 634;
+    const cardWidthMm = 85.6;
+    const cardHeightMm = 53.98;
+    const printScale = 4;
+
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({
-        unit: 'px',
-        format: [1004, 634],
+        unit: 'mm',
+        format: [cardWidthMm, cardHeightMm],
         orientation: 'landscape',
+        compress: true,
         hotfixes: ['px_scaling'],
     });
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
 
     for (const [index, page] of pages.entries()) {
         const canvas = await html2canvas(page, {
-            scale: 1,
+            scale: printScale,
             useCORS: true,
             logging: false,
             backgroundColor: '#ffffff',
-            width: 1004,
-            height: 634,
+            width: cardWidthPx,
+            height: cardHeightPx,
+            windowWidth: cardWidthPx,
+            windowHeight: cardHeightPx,
+            imageTimeout: 0,
         });
 
         if (index > 0) {
-            pdf.addPage([1004, 634], 'landscape');
+            pdf.addPage([cardWidthMm, cardHeightMm], 'landscape');
         }
 
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pageWidth, pageHeight);
+        pdf.addImage(
+            canvas.toDataURL('image/png'),
+            'PNG',
+            0,
+            0,
+            cardWidthMm,
+            cardHeightMm,
+            `card-${index}`,
+            'NONE',
+        );
     }
 
     const filename = (root.dataset.filename || 'insurance-cards') + '.pdf';

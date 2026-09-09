@@ -234,7 +234,11 @@ it('ships a client-side pdf exporter for the on-page insurance cards', function 
         ->and(file_get_contents(public_path('js/insurance-cards-pdf.js')))
         ->toContain('exportInsuranceCards')
         ->toContain('dataset.cardPerson')
-        ->toContain('scale: 1');
+        ->toContain('scale: printScale')
+        ->toContain('printScale = 4')
+        ->toContain("image/png")
+        ->toContain('85.6')
+        ->toContain("'NONE'");
 });
 
 it('ships raster artwork so pdf export does not parse the svg logo', function () {
