@@ -41,8 +41,8 @@ it('maps registration identity fields onto the insurance card', function () {
         ->and(EmployeeInsuranceCard::packFilename($registration))->toBe('insurance-cards-SC26-00999')
         ->and($card->fontDataUri)->toStartWith('data:font/truetype;base64,')
         ->and($card->fontUrl)->toContain('fonts/SomarSans-SemiBold.ttf')
-        ->and($card->frontArtworkUrl)->toContain('cards/card-front.png')
-        ->and($card->backArtworkUrl)->toContain('cards/card-back.png');
+        ->and($card->frontArtworkUrl)->toContain('cards/card-front.svg')
+        ->and($card->backArtworkUrl)->toContain('cards/card-back.svg');
 });
 
 it('uses the approval date as the card issue date when the request was reviewed', function () {
@@ -184,8 +184,8 @@ it('renders somar sans text fields in the printable card view', function () {
         ->toContain('employee-id-card--back')
         ->toContain('data-card-person="employee"')
         ->toContain('data-card-person="beneficiary-')
-        ->toContain('cards/card-front.png')
-        ->toContain('cards/card-back.png');
+        ->toContain('cards/card-front.svg')
+        ->toContain('cards/card-back.svg');
 });
 
 it('shows card previews and direct pdf and print actions on the request page', function () {
@@ -229,30 +229,36 @@ it('shows card previews and direct pdf and print actions on the request page', f
         ->assertHasNoActionErrors();
 });
 
-it('ships a client-side pdf exporter for the on-page insurance cards', function () {
+it('ships a client-side pdf exporter at cr80 print size', function () {
+    $exporter = (string) file_get_contents(public_path('js/insurance-cards-pdf.js'));
+    $page = (string) file_get_contents(resource_path('views/filament/resources/medical-registrations/pages/view-registration.blade.php'));
+
     expect(public_path('js/insurance-cards-pdf.js'))->toBeFile()
-        ->and(file_get_contents(public_path('js/insurance-cards-pdf.js')))
+        ->and(public_path('js/html2media/html2canvas-pro-script.js'))->toBeFile()
+        ->and($exporter)
         ->toContain('exportInsuranceCards')
         ->toContain('dataset.cardPerson')
-        ->toContain('scale: printScale')
-        ->toContain('printScale = 4')
-        ->toContain("image/png")
+        ->toContain('html2canvas')
+        ->toContain("unit: 'mm'")
         ->toContain('85.6')
-        ->toContain("'NONE'");
+        ->toContain('53.98')
+        ->toContain('PRINT_SCALE = 4')
+        ->toContain('image/jpeg')
+        ->not->toContain('pdf.svg')
+        ->not->toContain('px_scaling')
+        ->and($page)
+        ->toContain('html2canvas-pro-script.js')
+        ->toContain('insurance-cards-pdf.js');
 });
 
-it('ships raster artwork so pdf export does not parse the svg logo', function () {
-    $front = public_path('cards/card-front.png');
-    $back = public_path('cards/card-back.png');
+it('ships vector card artwork for print', function () {
+    $front = public_path('cards/card-front.svg');
+    $back = public_path('cards/card-back.svg');
 
     expect($front)->toBeFile()
         ->and($back)->toBeFile()
-        ->and(substr((string) file_get_contents($front), 0, 8))->toBe("\x89PNG\r\n\x1a\n")
-        ->and(substr((string) file_get_contents($back), 0, 8))->toBe("\x89PNG\r\n\x1a\n")
-        ->and(getimagesize($front)[0])->toBe(1944)
-        ->and(getimagesize($front)[1])->toBe(1204)
-        ->and(getimagesize($back)[0])->toBe(2008)
-        ->and(getimagesize($back)[1])->toBe(1268);
+        ->and((string) file_get_contents($front))->toContain('viewBox="0 0 972.22 601.8"')
+        ->and((string) file_get_contents($back))->toContain('viewBox="0 0 1004 634"');
 });
 
 it('uses a draft pack filename when the request has no reference number', function () {
