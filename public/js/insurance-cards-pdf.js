@@ -4,6 +4,7 @@ const CARD_WIDTH_MM = 85.6;
 const CARD_HEIGHT_MM = 53.98;
 const PRINT_SCALE = 4;
 const JPEG_QUALITY = 0.92;
+const XLINK_NS = 'http://www.w3.org/1999/xlink';
 
 async function exportInsuranceCards(output, personKey) {
     const root = document.getElementById('insurance-cards-print');
@@ -22,6 +23,7 @@ async function exportInsuranceCards(output, personKey) {
         throw new Error('No insurance cards match the print selection.');
     }
 
+    await inlineCardPhotos(root);
     await document.fonts.ready;
     await waitForPrintImages(root);
 
@@ -104,15 +106,94 @@ function collectPrintPages(host, personKey) {
         clone.style.top = '0';
         clone.style.left = '0';
         clone.style.transform = 'none';
+        clone.querySelectorAll('img').forEach((image) => {
+            image.loading = 'eager';
+            image.decoding = 'sync';
+        });
         host.appendChild(clone);
 
         return clone;
     });
 }
 
+async function inlineCardPhotos(root) {
+    await Promise.all([
+        ...[...root.querySelectorAll('img')].map(inlineHtmlPhoto),
+        ...[...root.querySelectorAll('image')].map(inlineSvgPhoto),
+    ]);
+}
+
+async function inlineHtmlPhoto(image) {
+    const source = image.currentSrc || image.getAttribute('src') || '';
+
+    if (! shouldInlinePhoto(source)) {
+        return;
+    }
+
+    try {
+        image.src = await urlToDataUri(source);
+    } catch (error) {
+        console.warn('Insurance card photo could not be inlined.', error);
+    }
+}
+
+async function inlineSvgPhoto(image) {
+    const source = svgImageHref(image);
+
+    if (! shouldInlinePhoto(source)) {
+        return;
+    }
+
+    try {
+        setSvgImageHref(image, await urlToDataUri(source));
+    } catch (error) {
+        console.warn('Insurance card SVG photo could not be inlined.', error);
+    }
+}
+
+function shouldInlinePhoto(source) {
+    return Boolean(source) && ! source.startsWith('data:') && ! source.startsWith('blob:');
+}
+
+function svgImageHref(image) {
+    return image.getAttribute('href')
+        || image.getAttributeNS(XLINK_NS, 'href')
+        || '';
+}
+
+function setSvgImageHref(image, href) {
+    image.setAttribute('href', href);
+    image.setAttributeNS(XLINK_NS, 'href', href);
+}
+
+async function urlToDataUri(url) {
+    const response = await fetch(url, { credentials: 'include' });
+
+    if (! response.ok) {
+        throw new Error('Photo fetch failed.');
+    }
+
+    const blob = await response.blob();
+
+    if (blob.type && ! blob.type.startsWith('image/')) {
+        throw new Error('Photo response is not an image.');
+    }
+
+    return await blobToDataUri(blob);
+}
+
+function blobToDataUri(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
 async function waitForPrintImages(root) {
     await Promise.all([...root.querySelectorAll('img')].map((image) => {
-        if (image.complete) {
+        if (image.complete && image.naturalWidth) {
             return Promise.resolve();
         }
 
@@ -160,6 +241,7 @@ function createPrintCanvas() {
 
 async function rasterizeSvgOnCardCanvas(svg) {
     const clone = svg.cloneNode(true);
+    await Promise.all([...clone.querySelectorAll('image')].map(inlineSvgPhoto));
     const size = readSvgSize(clone);
     clone.setAttribute('width', String(size.width));
     clone.setAttribute('height', String(size.height));

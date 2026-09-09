@@ -76,7 +76,7 @@
     @assets
         <script src="{{ asset('js/html2media/html2canvas-pro-script.js') }}"></script>
         <script src="{{ asset('js/html2media/jspdf-script.js') }}"></script>
-        <script src="{{ asset('js/insurance-cards-pdf.js') }}?v=card-6"></script>
+        <script src="{{ asset('js/insurance-cards-pdf.js') }}?v=card-7"></script>
     @endassets
 @endif
 
