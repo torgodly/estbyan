@@ -178,7 +178,8 @@ it('renders somar sans text fields in the printable card view', function () {
         ->toContain('data-card-person="employee"')
         ->toContain('data-card-person="beneficiary-')
         ->toContain('cards/card-front.png')
-        ->toContain('cards/card-back.png');
+        ->toContain('cards/card-back.png')
+        ->toContain('filter: grayscale(1)');
 });
 
 it('shows card previews and direct pdf and print actions on the request page', function () {
