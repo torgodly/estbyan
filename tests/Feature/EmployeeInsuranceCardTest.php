@@ -39,10 +39,11 @@ it('maps registration identity fields onto the insurance card', function () {
         ->and($card->photoDataUri)->toBeNull()
         ->and($card->filename())->toBe('employee-card-'.$cardNumber)
         ->and(EmployeeInsuranceCard::packFilename($registration))->toBe('insurance-cards-SC26-00999')
-        ->and($card->fontDataUri)->toStartWith('data:font/truetype;base64,')
+        ->and($card->fontDataUri)->toBe('')
+        ->and(EmployeeInsuranceCard::fontDataUri())->toStartWith('data:font/truetype;base64,')
         ->and($card->fontUrl)->toContain('fonts/SomarSans-SemiBold.ttf')
-        ->and($card->frontArtworkUrl)->toContain('cards/card-front.svg')
-        ->and($card->backArtworkUrl)->toContain('cards/card-back.svg');
+        ->and($card->frontArtworkUrl)->toContain('cards/card-front.png')
+        ->and($card->backArtworkUrl)->toContain('cards/card-back.png');
 });
 
 it('uses the approval date as the card issue date when the request was reviewed', function () {
@@ -188,8 +189,8 @@ it('renders somar sans text fields in the printable card view', function () {
         ->toContain('employee-id-card--back')
         ->toContain('data-card-person="employee"')
         ->toContain('data-card-person="beneficiary-')
-        ->toContain('cards/card-front.svg')
-        ->toContain('cards/card-back.svg');
+        ->toContain('cards/card-front.png')
+        ->toContain('cards/card-back.png');
 });
 
 it('shows card previews and direct pdf and print actions on the request page', function () {
@@ -210,13 +211,14 @@ it('shows card previews and direct pdf and print actions on the request page', f
 
     $this->actingAs($admin);
 
-    Livewire::test(ViewMedicalRegistration::class, ['record' => $registration->getRouteKey()])
+    $component = Livewire::test(ViewMedicalRegistration::class, ['record' => $registration->getRouteKey()])
         ->assertSuccessful()
         ->assertSee('بطاقات التأمين')
         ->assertSee('employee-insurance-cards--preview', false)
         ->assertSee('insurance-cards-print', false)
         ->assertDontSee('employee-insurance-cards--print', false)
         ->assertDontSee('data:font/truetype;base64,', false)
+        ->assertDontSee('عرض البطاقة')
         ->assertSee('insurance-cards-SC26-04444', false)
         ->assertSee('تحميل PDF')
         ->assertSee('طباعة الكل')
@@ -233,6 +235,14 @@ it('shows card previews and direct pdf and print actions on the request page', f
         ->assertActionVisible('printInsuranceCards')
         ->callAction('downloadInsuranceCards')
         ->assertHasNoActionErrors();
+
+    expect(substr_count($component->html(), 'employee-id-card employee-id-card--front'))->toBe(2);
+
+    $printHtml = $component->instance()->insuranceCardPrintHtml();
+
+    expect(substr_count($printHtml, 'employee-id-card employee-id-card--front'))->toBe(2)
+        ->and($printHtml)->toContain('أحمد علي البطاقة')
+        ->and($printHtml)->toContain('ليلى أحمد علي');
 });
 
 it('ships a client-side pdf exporter at cr80 print size', function () {
@@ -246,6 +256,9 @@ it('ships a client-side pdf exporter at cr80 print size', function () {
         ->toContain('dataset.cardPerson')
         ->toContain('html2canvas')
         ->toContain('collectPrintPages')
+        ->toContain('insuranceCardPrintHtml')
+        ->toContain('inlineCardFont')
+        ->toContain('FontFace')
         ->toContain('inlineCardPhotos')
         ->toContain("credentials: 'include'")
         ->toContain("unit: 'mm'")

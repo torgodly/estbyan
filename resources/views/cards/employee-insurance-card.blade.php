@@ -6,7 +6,7 @@
     $printPack = $printPack ?? false;
     $cardActions = $cardActions ?? false;
     $fontSrc = $embedAssets
-        ? $cards->first()?->fontDataUri
+        ? \App\Support\EmployeeInsuranceCard::fontDataUri()
         : $cards->first()?->fontUrl;
 @endphp
 <div @class(['employee-insurance-cards', 'employee-insurance-cards--preview' => $preview, 'employee-insurance-cards--print' => $printPack]) dir="ltr" lang="ar">

@@ -74,9 +74,8 @@
 
 @if ($this->canManageInsuranceCards())
     @assets
-        <script src="{{ asset('js/html2media/html2canvas-pro-script.js') }}"></script>
-        <script src="{{ asset('js/html2media/jspdf-script.js') }}"></script>
-        <script src="{{ asset('js/insurance-cards-pdf.js') }}?v=card-7"></script>
+        <link rel="preload" href="{{ asset('fonts/SomarSans-SemiBold.ttf') }}" as="font" type="font/ttf" crossorigin>
+        <script src="{{ asset('js/insurance-cards-pdf.js') }}?v=card-8"></script>
     @endassets
 @endif
 
@@ -549,6 +548,8 @@
                         class="insurance-cards-print"
                         data-filename="{{ \App\Support\EmployeeInsuranceCard::packFilename($registration) }}"
                         data-font-url="{{ $insuranceCards->first()?->fontUrl }}"
+                        data-html2canvas-url="{{ asset('js/html2media/html2canvas-pro-script.js') }}"
+                        data-jspdf-url="{{ asset('js/html2media/jspdf-script.js') }}"
                         aria-hidden="true"
                     ></div>
                 </section>

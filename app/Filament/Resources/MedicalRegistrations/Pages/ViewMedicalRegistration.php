@@ -162,6 +162,28 @@ class ViewMedicalRegistration extends ViewRecord
         return $user instanceof User && $user->canManageInsuranceCards();
     }
 
+    public function insuranceCardPrintHtml(?string $personKey = null): string
+    {
+        abort_unless($this->canManageInsuranceCards(), 403);
+
+        $cards = $this->insuranceCards();
+
+        if (filled($personKey)) {
+            $cards = $cards
+                ->where('personKey', $personKey)
+                ->values();
+        }
+
+        abort_if($cards->isEmpty(), 404);
+
+        return view('cards.employee-insurance-card', [
+            'cards' => $cards,
+            'embedAssets' => false,
+            'preview' => false,
+            'printPack' => true,
+        ])->render();
+    }
+
     /**
      * @return Collection<int, EmployeeInsuranceCard>
      */

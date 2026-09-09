@@ -13,16 +13,19 @@ async function exportInsuranceCards(output, personKey) {
         throw new Error('Insurance card print root is missing.');
     }
 
+    await ensurePdfLibraries(root);
+
     if (typeof html2canvas !== 'function' || ! window.jspdf?.jsPDF) {
         throw new Error('PDF libraries are not loaded.');
     }
 
-    const pages = collectPrintPages(root, personKey);
+    const pages = await collectPrintPages(root, personKey);
 
     if (pages.length === 0) {
         throw new Error('No insurance cards match the print selection.');
     }
 
+    await inlineCardFont(root);
     await inlineCardPhotos(root);
     await document.fonts.ready;
     await waitForPrintImages(root);
@@ -88,32 +91,107 @@ async function exportInsuranceCards(output, personKey) {
     pdf.save(filename);
 }
 
-function collectPrintPages(host, personKey) {
-    const preview = document.querySelector('.employee-insurance-cards--preview');
+async function collectPrintPages(host, personKey) {
+    const html = await fetchPrintPackHtml(personKey);
 
-    if (! preview) {
-        throw new Error('Insurance card preview is missing.');
+    host.innerHTML = html;
+
+    return [...host.querySelectorAll('.employee-id-card')]
+        .filter((page) => ! personKey || page.dataset.cardPerson === personKey);
+}
+
+async function fetchPrintPackHtml(personKey) {
+    const component = livewireComponent();
+
+    if (! component || typeof component.insuranceCardPrintHtml !== 'function') {
+        throw new Error('Insurance card print pack is unavailable.');
     }
 
-    const sources = [...preview.querySelectorAll('.employee-id-card')]
-        .filter((page) => ! personKey || page.dataset.cardPerson === personKey);
+    return await component.insuranceCardPrintHtml(personKey || null);
+}
 
-    host.replaceChildren();
+function livewireComponent() {
+    const root = document.getElementById('insurance-cards-print');
+    const el = root?.closest('[wire\\:id]');
+    const id = el?.getAttribute('wire:id');
 
-    return sources.map((page) => {
-        const clone = page.cloneNode(true);
-        clone.style.position = 'relative';
-        clone.style.top = '0';
-        clone.style.left = '0';
-        clone.style.transform = 'none';
-        clone.querySelectorAll('img').forEach((image) => {
-            image.loading = 'eager';
-            image.decoding = 'sync';
-        });
-        host.appendChild(clone);
+    return id && window.Livewire ? window.Livewire.find(id) : null;
+}
 
-        return clone;
+async function ensurePdfLibraries(root) {
+    if (typeof html2canvas === 'function' && window.jspdf?.jsPDF) {
+        return;
+    }
+
+    await Promise.all([
+        loadScript(root.dataset.html2canvasUrl),
+        loadScript(root.dataset.jspdfUrl),
+    ]);
+}
+
+function loadScript(src) {
+    if (! src) {
+        return Promise.reject(new Error('PDF library URL is missing.'));
+    }
+
+    const existing = document.querySelector(`script[src="${src}"]`);
+
+    if (existing) {
+        return existing.dataset.loaded === 'true'
+            ? Promise.resolve()
+            : new Promise((resolve, reject) => {
+                existing.addEventListener('load', resolve, { once: true });
+                existing.addEventListener('error', reject, { once: true });
+            });
+    }
+
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = () => {
+            script.dataset.loaded = 'true';
+            resolve();
+        };
+        script.onerror = reject;
+        document.head.appendChild(script);
     });
+}
+
+async function inlineCardFont(root) {
+    const fontUrl = root.dataset.fontUrl;
+
+    if (! fontUrl) {
+        return;
+    }
+
+    const dataUri = await fetchAsDataUri(fontUrl);
+    const rule = cardFontFaceRule(dataUri);
+
+    await Promise.all([
+        registerCardFont('Somar Sans', dataUri),
+        registerCardFont('SomarSans-SemiBold', dataUri),
+    ]);
+
+    await document.fonts.load("600 24px 'Somar Sans'");
+    await document.fonts.load('600 24px SomarSans-SemiBold');
+
+    root.querySelectorAll('style').forEach((style) => {
+        style.textContent = rule + style.textContent;
+    });
+}
+
+function cardFontFaceRule(dataUri) {
+    return "@font-face{font-family:'Somar Sans';src:url('"+dataUri+"') format('truetype');font-weight:600;font-style:normal}"
+        +"@font-face{font-family:SomarSans-SemiBold;src:url('"+dataUri+"') format('truetype');font-weight:600;font-style:normal}";
+}
+
+async function registerCardFont(family, dataUri) {
+    const face = new FontFace(family, "url('"+dataUri+"')", {
+        weight: '600',
+        style: 'normal',
+    });
+
+    document.fonts.add(await face.load());
 }
 
 async function inlineCardPhotos(root) {
@@ -126,12 +204,12 @@ async function inlineCardPhotos(root) {
 async function inlineHtmlPhoto(image) {
     const source = image.currentSrc || image.getAttribute('src') || '';
 
-    if (! shouldInlinePhoto(source)) {
+    if (! shouldInlineAsset(source)) {
         return;
     }
 
     try {
-        image.src = await urlToDataUri(source);
+        image.src = await fetchAsDataUri(source);
     } catch (error) {
         console.warn('Insurance card photo could not be inlined.', error);
     }
@@ -140,18 +218,18 @@ async function inlineHtmlPhoto(image) {
 async function inlineSvgPhoto(image) {
     const source = svgImageHref(image);
 
-    if (! shouldInlinePhoto(source)) {
+    if (! shouldInlineAsset(source)) {
         return;
     }
 
     try {
-        setSvgImageHref(image, await urlToDataUri(source));
+        setSvgImageHref(image, await fetchAsDataUri(source));
     } catch (error) {
         console.warn('Insurance card SVG photo could not be inlined.', error);
     }
 }
 
-function shouldInlinePhoto(source) {
+function shouldInlineAsset(source) {
     return Boolean(source) && ! source.startsWith('data:') && ! source.startsWith('blob:');
 }
 
@@ -166,20 +244,14 @@ function setSvgImageHref(image, href) {
     image.setAttributeNS(XLINK_NS, 'href', href);
 }
 
-async function urlToDataUri(url) {
+async function fetchAsDataUri(url) {
     const response = await fetch(url, { credentials: 'include' });
 
     if (! response.ok) {
-        throw new Error('Photo fetch failed.');
+        throw new Error('Asset fetch failed.');
     }
 
-    const blob = await response.blob();
-
-    if (blob.type && ! blob.type.startsWith('image/')) {
-        throw new Error('Photo response is not an image.');
-    }
-
-    return await blobToDataUri(blob);
+    return await blobToDataUri(await response.blob());
 }
 
 function blobToDataUri(blob) {
