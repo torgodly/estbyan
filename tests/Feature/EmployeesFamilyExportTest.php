@@ -132,35 +132,13 @@ it('groups each employee with their family members and writes arabic excel colum
     }
 });
 
-it('exports the current employees table as an arabic excel download', function () {
+it('does not show the family export action on the employees table', function () {
     $admin = User::factory()->create();
-    $employee = Employee::factory()->create([
-        'full_name' => 'نادية للتصدير',
-        'national_id' => '219890263624',
-    ]);
-    $registration = MedicalRegistration::factory()->submitted()->create([
-        'employee_id' => $employee->id,
-        'full_name' => $employee->full_name,
-        'national_id' => $employee->national_id,
-        'gender' => Gender::Female,
-    ]);
-    Beneficiary::factory()->create([
-        'medical_registration_id' => $registration->id,
-        'full_name' => 'علي الزوج',
-        'relationship' => BeneficiaryRelationship::Spouse,
-        'national_id' => '119890263624',
-    ]);
 
     $this->actingAs($admin);
 
     Livewire::test(ListEmployees::class)
         ->assertSuccessful()
-        ->assertSee('تصدير الموظفين والعائلة')
-        ->assertActionExists('exportEmployeesAndFamily')
-        ->assertActionHasLabel('exportEmployeesAndFamily', 'تصدير الموظفين والعائلة')
-        ->callAction('exportEmployeesAndFamily')
-        ->assertFileDownloaded(
-            EmployeesFamilyExport::FILENAME,
-            contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        );
+        ->assertDontSee('تصدير الموظفين والعائلة')
+        ->assertActionDoesNotExist('exportEmployeesAndFamily');
 });

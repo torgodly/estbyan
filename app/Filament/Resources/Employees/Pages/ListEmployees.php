@@ -4,14 +4,10 @@ namespace App\Filament\Resources\Employees\Pages;
 
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Models\Employee;
-use App\Support\EmployeesFamilyExport;
-use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
-use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ListEmployees extends ListRecords
 {
@@ -20,17 +16,6 @@ class ListEmployees extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('exportEmployeesAndFamily')
-                ->label('تصدير الموظفين والعائلة')
-                ->icon(Heroicon::OutlinedArrowDownTray)
-                ->color('gray')
-                ->action(function (EmployeesFamilyExport $export): StreamedResponse {
-                    $employees = $this->getTableQueryForExport()
-                        ->with(['latestSubmittedRegistration.beneficiaries'])
-                        ->get();
-
-                    return $export->download($employees);
-                }),
             CreateAction::make()
                 ->label('إضافة موظف'),
         ];
