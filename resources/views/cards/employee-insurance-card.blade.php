@@ -96,47 +96,59 @@
             white-space: nowrap;
         }
 
+        .employee-id-card__label-mask {
+            position: absolute;
+            left: 404px;
+            top: 152px;
+            width: 176px;
+            height: 230px;
+            background: #ffffff;
+        }
+
         .employee-id-card__value {
             left: 36px;
-            width: 368px;
+            width: 360px;
             text-align: right;
         }
 
+        .employee-id-card__label {
+            left: 404px;
+            width: 176px;
+            text-align: right;
+            color: #5c1331;
+            direction: rtl;
+            unicode-bidi: isolate;
+        }
+
         .employee-id-card__reference {
-            left: 236px;
-            top: 58px;
-            font-size: 34px;
-            line-height: 1.3;
+            top: 170px;
+            font-size: 24px;
+            line-height: 1.2;
+            direction: rtl;
+        }
+
+        .employee-id-card__value.employee-id-card__reference {
+            font-size: 32px;
         }
 
         .employee-id-card__name {
-            top: 168px;
+            top: 224px;
             font-size: 24px;
-            line-height: 1.55;
-            padding-block: 8px;
+            line-height: 1.2;
             direction: rtl;
         }
 
         .employee-id-card__dob {
-            top: 226px;
+            top: 284px;
             font-size: 24px;
-            line-height: 1.45;
-            padding-block: 8px;
+            line-height: 1.2;
         }
 
         .employee-id-card__job {
-            top: 284px;
+            top: 340px;
             font-size: 24px;
-            line-height: 1.45;
-            padding-block: 8px;
+            line-height: 1.2;
             direction: rtl;
-        }
-
-        .employee-id-card__blood {
-            top: 346px;
-            font-size: 24px;
-            line-height: 1.45;
-            padding-block: 8px;
         }
 
         .employee-id-card__issued {
@@ -221,11 +233,15 @@
                         >
                     @endif
                     <div class="employee-id-card__data">
-                        <p class="employee-id-card__reference">{{ $card->reference }}</p>
+                        <div class="employee-id-card__label-mask" aria-hidden="true"></div>
+                        <p class="employee-id-card__label employee-id-card__reference" dir="rtl">رقم البطاقة:</p>
+                        <p class="employee-id-card__value employee-id-card__reference">{{ $card->reference }}</p>
+                        <p class="employee-id-card__label employee-id-card__name" dir="rtl">الاسم:</p>
                         <p class="employee-id-card__value employee-id-card__name">{{ $card->name }}</p>
+                        <p class="employee-id-card__label employee-id-card__dob" dir="rtl">تاريخ الميلاد:</p>
                         <p class="employee-id-card__value employee-id-card__dob">{{ $card->dateOfBirth }}</p>
+                        <p class="employee-id-card__label employee-id-card__job" dir="rtl">الصفة:</p>
                         <p class="employee-id-card__value employee-id-card__job">{{ $card->jobTitle }}</p>
-                        <p class="employee-id-card__value employee-id-card__blood">{{ $card->bloodType }}</p>
                         <p class="employee-id-card__issued">{{ $card->issuedAt }}</p>
                     </div>
                     @if ($card->barcodeSvg)
