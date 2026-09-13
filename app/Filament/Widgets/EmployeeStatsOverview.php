@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Enums\RegistrationStatus;
 use App\Models\Employee;
 use App\Models\MedicalRegistration;
+use App\Models\User;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -17,6 +18,11 @@ class EmployeeStatsOverview extends StatsOverviewWidget
     protected int|string|array $columnSpan = 'full';
 
     protected static ?int $sort = 2;
+
+    public static function canView(): bool
+    {
+        return User::authenticatedCanAccessFullAdmin();
+    }
 
     protected function getStats(): array
     {

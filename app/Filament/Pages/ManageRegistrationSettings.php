@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\User;
 use App\Settings\RegistrationSettings;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -31,6 +32,11 @@ class ManageRegistrationSettings extends Page
     protected static string|\UnitEnum|null $navigationGroup = 'التسجيل الطبي';
 
     protected static ?int $navigationSort = 3;
+
+    public static function canAccess(): bool
+    {
+        return User::authenticatedCanAccessFullAdmin();
+    }
 
     /** @var array<string, mixed>|null */
     public ?array $data = [];

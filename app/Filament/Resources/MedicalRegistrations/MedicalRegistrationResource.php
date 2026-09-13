@@ -8,6 +8,7 @@ use App\Filament\Resources\MedicalRegistrations\Schemas\MedicalRegistrationForm;
 use App\Filament\Resources\MedicalRegistrations\Tables\MedicalRegistrationsTable;
 use App\Filament\Widgets\RegistrationStatsOverview;
 use App\Models\MedicalRegistration;
+use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -68,6 +69,11 @@ class MedicalRegistrationResource extends Resource
             'index' => ListMedicalRegistrations::route('/'),
             'view' => ViewMedicalRegistration::route('/{record}'),
         ];
+    }
+
+    public static function canViewAny(): bool
+    {
+        return User::authenticatedCanAccessFullAdmin();
     }
 
     public static function canCreate(): bool

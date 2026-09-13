@@ -20,77 +20,7 @@ class MedicalRegistrationsTable
     {
         return $table
             ->defaultSort('submitted_at', 'desc')
-            ->columns([
-                ImageColumn::make('employee_photo_path')
-                    ->label('الصورة')
-                    ->circular()
-                    ->imageSize(40)
-                    ->getStateUsing(fn (MedicalRegistration $record): ?string => RegistrationDocuments::url(
-                        $record,
-                        RegistrationDocuments::EMPLOYEE_PHOTO,
-                    ))
-                    ->defaultImageUrl(url('/images/brand/tax-authority.png')),
-                TextColumn::make('reference_number')
-                    ->label('رقم المرجع')
-                    ->searchable()
-                    ->sortable()
-                    ->placeholder('—')
-                    ->copyable(),
-                TextColumn::make('full_name')
-                    ->label('الاسم')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('employee_number')
-                    ->label('الرقم الوظيفي')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('workplace')
-                    ->label('الإدارة')
-                    ->formatStateUsing(fn (?string $state, MedicalRegistration $record): string => $record->workplaceLabel() ?? '—')
-                    ->toggleable(),
-                TextColumn::make('employee.office')
-                    ->label('المكتب')
-                    ->placeholder('—')
-                    ->toggleable(),
-                TextColumn::make('city')
-                    ->label('المدينة')
-                    ->formatStateUsing(fn (?string $state, MedicalRegistration $record): string => $record->cityLabel() ?? '—')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('status')
-                    ->label('الحالة')
-                    ->badge()
-                    ->formatStateUsing(fn (RegistrationStatus $state): string => $state->label())
-                    ->color(fn (RegistrationStatus $state): string => $state->color()),
-                TextColumn::make('beneficiaries_count')
-                    ->label('المستفيدون')
-                    ->numeric()
-                    ->sortable(),
-                TextColumn::make('reviewer.name')
-                    ->label('المراجع')
-                    ->placeholder('—')
-                    ->toggleable(),
-                TextColumn::make('submitted_at')
-                    ->label('تاريخ الإرسال')
-                    ->dateTime('Y-m-d H:i')
-                    ->sortable()
-                    ->placeholder('—'),
-                TextColumn::make('pending_age')
-                    ->label('عمر الانتظار')
-                    ->state(function (MedicalRegistration $record): ?string {
-                        if (! $record->isPendingReview() || $record->submitted_at === null) {
-                            return null;
-                        }
-
-                        return $record->submitted_at->diffForHumans(syntax: true);
-                    })
-                    ->placeholder('—')
-                    ->toggleable(),
-                TextColumn::make('created_at')
-                    ->label('تاريخ الإنشاء')
-                    ->dateTime('Y-m-d H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
+            ->columns(self::columns())
             ->filters([
                 SelectFilter::make('status')
                     ->label('الحالة')
@@ -128,5 +58,98 @@ class MedicalRegistrationsTable
                     ->label('الملف'),
             ])
             ->toolbarActions([]);
+    }
+
+    public static function configureReviewQueue(Table $table): Table
+    {
+        return $table
+            ->defaultSort('submitted_at', 'desc')
+            ->columns(self::columns())
+            ->filters([])
+            ->searchable(false)
+            ->columnManager(false)
+            ->recordActions([
+                ViewAction::make()
+                    ->label('الملف'),
+            ])
+            ->toolbarActions([]);
+    }
+
+    /**
+     * @return array<int, ImageColumn|TextColumn>
+     */
+    public static function columns(): array
+    {
+        return [
+            ImageColumn::make('employee_photo_path')
+                ->label('الصورة')
+                ->circular()
+                ->imageSize(40)
+                ->getStateUsing(fn (MedicalRegistration $record): ?string => RegistrationDocuments::url(
+                    $record,
+                    RegistrationDocuments::EMPLOYEE_PHOTO,
+                ))
+                ->defaultImageUrl(url('/images/brand/tax-authority.png')),
+            TextColumn::make('reference_number')
+                ->label('رقم المرجع')
+                ->searchable()
+                ->sortable()
+                ->placeholder('—')
+                ->copyable(),
+            TextColumn::make('full_name')
+                ->label('الاسم')
+                ->searchable()
+                ->sortable(),
+            TextColumn::make('employee_number')
+                ->label('الرقم الوظيفي')
+                ->searchable()
+                ->sortable(),
+            TextColumn::make('workplace')
+                ->label('الإدارة')
+                ->formatStateUsing(fn (?string $state, MedicalRegistration $record): string => $record->workplaceLabel() ?? '—')
+                ->toggleable(),
+            TextColumn::make('employee.office')
+                ->label('المكتب')
+                ->placeholder('—')
+                ->toggleable(),
+            TextColumn::make('city')
+                ->label('المدينة')
+                ->formatStateUsing(fn (?string $state, MedicalRegistration $record): string => $record->cityLabel() ?? '—')
+                ->toggleable(isToggledHiddenByDefault: true),
+            TextColumn::make('status')
+                ->label('الحالة')
+                ->badge()
+                ->formatStateUsing(fn (RegistrationStatus $state): string => $state->label())
+                ->color(fn (RegistrationStatus $state): string => $state->color()),
+            TextColumn::make('beneficiaries_count')
+                ->label('المستفيدون')
+                ->numeric()
+                ->sortable(),
+            TextColumn::make('reviewer.name')
+                ->label('المراجع')
+                ->placeholder('—')
+                ->toggleable(),
+            TextColumn::make('submitted_at')
+                ->label('تاريخ الإرسال')
+                ->dateTime('Y-m-d H:i')
+                ->sortable()
+                ->placeholder('—'),
+            TextColumn::make('pending_age')
+                ->label('عمر الانتظار')
+                ->state(function (MedicalRegistration $record): ?string {
+                    if (! $record->isPendingReview() || $record->submitted_at === null) {
+                        return null;
+                    }
+
+                    return $record->submitted_at->diffForHumans(syntax: true);
+                })
+                ->placeholder('—')
+                ->toggleable(),
+            TextColumn::make('created_at')
+                ->label('تاريخ الإنشاء')
+                ->dateTime('Y-m-d H:i')
+                ->sortable()
+                ->toggleable(isToggledHiddenByDefault: true),
+        ];
     }
 }

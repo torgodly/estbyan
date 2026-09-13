@@ -58,4 +58,11 @@ class UserFactory extends Factory
             'role' => UserRole::SmartCare,
         ]);
     }
+
+    public function reviewer(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'role' => UserRole::Reviewer,
+        ]);
+    }
 }

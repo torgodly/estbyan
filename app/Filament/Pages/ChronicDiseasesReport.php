@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\User;
 use App\Support\ChronicDiseasesReport as ChronicDiseasesReportBuilder;
 use BackedEnum;
 use Filament\Pages\Page;
@@ -28,6 +29,11 @@ class ChronicDiseasesReport extends Page
      * @var array<string, mixed>
      */
     public array $report = [];
+
+    public static function canAccess(): bool
+    {
+        return User::authenticatedCanAccessFullAdmin();
+    }
 
     public function mount(): void
     {

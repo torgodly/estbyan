@@ -1,5 +1,6 @@
 <?php
 
+use App\Filament\Pages\Dashboard;
 use App\Filament\Widgets\CoverageStatsOverview;
 use App\Filament\Widgets\EmployeeStatsOverview;
 use App\Filament\Widgets\RegistrationStatsOverview;
@@ -8,7 +9,6 @@ use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Models\User;
 use Filament\Facades\Filament;
-use Filament\Pages\Dashboard;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Livewire\Livewire;

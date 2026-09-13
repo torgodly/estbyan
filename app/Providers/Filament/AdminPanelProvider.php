@@ -2,14 +2,16 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Dashboard;
+use App\Filament\Resources\PendingReviews\PendingReviewResource;
 use App\Filament\Widgets\CoverageStatsOverview;
 use App\Filament\Widgets\EmployeeStatsOverview;
 use App\Filament\Widgets\RegistrationStatsOverview;
+use App\Models\User;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -48,6 +50,13 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 Dashboard::class,
             ])
+            ->homeUrl(function (): string {
+                if (User::authenticatedIsReviewer()) {
+                    return PendingReviewResource::getUrl();
+                }
+
+                return Dashboard::getUrl();
+            })
             ->widgets([
                 CoverageStatsOverview::class,
                 RegistrationStatsOverview::class,

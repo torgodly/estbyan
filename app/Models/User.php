@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Auth;
 
 #[Fillable(['name', 'email', 'password', 'role'])]
 #[Hidden(['password', 'remember_token'])]
@@ -48,8 +49,32 @@ class User extends Authenticatable
         return $this->role === UserRole::Hr;
     }
 
+    public function isReviewer(): bool
+    {
+        return $this->role === UserRole::Reviewer;
+    }
+
+    public function canAccessFullAdmin(): bool
+    {
+        return ! $this->isReviewer();
+    }
+
     public function canManageInsuranceCards(): bool
     {
         return $this->isSmartCare();
+    }
+
+    public static function authenticatedCanAccessFullAdmin(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof self && $user->canAccessFullAdmin();
+    }
+
+    public static function authenticatedIsReviewer(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof self && $user->isReviewer();
     }
 }

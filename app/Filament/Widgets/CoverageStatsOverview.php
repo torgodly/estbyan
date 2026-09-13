@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Enums\RegistrationStatus;
 use App\Models\Beneficiary;
 use App\Models\MedicalRegistration;
+use App\Models\User;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,6 +19,11 @@ class CoverageStatsOverview extends StatsOverviewWidget
     protected int|string|array $columnSpan = 'full';
 
     protected static ?int $sort = 0;
+
+    public static function canView(): bool
+    {
+        return User::authenticatedCanAccessFullAdmin();
+    }
 
     protected function getStats(): array
     {

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\MedicalRegistrations\Pages;
 
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Filament\Resources\MedicalRegistrations\MedicalRegistrationResource;
+use App\Filament\Resources\PendingReviews\PendingReviewResource;
 use App\Models\Beneficiary;
 use App\Models\User;
 use App\Services\InsuranceCardPrintMarker;
@@ -83,9 +84,15 @@ class ViewMedicalRegistration extends ViewRecord
                         $data['review_note'] ?? null,
                     );
 
-                    $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer']);
-
                     Notification::make()->title('تم اعتماد الطلب')->success()->send();
+
+                    if ($this->shouldReturnToReviewQueue()) {
+                        $this->redirect(PendingReviewResource::getUrl());
+
+                        return;
+                    }
+
+                    $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer']);
                 }),
             Action::make('decline')
                 ->label('رفض')
@@ -111,9 +118,15 @@ class ViewMedicalRegistration extends ViewRecord
                         (string) ($data['review_note'] ?? ''),
                     );
 
-                    $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer']);
-
                     Notification::make()->title('تم رفض الطلب')->danger()->send();
+
+                    if ($this->shouldReturnToReviewQueue()) {
+                        $this->redirect(PendingReviewResource::getUrl());
+
+                        return;
+                    }
+
+                    $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer']);
                 }),
             Action::make('viewEmployee')
                 ->label('ملف الموظف')
@@ -122,7 +135,7 @@ class ViewMedicalRegistration extends ViewRecord
                 ->url(fn (): ?string => $this->record->employee_id
                     ? EmployeeResource::getUrl('view', ['record' => $this->record->employee_id])
                     : null)
-                ->visible(fn (): bool => filled($this->record->employee_id)),
+                ->visible(fn (): bool => filled($this->record->employee_id) && $this->canAccessStaffRecordLinks()),
             Action::make('downloadInsuranceCards')
                 ->label('تحميل PDF')
                 ->icon('heroicon-o-arrow-down-tray')
@@ -139,7 +152,7 @@ class ViewMedicalRegistration extends ViewRecord
                 ->label('تحميل بطاقة المراجعة')
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
-                ->visible(fn (): bool => filled($this->record->reference_number))
+                ->visible(fn (): bool => filled($this->record->reference_number) && $this->canAccessStaffRecordLinks())
                 ->action(function (ReferenceCardGenerator $generator): StreamedResponse {
                     $png = $generator->png($this->record);
                     $filename = 'tax-'.$this->record->reference_number.'.png';
@@ -160,6 +173,16 @@ class ViewMedicalRegistration extends ViewRecord
         $user = Auth::user();
 
         return $user instanceof User && $user->canManageInsuranceCards();
+    }
+
+    public function canAccessStaffRecordLinks(): bool
+    {
+        return User::authenticatedCanAccessFullAdmin();
+    }
+
+    protected function shouldReturnToReviewQueue(): bool
+    {
+        return User::authenticatedIsReviewer();
     }
 
     public function insuranceCardPrintHtml(?string $personKey = null): string
