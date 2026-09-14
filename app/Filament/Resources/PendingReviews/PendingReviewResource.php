@@ -8,12 +8,14 @@ use App\Filament\Resources\PendingReviews\Pages\ListPendingReviews;
 use App\Filament\Resources\PendingReviews\Pages\ViewPendingReview;
 use App\Models\MedicalRegistration;
 use App\Models\User;
+use App\Support\ReviewerQueueSplitter;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class PendingReviewResource extends Resource
 {
@@ -35,9 +37,17 @@ class PendingReviewResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        $query = parent::getEloquentQuery()
             ->with(['reviewer', 'employee'])
             ->where('status', RegistrationStatus::Submitted);
+
+        $user = Auth::user();
+
+        if ($user instanceof User && $user->isReviewer()) {
+            ReviewerQueueSplitter::constrain($query, $user);
+        }
+
+        return $query;
     }
 
     public static function table(Table $table): Table
@@ -60,7 +70,12 @@ class PendingReviewResource extends Resource
 
     public static function canView(Model $record): bool
     {
-        return $record instanceof MedicalRegistration && $record->isPendingReview();
+        $user = Auth::user();
+
+        return $record instanceof MedicalRegistration
+            && $record->isPendingReview()
+            && $user instanceof User
+            && ReviewerQueueSplitter::owns($user, $record);
     }
 
     public static function canCreate(): bool

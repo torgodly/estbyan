@@ -9,6 +9,7 @@ use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -30,9 +31,7 @@ class MedicalRegistrationsTable
                 SelectFilter::make('workplace')
                     ->label('الإدارة')
                     ->options(fn (): array => config('registration.workplaces', [])),
-                SelectFilter::make('city')
-                    ->label('المدينة')
-                    ->options(fn (): array => config('registration.cities', [])),
+                self::cityFilter(),
                 Filter::make('submitted_at')
                     ->label('تاريخ الإرسال')
                     ->schema([
@@ -64,15 +63,40 @@ class MedicalRegistrationsTable
     {
         return $table
             ->defaultSort('submitted_at', 'desc')
-            ->columns(self::columns())
-            ->filters([])
-            ->searchable(false)
+            ->columns(self::reviewQueueColumns())
+            ->filters([
+                self::cityFilter(),
+            ])
+            ->filtersLayout(FiltersLayout::AboveContent)
             ->columnManager(false)
             ->recordActions([
                 ViewAction::make()
                     ->label('الملف'),
             ])
             ->toolbarActions([]);
+    }
+
+    public static function cityFilter(): SelectFilter
+    {
+        return SelectFilter::make('city')
+            ->label('المدينة')
+            ->options(fn (): array => config('registration.cities', []));
+    }
+
+    /**
+     * @return array<int, ImageColumn|TextColumn>
+     */
+    public static function reviewQueueColumns(): array
+    {
+        return collect(self::columns())
+            ->map(function (ImageColumn|TextColumn $column): ImageColumn|TextColumn {
+                if ($column->getName() === 'city') {
+                    return $column->toggleable(isToggledHiddenByDefault: false);
+                }
+
+                return $column;
+            })
+            ->all();
     }
 
     /**
