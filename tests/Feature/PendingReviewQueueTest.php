@@ -11,6 +11,10 @@ use App\Support\ReviewerQueueSplitter;
 use Filament\Tables\Enums\FiltersLayout;
 use Livewire\Livewire;
 
+beforeEach(function () {
+    travelToTripoliTime('2026-09-14 10:00:00');
+});
+
 it('shows reviewers only submitted requests without tabs', function () {
     $reviewer = User::factory()->reviewer()->create();
 

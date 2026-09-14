@@ -1077,3 +1077,44 @@
     transform-origin: 0 0;
     transform: scale(calc(100cqi / 1004px));
 }
+
+.reviewer-hours-banner {
+    margin-bottom: 1.25rem;
+    padding: 1rem 1.15rem 1.1rem;
+    border-radius: 1rem;
+    border: 1px solid #fdba74;
+    background: linear-gradient(180deg, #fff7ed 0%, #ffedd5 100%);
+    color: #9a3412;
+    text-align: center;
+}
+
+.reviewer-hours-banner__title {
+    margin: 0 0 0.4rem;
+    font-size: 1.05rem;
+    font-weight: 800;
+    line-height: 1.6;
+}
+
+.reviewer-hours-banner__body {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+    line-height: 1.8;
+}
+
+.reviewer-hours-banner__org {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: #0f2744;
+}
+
+.dark .reviewer-hours-banner {
+    border-color: #ea580c;
+    background: linear-gradient(180deg, #7c2d12 0%, #9a3412 100%);
+    color: #ffedd5;
+}
+
+.dark .reviewer-hours-banner__org {
+    color: #e2e8f0;
+}

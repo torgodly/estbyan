@@ -10,6 +10,10 @@ use App\Filament\Resources\PendingReviews\PendingReviewResource;
 use App\Models\User;
 use Livewire\Livewire;
 
+beforeEach(function () {
+    travelToTripoliTime('2026-09-14 10:00:00');
+});
+
 it('keeps reviewers off the full admin pages and on the review queue', function () {
     $reviewer = User::factory()->reviewer()->create();
 

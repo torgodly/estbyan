@@ -1,6 +1,8 @@
 <?php
 
+use App\Support\ReviewerWorkingHours;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /*
@@ -44,7 +46,7 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+function travelToTripoliTime(string $dateTime): void
 {
-    // ..
+    test()->travelTo(Carbon::parse($dateTime, ReviewerWorkingHours::TIMEZONE));
 }
