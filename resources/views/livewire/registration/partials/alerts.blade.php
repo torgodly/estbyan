@@ -47,7 +47,11 @@
     </div>
 @endif
 
-@if ($hasSavedDraft && ! $submitted && ! $approvedLocked)
+@if (filled($rejectionReason) && ! $submitted && ! $approvedLocked)
+    @include('livewire.registration.partials.rejection-notice')
+@endif
+
+@if ($hasSavedDraft && ! $submitted && ! $approvedLocked && blank($rejectionReason))
     <div class="reg-alert-info">
         <svg class="size-5 shrink-0 text-teal-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></svg>
         <span>تم استعادة بياناتك المحفوظة — يمكنك المتابعة من حيث توقفت</span>

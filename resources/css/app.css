@@ -446,6 +446,46 @@
         @apply mb-4 flex items-start gap-3 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3.5 text-sm text-teal-900;
     }
 
+    .reg-rejection {
+        @apply mb-5 overflow-hidden rounded-3xl bg-white shadow-[0_10px_32px_-10px_rgba(185,28,28,0.22)] ring-1 ring-red-200/90;
+    }
+
+    .reg-rejection-head {
+        @apply flex items-start gap-3 bg-gradient-to-l from-red-800 to-red-600 px-5 py-4 text-white sm:px-6 sm:py-5;
+    }
+
+    .reg-rejection-icon {
+        @apply mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25;
+    }
+
+    .reg-rejection-title {
+        @apply text-lg font-extrabold tracking-tight sm:text-xl;
+    }
+
+    .reg-rejection-badge {
+        @apply inline-flex rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-extrabold tracking-wide text-white ring-1 ring-white/25;
+    }
+
+    .reg-rejection-lead {
+        @apply mt-1.5 text-sm leading-relaxed text-red-50/95;
+    }
+
+    .reg-rejection-body {
+        @apply space-y-4 px-5 py-5 sm:px-6;
+    }
+
+    .reg-rejection-reason {
+        @apply rounded-2xl border border-red-100 bg-red-50 px-4 py-4 sm:px-5;
+    }
+
+    .reg-rejection-reason-label {
+        @apply text-xs font-extrabold text-red-700;
+    }
+
+    .reg-rejection-reason-text {
+        @apply mt-2 text-base font-extrabold leading-relaxed text-navy-900 sm:text-lg;
+    }
+
     .reg-toast-host {
         @apply fixed left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2;
         top: max(1rem, env(safe-area-inset-top));

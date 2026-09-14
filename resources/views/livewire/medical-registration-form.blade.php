@@ -1,9 +1,10 @@
 @php
-    $isGateScreen = $step === 1
+    $isGateScreen = $approvedLocked || (
+        $step === 1
         && ! $submitted
-        && ! $approvedLocked
         && ! $identityLocked
-        && ! $registrationId;
+        && ! $registrationId
+    );
 @endphp
 
 <div class="reg-page">

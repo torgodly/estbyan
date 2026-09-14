@@ -1171,7 +1171,149 @@ it('blocks editing when the registration is approved', function () {
         ->call('verifyIdentity')
         ->assertSet('approvedLocked', true)
         ->assertSet('step', 1)
-        ->assertSet('referenceNumber', 'SC26-00077');
+        ->assertSet('referenceNumber', 'SC26-00077')
+        ->assertSee('تم قبولك', false)
+        ->assertSee('تم قبول استبيانك من إدارة الموارد البشرية. أنت بانتظار استكمال باقي الإجراءات، ولا يمكن تعديل الاستبيان.', false)
+        ->assertDontSee('بيانات الموظف', false)
+        ->assertDontSee('أكمل معلوماتك الوظيفية والشخصية', false)
+        ->call('saveEmployeeDetails')
+        ->assertSet('approvedLocked', true)
+        ->assertSet('step', 1)
+        ->call('editSubmittedRegistration')
+        ->assertSet('approvedLocked', true)
+        ->assertSet('submitted', false);
+});
+
+it('does not persist form changes after approval even if the lock flag is cleared', function () {
+    $employee = Employee::factory()->create([
+        'employee_number' => '7002',
+        'national_id' => '219910556677',
+        'full_name' => 'منى صالح',
+        'workplace' => 'general_admin',
+    ]);
+
+    $registration = MedicalRegistration::factory()->approved()->create([
+        'employee_id' => $employee->id,
+        'employee_number' => '7002',
+        'national_id' => '219910556677',
+        'full_name' => 'منى صالح',
+        'workplace' => 'general_admin',
+        'address' => 'طرابلس',
+        'reference_number' => 'SC26-00078',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '7002')
+        ->set('nationalId', '219910556677')
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('approvedLocked', false)
+        ->set('submitted', false)
+        ->set('address', 'محاولة تعديل')
+        ->call('saveEmployeeDetails')
+        ->assertSet('step', 1);
+
+    expect($registration->fresh()->address)->toBe('طرابلس')
+        ->and($registration->fresh()->status)->toBe(RegistrationStatus::Approved);
+});
+
+it('shows the rejection reason and allows editing after the request is declined', function () {
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1983);
+
+    $employee = Employee::factory()->create([
+        'employee_number' => '7101',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'فؤاد المبروك',
+        'workplace' => 'tripoli',
+    ]);
+
+    $registration = MedicalRegistration::factory()->declined()->create([
+        'employee_id' => $employee->id,
+        'employee_number' => '7101',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'فؤاد المبروك',
+        'workplace' => 'tripoli',
+        'review_note' => 'صورة المستفيد غير واضحة',
+        'date_of_birth' => '1983-07-14',
+        'blood_type' => 'o_positive',
+        'phone' => '0912223333',
+        'city' => 'tripoli',
+        'address' => 'طرابلس المركز',
+        'beneficiaries_count' => 0,
+    ]);
+
+    $component = Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '7101')
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->assertSet('approvedLocked', false)
+        ->assertSet('submitted', false)
+        ->assertSet('step', 2)
+        ->assertSet('rejectionReason', 'صورة المستفيد غير واضحة')
+        ->assertSee('تم رفض الاستبيان', false)
+        ->assertSee('سبب الرفض', false)
+        ->assertSee('صورة المستفيد غير واضحة', false)
+        ->assertSee('بيانات الموظف', false)
+        ->assertDontSee('تم قبولك', false)
+        ->set('bloodType', 'o_positive')
+        ->set('address', 'حي الأندلس')
+        ->call('saveEmployeeDetails')
+        ->assertHasNoErrors()
+        ->assertSet('step', 3)
+        ->assertSet('rejectionReason', 'صورة المستفيد غير واضحة')
+        ->assertSee('تم رفض الاستبيان', false)
+        ->assertSee('سبب الرفض', false);
+
+    expect($registration->fresh()->status)->toBe(RegistrationStatus::Declined)
+        ->and($registration->fresh()->address)->toBe('حي الأندلس')
+        ->and($registration->fresh()->review_note)->toBe('صورة المستفيد غير واضحة');
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->assertSet('step', 2)
+        ->assertSet('rejectionReason', 'صورة المستفيد غير واضحة')
+        ->assertSee('تم رفض الاستبيان', false)
+        ->assertSee('بيانات الموظف', false);
+});
+
+it('clears the rejection reason after a declined registration is resubmitted', function () {
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1986);
+
+    $employee = Employee::factory()->create([
+        'employee_number' => '7102',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'سالم امحمد',
+        'workplace' => 'tripoli',
+    ]);
+
+    MedicalRegistration::factory()->declined()->create([
+        'employee_id' => $employee->id,
+        'employee_number' => '7102',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'سالم امحمد',
+        'workplace' => 'tripoli',
+        'review_note' => 'نقص في بيانات العائلة',
+        'date_of_birth' => '1986-09-20',
+        'phone' => '0914445555',
+        'city' => 'tripoli',
+        'address' => 'مصراته',
+        'beneficiaries_count' => 0,
+        'employee_photo_path' => 'registrations/demo/employee.jpg',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '7102')
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->assertSet('step', 2)
+        ->assertSet('rejectionReason', 'نقص في بيانات العائلة')
+        ->assertSee('تم رفض الاستبيان', false)
+        ->call('submitRegistration')
+        ->assertSet('submitted', true)
+        ->assertSet('rejectionReason', null)
+        ->assertDontSee('سبب الرفض', false)
+        ->assertSee('تم إرسال التسجيل بنجاح', false);
 });
 
 it('logs out from the success page without deleting the registration', function () {

@@ -6,8 +6,8 @@
             <div class="mx-auto mb-5 flex size-16 items-center justify-center rounded-full bg-teal-50 text-teal-700">
                 <svg class="size-8" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>
             </div>
-            <h1 class="text-2xl font-extrabold text-navy-900">الطلب معتمد</h1>
-            <p class="mx-auto mt-3 max-w-md text-sm leading-relaxed text-slate-500">{{ $approvedMessage }}</p>
+            <h1 class="text-3xl font-extrabold tracking-tight text-navy-900">تم قبولك</h1>
+            <p class="mx-auto mt-4 max-w-xl text-lg font-medium leading-8 text-slate-700">{{ $approvedMessage }}</p>
             @if ($referenceNumber)
                 <div class="mt-6 flex justify-center">
                     @include('livewire.registration.partials.reference-summary', [
@@ -22,6 +22,22 @@
                     تحميل بطاقة المراجعة
                 </a>
             @endif
+            <button
+                type="button"
+                wire:click="logout"
+                wire:loading.attr="disabled"
+                wire:target="logout"
+                class="reg-btn-secondary mt-3"
+            >
+                <span wire:loading.remove wire:target="logout" class="inline-flex items-center gap-2">
+                    <svg class="size-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/></svg>
+                    تسجيل الخروج
+                </span>
+                <span wire:loading wire:target="logout" class="inline-flex items-center gap-2">
+                    <svg class="size-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    جاري الخروج…
+                </span>
+            </button>
         </div>
 
         @include('livewire.registration.partials.login-contact')
