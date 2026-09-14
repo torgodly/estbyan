@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Employees\Pages;
 
 use App\Filament\Resources\Employees\EmployeeResource;
+use App\Support\EmployeeNumber;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Contracts\Support\Htmlable;
@@ -30,8 +31,9 @@ class EditEmployee extends EditRecord
      */
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        if (isset($data['employee_number']) && is_numeric($data['employee_number'])) {
-            $data['employee_number'] = str_pad((string) $data['employee_number'], 6, '0', STR_PAD_LEFT);
+        if (isset($data['employee_number'])) {
+            $data['employee_number'] = EmployeeNumber::normalize((string) $data['employee_number'])
+                ?? $data['employee_number'];
         }
 
         if (isset($data['national_id'])) {

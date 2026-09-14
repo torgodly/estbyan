@@ -37,13 +37,41 @@ class WorkplaceOptions
      */
     public static function keyForSpreadsheetAdmin(string $raw): ?string
     {
+        return self::parseSpreadsheetAdmin($raw)['workplace'] ?? null;
+    }
+
+    /**
+     * @return array{workplace: string, office: string|null}|null
+     */
+    public static function parseSpreadsheetAdmin(string $raw): ?array
+    {
         $label = self::cleanSpreadsheetAdmin($raw);
 
         if ($label === '') {
             return null;
         }
 
-        return self::keyForLabel($label);
+        if (preg_match('/^(.+?)\s*[\/\\\\]\s*(.+)$/u', $label, $matches) === 1) {
+            $leftKey = self::keyForLabel($matches[1]);
+
+            if ($leftKey === 'general_admin') {
+                return [
+                    'workplace' => 'general_admin',
+                    'office' => self::cleanSpreadsheetOffice($matches[2]),
+                ];
+            }
+        }
+
+        $workplace = self::keyForLabel($label);
+
+        if ($workplace === null) {
+            return null;
+        }
+
+        return [
+            'workplace' => $workplace,
+            'office' => null,
+        ];
     }
 
     public static function cleanSpreadsheetAdmin(string $raw): string
@@ -86,6 +114,7 @@ class WorkplaceOptions
             'ترهونة ومسـلاته' => 'tarhuna_msallata',
             'ترهونة ومسلاته' => 'tarhuna_msallata',
             'ترهونة ومسلاتة' => 'tarhuna_msallata',
+            'ترهونة مسلاته' => 'tarhuna_msallata',
             'زواره' => 'zuwara',
             'زوارة' => 'zuwara',
             'مراده' => 'marada',
@@ -105,6 +134,8 @@ class WorkplaceOptions
             'مسلاته' => 'tarhuna_msallata',
             'مسلاتة' => 'tarhuna_msallata',
             'كبار الممولين طرابلس' => 'large_taxpayers_tripoli',
+            'كبار الممولين' => 'large_taxpayers_tripoli',
+            'مرقب' => 'al_murqub',
         ];
     }
 

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Employees\Pages;
 
 use App\Filament\Resources\Employees\EmployeeResource;
+use App\Support\EmployeeNumber;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Contracts\Support\Htmlable;
 
@@ -24,6 +25,10 @@ class CreateEmployee extends CreateRecord
         $data = $this->normalizeEmployeeData($data);
         $data['is_active'] = true;
 
+        if (! filled($data['employee_number'] ?? null)) {
+            $data['employee_number'] = EmployeeNumber::next();
+        }
+
         return $data;
     }
 
@@ -38,9 +43,9 @@ class CreateEmployee extends CreateRecord
      */
     private function normalizeEmployeeData(array $data): array
     {
-        if (isset($data['employee_number']) && is_numeric($data['employee_number'])) {
-            $data['employee_number'] = str_pad((string) $data['employee_number'], 6, '0', STR_PAD_LEFT);
-        }
+        $data['employee_number'] = EmployeeNumber::normalize(
+            isset($data['employee_number']) ? (string) $data['employee_number'] : null,
+        );
 
         if (isset($data['national_id'])) {
             $data['national_id'] = trim((string) $data['national_id']);

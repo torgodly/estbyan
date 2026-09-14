@@ -8,6 +8,7 @@ use App\Filament\Resources\Employees\Pages\ViewEmployee;
 use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Models\User;
+use App\Support\EmployeeNumber;
 use Livewire\Livewire;
 
 use function Pest\Laravel\assertDatabaseHas;
@@ -30,6 +31,7 @@ it('creates an employee from the admin form', function () {
             'full_name' => 'موظف جديد من اللوحة',
             'employee_number' => '28105',
             'national_id' => '119880045493',
+            'workplace' => 'tripoli',
         ])
         ->call('create')
         ->assertHasNoFormErrors()
@@ -41,8 +43,48 @@ it('creates an employee from the admin form', function () {
         'employee_number' => '028105',
         'national_id' => '119880045493',
         'full_name' => 'موظف جديد من اللوحة',
+        'workplace' => 'tripoli',
         'is_active' => true,
     ]);
+});
+
+it('generates an employee number when the create form leaves it empty', function () {
+    $admin = User::factory()->create();
+
+    Employee::factory()->create([
+        'employee_number' => '040012',
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(CreateEmployee::class)
+        ->fillForm([
+            'full_name' => 'موظف بدون رقم وظيفي',
+            'employee_number' => null,
+            'national_id' => '119880045493',
+            'workplace' => 'benghazi',
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    assertDatabaseHas(Employee::class, [
+        'employee_number' => '040013',
+        'national_id' => '119880045493',
+        'full_name' => 'موظف بدون رقم وظيفي',
+        'workplace' => 'benghazi',
+        'is_active' => true,
+    ]);
+});
+
+it('skips taken padded and unpadded employee numbers when allocating the next one', function () {
+    Employee::factory()->create([
+        'employee_number' => '040012',
+    ]);
+    Employee::factory()->create([
+        'employee_number' => '40013',
+    ]);
+
+    expect(EmployeeNumber::next())->toBe('040014');
 });
 
 it('edits an employee from the admin form', function () {
@@ -63,6 +105,7 @@ it('edits an employee from the admin form', function () {
             'full_name' => 'عصام المبروك انطاط قشوط',
             'employee_number' => '028104',
             'national_id' => '119750300015',
+            'workplace' => 'gharyan',
         ])
         ->call('save')
         ->assertHasNoFormErrors()
@@ -86,13 +129,15 @@ it('validates required fields and national id length when creating an employee',
             'full_name' => null,
             'employee_number' => null,
             'national_id' => '123',
+            'workplace' => null,
         ])
         ->call('create')
         ->assertHasFormErrors([
             'full_name' => 'required',
-            'employee_number' => 'required',
+            'workplace' => 'required',
             'national_id',
         ])
+        ->assertHasNoFormErrors(['employee_number'])
         ->assertNotNotified();
 });
 
@@ -111,6 +156,7 @@ it('rejects duplicate employee numbers and national ids on create', function () 
             'full_name' => 'موظف مكرر',
             'employee_number' => '28104',
             'national_id' => '119880045493',
+            'workplace' => 'tripoli',
         ])
         ->call('create')
         ->assertHasFormErrors(['employee_number']);
@@ -120,6 +166,7 @@ it('rejects duplicate employee numbers and national ids on create', function () 
             'full_name' => 'موظف مكرر رقم وطني',
             'employee_number' => '28106',
             'national_id' => '119750300015',
+            'workplace' => 'tripoli',
         ])
         ->call('create')
         ->assertHasFormErrors(['national_id']);
@@ -141,6 +188,7 @@ it('allows keeping the same employee number and national id when editing', funct
             'full_name' => 'اسم محدّث',
             'employee_number' => '028107',
             'national_id' => '119910066223',
+            'workplace' => 'general_admin',
         ])
         ->call('save')
         ->assertHasNoFormErrors();

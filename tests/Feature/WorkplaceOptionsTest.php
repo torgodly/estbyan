@@ -11,7 +11,20 @@ it('resolves tax authority workplaces and spreadsheet admin labels', function ()
         ->and(WorkplaceOptions::keyForSpreadsheetAdmin('_ طرابلس'))->toBe('tripoli')
         ->and(WorkplaceOptions::keyForSpreadsheetAdmin('_ ترهونة ومسـلاته'))->toBe('tarhuna_msallata')
         ->and(WorkplaceOptions::keyForSpreadsheetAdmin('_جنزور'))->toBe('janzour')
-        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('كبار الممولين طرابلس'))->toBe('large_taxpayers_tripoli');
+        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('كبار الممولين طرابلس'))->toBe('large_taxpayers_tripoli')
+        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('كبار الممولين'))->toBe('large_taxpayers_tripoli')
+        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('مرقب'))->toBe('al_murqub')
+        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('ترهونة مسلاته'))->toBe('tarhuna_msallata')
+        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('الشويرف'))->toBe('al_shuwayrif')
+        ->and(WorkplaceOptions::keyForSpreadsheetAdmin('العامة/الصندوق'))->toBe('general_admin')
+        ->and(WorkplaceOptions::parseSpreadsheetAdmin('العامة /الحركة ونقل'))->toBe([
+            'workplace' => 'general_admin',
+            'office' => 'الحركة ونقل',
+        ])
+        ->and(WorkplaceOptions::parseSpreadsheetAdmin('صبراته / صرمان'))->toBe([
+            'workplace' => 'sabratha',
+            'office' => null,
+        ]);
 });
 
 it('returns null for unknown workplaces', function () {

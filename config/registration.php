@@ -10,6 +10,7 @@ return [
         'al_hizam_al_akhdar' => 'الحزام الأخضر',
         'al_zawiya' => 'الزاوية',
         'al_shati' => 'الشاطئ',
+        'al_shuwayrif' => 'الشويرف',
         'al_ajaylat' => 'العجيلات',
         'al_qubba' => 'القبة',
         'al_kufra' => 'الكفرة',
