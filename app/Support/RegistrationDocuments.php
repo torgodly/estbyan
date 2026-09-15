@@ -38,13 +38,16 @@ class RegistrationDocuments
 
     public static function url(MedicalRegistration $registration, string $document): ?string
     {
-        if (! filled(self::pathFor($registration, $document))) {
+        $path = self::pathFor($registration, $document);
+
+        if (! filled($path)) {
             return null;
         }
 
         return route('registration.documents.show', [
             'registration' => $registration,
             'document' => $document,
+            'v' => self::versionForPath($path),
         ]);
     }
 
@@ -57,7 +60,19 @@ class RegistrationDocuments
         return route('registration.documents.beneficiary', [
             'registration' => $registration,
             'beneficiary' => $beneficiary,
+            'v' => self::versionForPath($beneficiary->photo_path),
         ]);
+    }
+
+    public static function versionForPath(?string $path): string
+    {
+        if (! filled($path)) {
+            return '0';
+        }
+
+        $modified = self::disk()->exists($path) ? (string) self::disk()->lastModified($path) : '0';
+
+        return substr(sha1($path.'|'.$modified), 0, 12);
     }
 
     public static function mimeType(?string $path): string

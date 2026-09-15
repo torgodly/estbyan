@@ -10,7 +10,9 @@
     $employeePreviewUrl = $registration
         ? \App\Support\RegistrationDocuments::url($registration, \App\Support\RegistrationDocuments::EMPLOYEE_PHOTO)
         : null;
-    $previewVersion = $registration?->updated_at?->timestamp ?? time();
+    $employeePhotoVersion = $registration?->employee_photo_path
+        ? \App\Support\RegistrationDocuments::versionForPath($registration->employee_photo_path)
+        : 'empty';
 @endphp
 
 <section class="reg-card">
@@ -54,7 +56,7 @@
 
                 @if ($hasFamilyDocument && $familyIsImage && $familyPreviewUrl)
                     <div class="mx-auto mt-4 h-28 w-40 overflow-hidden rounded-xl ring-1 ring-teal-200">
-                        <img src="{{ $familyPreviewUrl }}?v={{ $previewVersion }}" alt="معاينة شهادة الوضع العائلي" class="size-full object-cover">
+                        <img src="{{ $familyPreviewUrl }}" alt="معاينة شهادة الوضع العائلي" class="size-full object-cover">
                     </div>
                 @endif
 
@@ -98,7 +100,7 @@
             x-on:livewire-upload-error="uploading = false; error = true; progress = 0"
             x-on:livewire-upload-cancel="uploading = false; progress = 0"
             x-on:livewire-upload-progress="progress = $event.detail.progress"
-            wire:key="employee-photo-upload"
+            wire:key="employee-photo-upload-{{ $employeePhotoVersion }}"
         >
             <p class="reg-label">الصورة الشخصية للموظف <span class="reg-required">*</span></p>
             <p class="mt-1 text-xs text-slate-500">مطلوبة لإصدار بطاقة التأمين</p>
@@ -130,7 +132,7 @@
                     </div>
                 @elseif ($hasEmployeePhoto && $employeePreviewUrl)
                     <div class="reg-photo-dropzone-frame pointer-events-none">
-                        <img src="{{ $employeePreviewUrl }}?v={{ $previewVersion }}" alt="صورة الموظف" class="size-full object-cover">
+                        <img src="{{ $employeePreviewUrl }}" alt="صورة الموظف" class="size-full object-cover" wire:key="employee-photo-{{ $employeePhotoVersion }}">
                         <span class="reg-photo-badge">محفوظة</span>
                     </div>
                 @elseif ($hasEmployeePhoto)

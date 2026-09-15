@@ -25,11 +25,7 @@ class RegistrationDocumentController extends Controller
 
         return RegistrationDocuments::disk()->response(
             $path,
-            headers: [
-                'Content-Type' => RegistrationDocuments::mimeType($path),
-                'Cache-Control' => 'private, no-store, max-age=0',
-                'X-Content-Type-Options' => 'nosniff',
-            ],
+            headers: self::documentHeaders($path),
         );
     }
 
@@ -46,12 +42,21 @@ class RegistrationDocumentController extends Controller
 
         return RegistrationDocuments::disk()->response(
             $beneficiary->photo_path,
-            headers: [
-                'Content-Type' => RegistrationDocuments::mimeType($beneficiary->photo_path),
-                'Cache-Control' => 'private, no-store, max-age=0',
-                'X-Content-Type-Options' => 'nosniff',
-            ],
+            headers: self::documentHeaders($beneficiary->photo_path),
         );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function documentHeaders(string $path): array
+    {
+        return [
+            'Content-Type' => RegistrationDocuments::mimeType($path),
+            'Cache-Control' => 'private, no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'X-Content-Type-Options' => 'nosniff',
+        ];
     }
 
     protected function authorizeAccess(Request $request, MedicalRegistration $registration): void

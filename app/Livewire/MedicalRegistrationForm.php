@@ -16,6 +16,7 @@ use App\Support\LibyanNationalId as LibyanNationalIdSupport;
 use App\Support\RegistrationDocuments;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -571,10 +572,14 @@ class MedicalRegistrationForm extends Component
         $photoPath = $this->beneficiaryExistingPhotoPath;
 
         if ($this->beneficiaryPhoto instanceof TemporaryUploadedFile) {
-            $photoPath = $this->beneficiaryPhoto->store(
+            $photoPath = $this->storeUniqueUpload(
+                $this->beneficiaryPhoto,
                 "registrations/{$registration->uuid}/beneficiaries",
-                RegistrationDocuments::diskName(),
             );
+
+            if (filled($this->beneficiaryExistingPhotoPath) && $this->beneficiaryExistingPhotoPath !== $photoPath) {
+                RegistrationDocuments::disk()->delete($this->beneficiaryExistingPhotoPath);
+            }
         }
 
         if (blank($photoPath)) {
@@ -1799,9 +1804,9 @@ class MedicalRegistrationForm extends Component
         }
 
         $previous = $registration->family_status_document_path;
-        $path = $this->familyStatusDocument->store(
+        $path = $this->storeUniqueUpload(
+            $this->familyStatusDocument,
             "registrations/{$registration->uuid}",
-            RegistrationDocuments::diskName(),
         );
 
         $this->familyStatusDocumentName = $this->familyStatusDocument->getClientOriginalName();
@@ -1823,9 +1828,9 @@ class MedicalRegistrationForm extends Component
         }
 
         $previous = $registration->employee_photo_path;
-        $path = $this->employeePhoto->store(
+        $path = $this->storeUniqueUpload(
+            $this->employeePhoto,
             "registrations/{$registration->uuid}",
-            RegistrationDocuments::diskName(),
         );
 
         $this->employeePhotoName = $this->employeePhoto->getClientOriginalName();
@@ -1838,6 +1843,24 @@ class MedicalRegistrationForm extends Component
 
         $this->hasEmployeePhoto = true;
         $this->employeePhoto = null;
+    }
+
+    protected function storeUniqueUpload(TemporaryUploadedFile $file, string $directory): string
+    {
+        $extension = strtolower((string) ($file->getClientOriginalExtension() ?: $file->guessExtension() ?: 'bin'));
+        $extension = preg_replace('/[^a-z0-9]/', '', $extension) ?: 'bin';
+
+        $path = $file->storeAs(
+            $directory,
+            Str::uuid()->toString().'.'.$extension,
+            RegistrationDocuments::diskName(),
+        );
+
+        if (! is_string($path) || $path === '') {
+            throw new \RuntimeException('Unable to store the uploaded registration document.');
+        }
+
+        return $path;
     }
 
     /**

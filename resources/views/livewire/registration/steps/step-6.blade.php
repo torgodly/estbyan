@@ -23,7 +23,7 @@
                 <p class="mt-1 text-sm text-slate-500" dir="ltr">{{ $nationalId }} · {{ $employeeNumber }}</p>
             </div>
             @if ($employeePhotoUrl)
-                <img src="{{ $employeePhotoUrl }}" alt="صورة الموظف" class="reg-report-avatar">
+                <img src="{{ $employeePhotoUrl }}" alt="صورة الموظف" class="reg-report-avatar" wire:key="review-employee-photo-{{ $registration?->employee_photo_path }}">
             @else
                 <div class="reg-report-avatar-fallback">{{ mb_substr($verifiedFullName, 0, 1) }}</div>
             @endif

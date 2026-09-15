@@ -30,13 +30,38 @@ it('allows the registration owner session to view documents', function () {
 
     RegistrationDocuments::disk()->put($registration->family_status_document_path, '%PDF-fake');
 
-    $this->withSession(['registration_id' => $registration->id])
+    $response = $this->withSession(['registration_id' => $registration->id])
         ->get(route('registration.documents.show', [
             'registration' => $registration,
             'document' => RegistrationDocuments::FAMILY_STATUS,
-        ]))
-        ->assertSuccessful()
+        ]));
+
+    $response->assertSuccessful()
         ->assertHeader('X-Content-Type-Options', 'nosniff');
+
+    expect($response->headers->get('Cache-Control'))->toContain('no-store');
+});
+
+it('changes the employee photo url when the stored file is replaced', function () {
+    Storage::fake('local');
+
+    $registration = MedicalRegistration::factory()->submitted()->create([
+        'employee_photo_path' => 'registrations/demo/employee.jpg',
+    ]);
+
+    RegistrationDocuments::disk()->put($registration->employee_photo_path, 'old-bytes');
+
+    $before = RegistrationDocuments::url($registration, RegistrationDocuments::EMPLOYEE_PHOTO);
+
+    $registration->update([
+        'employee_photo_path' => 'registrations/demo/employee-new.jpg',
+    ]);
+    RegistrationDocuments::disk()->put($registration->employee_photo_path, 'new-bytes');
+
+    $after = RegistrationDocuments::url($registration->fresh(), RegistrationDocuments::EMPLOYEE_PHOTO);
+
+    expect($before)->not->toBe($after)
+        ->and($after)->toContain('v=');
 });
 
 it('allows authenticated admins to view documents and beneficiary photos', function () {

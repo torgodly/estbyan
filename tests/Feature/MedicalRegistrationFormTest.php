@@ -1097,6 +1097,70 @@ it('keeps edit mode after refresh instead of returning to the success page', fun
     expect($registration->fresh()->status)->toBe(RegistrationStatus::Editing);
 });
 
+it('replaces the stored employee photo when a submitted registration is edited', function () {
+    Storage::fake('local');
+
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1986);
+
+    $employee = Employee::factory()->create([
+        'employee_number' => '6020',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'خالد صالح',
+        'workplace' => 'tripoli',
+    ]);
+
+    $oldPath = 'registrations/demo/old-employee.jpg';
+    RegistrationDocuments::disk()->put($oldPath, 'old-employee-photo');
+
+    $registration = MedicalRegistration::factory()->submitted()->create([
+        'employee_id' => $employee->id,
+        'employee_number' => '6020',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'خالد صالح',
+        'workplace' => 'tripoli',
+        'family_status_document_path' => 'registrations/demo/family.pdf',
+        'employee_photo_path' => $oldPath,
+        'current_step' => 6,
+        'date_of_birth' => '1986-02-02',
+        'phone' => '0912000000',
+        'city' => 'tripoli',
+        'address' => 'طرابلس',
+        'beneficiaries_count' => 0,
+    ]);
+
+    RegistrationDocuments::disk()->put($registration->family_status_document_path, '%PDF-fake');
+
+    $oldUrl = RegistrationDocuments::url($registration, RegistrationDocuments::EMPLOYEE_PHOTO);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('employeeNumber', '6020')
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->assertSet('submitted', true)
+        ->call('editSubmittedRegistration')
+        ->assertSet('submitted', false)
+        ->set('step', 5)
+        ->set('employeePhoto', UploadedFile::fake()->image('new-employee.png', 400, 400))
+        ->assertHasNoErrors('employeePhoto')
+        ->assertSet('hasEmployeePhoto', true)
+        ->call('saveDocuments')
+        ->assertHasNoErrors()
+        ->assertSet('step', 6);
+
+    $registration->refresh();
+    $newUrl = RegistrationDocuments::url($registration, RegistrationDocuments::EMPLOYEE_PHOTO);
+
+    expect($registration->employee_photo_path)->not->toBe($oldPath)
+        ->and($registration->employee_photo_path)->not->toBeNull()
+        ->and($newUrl)->not->toBe($oldUrl)
+        ->and($newUrl)->toContain('v=');
+
+    RegistrationDocuments::disk()->assertMissing($oldPath);
+    RegistrationDocuments::disk()->assertExists($registration->employee_photo_path);
+    expect(RegistrationDocuments::disk()->get($registration->employee_photo_path))->not->toBe('old-employee-photo');
+});
+
 it('keeps the same reference number when resubmitting after edit', function () {
     Storage::fake('local');
 
