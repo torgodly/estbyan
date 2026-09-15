@@ -794,6 +794,32 @@
     .hr-kpis--report {
         grid-template-columns: repeat(4, minmax(0, 1fr));
     }
+
+    .hr-kpis--cities {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1100px) {
+    .hr-kpis--cities {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+}
+
+.hr-report-status--success {
+    color: var(--hr-yes-ink);
+}
+
+.hr-report-status--danger {
+    color: var(--hr-danger-ink);
+}
+
+.hr-report-status--warning {
+    color: var(--hr-warn-ink);
+}
+
+.hr-report-status--info {
+    color: var(--hr-teal);
 }
 
 .hr-report-table-wrap {

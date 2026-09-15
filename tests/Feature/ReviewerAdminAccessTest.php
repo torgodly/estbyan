@@ -1,6 +1,7 @@
 <?php
 
 use App\Filament\Pages\ChronicDiseasesReport;
+use App\Filament\Pages\CityRegistrationsReport;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\ManageRegistrationSettings;
 use App\Filament\Resources\Employees\Pages\ListEmployees;
@@ -25,6 +26,7 @@ it('keeps reviewers off the full admin pages and on the review queue', function 
     Livewire::test(ListEmployees::class)->assertForbidden();
     Livewire::test(ManageRegistrationSettings::class)->assertForbidden();
     Livewire::test(ChronicDiseasesReport::class)->assertForbidden();
+    Livewire::test(CityRegistrationsReport::class)->assertForbidden();
 });
 
 it('keeps hr users off the reviewer queue', function () {
