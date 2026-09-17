@@ -138,7 +138,7 @@ it('splits pending requests across reviewers without storing an assignment', fun
         ->toBeIn([403, 404]);
 });
 
-it('keeps the four reviewer slots stable when new requests arrive', function () {
+it('keeps the fixed reviewer slots stable when new requests arrive', function () {
     $accounts = collect(ReviewerAccounts::definitions())->map(
         fn (array $definition): User => User::factory()->reviewer()->create([
             'name' => $definition['name'],
@@ -156,7 +156,7 @@ it('keeps the four reviewer slots stable when new requests arrive', function () 
     );
 
     $later = MedicalRegistration::factory()->submitted()->create();
-    $owner = $accounts[(int) $later->id % 4];
+    $owner = $accounts[(int) $later->id % count(ReviewerAccounts::emails())];
 
     expect(ReviewerQueueSplitter::owns($owner, $later))->toBeTrue()
         ->and($ownedByFirst->every(

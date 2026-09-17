@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\RegistrationStatus;
 use App\Enums\UserRole;
 use App\Models\MedicalRegistration;
 use App\Models\User;
@@ -39,6 +40,41 @@ class ReviewerQueueSplitter
             $query->getModel()->qualifyColumn('id').' % ? = ?',
             [$count, $index],
         );
+    }
+
+    /**
+     * How many submitted reviews each fixed reviewer account currently owns.
+     *
+     * @return list<array{name: string, email: string, exists: bool, pending: int}>
+     */
+    public static function pendingSplit(): array
+    {
+        $emails = ReviewerAccounts::emails();
+        $modulus = count($emails);
+
+        $pendingIds = MedicalRegistration::query()
+            ->where('status', RegistrationStatus::Submitted)
+            ->pluck('id');
+
+        $users = User::query()
+            ->whereIn('email', $emails)
+            ->get()
+            ->keyBy('email');
+
+        return collect($emails)
+            ->map(function (string $email, int $index) use ($modulus, $pendingIds, $users): array {
+                $user = $users->get($email);
+
+                return [
+                    'name' => $user?->name ?? '—',
+                    'email' => $email,
+                    'exists' => $user !== null,
+                    'pending' => $pendingIds
+                        ->filter(fn (int|string $id): bool => ((int) $id % $modulus) === $index)
+                        ->count(),
+                ];
+            })
+            ->all();
     }
 
     public static function owns(User $reviewer, MedicalRegistration $registration): bool

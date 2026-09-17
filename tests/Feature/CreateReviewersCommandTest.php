@@ -6,13 +6,13 @@ use App\Support\ReviewerAccounts;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
 
-it('creates four reviewer accounts that can only review pending requests', function () {
+it('creates the reviewer accounts that can only review pending requests', function () {
     Artisan::call('reviewers:create');
     $output = Artisan::output();
 
     $users = User::query()->whereIn('email', ReviewerAccounts::emails())->orderBy('email')->get();
 
-    expect($users)->toHaveCount(4);
+    expect($users)->toHaveCount(count(ReviewerAccounts::definitions()));
 
     foreach (ReviewerAccounts::definitions() as $definition) {
         $user = $users->firstWhere('email', $definition['email']);
@@ -43,7 +43,7 @@ it('updates existing reviewer accounts when the command runs again', function ()
 
     $user = User::query()->where('email', $first['email'])->first();
 
-    expect(User::query()->whereIn('email', ReviewerAccounts::emails())->count())->toBe(4)
+    expect(User::query()->whereIn('email', ReviewerAccounts::emails())->count())->toBe(count(ReviewerAccounts::definitions()))
         ->and($user?->name)->toBe($first['name'])
         ->and($user?->role)->toBe(UserRole::Reviewer)
         ->and(Hash::check($first['password'], $user?->password))->toBeTrue();

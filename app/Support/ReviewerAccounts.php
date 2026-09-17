@@ -32,7 +32,32 @@ class ReviewerAccounts
                 'email' => 'reviewer4@smartcare.com.ly',
                 'password' => 'Reviewer-4!2026',
             ],
+            [
+                'name' => 'مراجع 5',
+                'email' => 'reviewer5@smartcare.com.ly',
+                'password' => 'Reviewer-5!2026',
+            ],
+            [
+                'name' => 'مراجع 6',
+                'email' => 'reviewer6@smartcare.com.ly',
+                'password' => 'Reviewer-6!2026',
+            ],
+            [
+                'name' => 'مراجع 7',
+                'email' => 'reviewer7@smartcare.com.ly',
+                'password' => 'Reviewer-7!2026',
+            ],
         ];
+    }
+
+    /**
+     * The three extra reviewer accounts added after the original four.
+     *
+     * @return list<array{name: string, email: string, password: string}>
+     */
+    public static function additionalDefinitions(): array
+    {
+        return array_slice(self::definitions(), 4);
     }
 
     /**

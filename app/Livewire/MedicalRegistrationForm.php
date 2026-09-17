@@ -693,7 +693,7 @@ class MedicalRegistrationForm extends Component
             $this->addVisibleError(
                 'beneficiaries',
                 $this->maritalStatus === MaritalStatus::Single->value
-                    ? 'الحالة أعزب — يرجى حذف المستفيدين من غير الوالدين قبل المتابعة'
+                    ? 'الحالة أعزب — يرجى حذف المستفيدين من غير الوالدين والإخوة قبل المتابعة'
                     : 'يوجد مستفيدون بصلة قرابة غير صالحة',
             );
 
@@ -1585,7 +1585,7 @@ class MedicalRegistrationForm extends Component
     protected function beneficiaryRelationshipValidationMessage(): string
     {
         if ($this->maritalStatus === MaritalStatus::Single->value) {
-            return 'الأعزب يمكنه إضافة الوالدين فقط';
+            return 'الأعزب يمكنه إضافة الوالدين والإخوة فقط';
         }
 
         if ($this->beneficiaryRelationship === BeneficiaryRelationship::Spouse->value) {

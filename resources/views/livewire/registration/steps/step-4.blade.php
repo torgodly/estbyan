@@ -18,7 +18,7 @@
                         أضف {{ $spouseLabel }} والأبناء والوالدين المشمولين بالتغطية
                         <span class="block text-slate-400">(حد أقصى {{ $maxSpouses }} {{ $employeeGender === \App\Enums\Gender::Male ? 'زوجات' : 'زوج' }})</span>
                     @else
-                        أضف الوالدين المشمولين بالتغطية
+                        أضف الوالدين والإخوة والأخوات المشمولين بالتغطية
                     @endif
                 </p>
             </div>
@@ -67,7 +67,7 @@
                                     — زوج واحد فقط
                                 @endif
                             @else
-                                متاح حالياً: الأب والأم فقط
+                                متاح حالياً: الأب والأم والأخ والأخت
                             @endif
                         </p>
                     </div>
@@ -338,7 +338,7 @@
                 @if ($maritalStatus === 'married')
                     يمكنك إضافة {{ $spouseLabel }} والأبناء والوالدين، مع صورة وسجل طبي لكل مستفيد.
                 @else
-                    يمكنك إضافة الأب والأم، مع صورة وسجل طبي لكل مستفيد.
+                    يمكنك إضافة الأب والأم والأخ والأخت، مع صورة وسجل طبي لكل مستفيد.
                 @endif
             </p>
             <button wire:click="toggleBeneficiaryForm" type="button" class="reg-btn-primary mx-auto mt-6 sm:!w-auto sm:min-w-[12rem]">

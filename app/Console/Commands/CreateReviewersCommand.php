@@ -10,7 +10,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 #[Signature('reviewers:create')]
-#[Description('Create the four reviewer accounts that can only access the pending review queue')]
+#[Description('Create the reviewer accounts that can only access the pending review queue')]
 class CreateReviewersCommand extends Command
 {
     public function handle(): int
@@ -38,7 +38,10 @@ class CreateReviewersCommand extends Command
         }
 
         $this->newLine();
-        $this->components->success('Four reviewer accounts are ready.');
+        $this->components->success(sprintf(
+            '%d reviewer accounts are ready.',
+            count(ReviewerAccounts::definitions()),
+        ));
 
         return self::SUCCESS;
     }

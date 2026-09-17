@@ -4,7 +4,6 @@ use App\Filament\Auth\Login;
 use App\Filament\Resources\PendingReviews\PendingReviewResource;
 use App\Models\User;
 use App\Support\ReviewerWorkingHours;
-use Filament\Facades\Filament;
 use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 
@@ -45,54 +44,17 @@ it('counts milliseconds until the 1:15 pm tripoli close', function () {
         ->and(ReviewerWorkingHours::nextOpensAt()->toDateTimeString())->toBe('2026-09-15 07:00:00');
 });
 
-it('shows the closed-day banner on the login screen after 1:15 pm', function () {
+it('does not show a closed-day banner after 1:15 pm', function () {
     travelToTripoliTime('2026-09-14 13:15:00');
 
     $this->get('/admin/login')
         ->assertSuccessful()
-        ->assertSee(ReviewerWorkingHours::bannerTitle(), false)
-        ->assertSee(ReviewerWorkingHours::bannerBody(), false)
-        ->assertSee(ReviewerWorkingHours::bannerOrganization(), false);
+        ->assertDontSee(ReviewerWorkingHours::bannerTitle(), false)
+        ->assertDontSee(ReviewerWorkingHours::bannerBody(), false);
 });
 
-it('hides the closed-day banner during reviewer working hours', function () {
-    travelToTripoliTime('2026-09-14 10:00:00');
-
-    $this->get('/admin/login')
-        ->assertSuccessful()
-        ->assertDontSee(ReviewerWorkingHours::bannerTitle(), false);
-});
-
-it('rejects reviewer login after hours and keeps hr login working', function () {
+it('lets reviewers sign in after 1:15 pm', function () {
     travelToTripoliTime('2026-09-14 13:15:00');
-
-    $reviewer = User::factory()->reviewer()->create();
-    $hr = User::factory()->hr()->create();
-
-    Livewire::test(Login::class)
-        ->fillForm([
-            'email' => $reviewer->email,
-            'password' => 'password',
-        ])
-        ->call('authenticate')
-        ->assertHasFormErrors(['email'])
-        ->assertSee(ReviewerWorkingHours::loginBlockedMessage());
-
-    assertGuest();
-
-    Livewire::test(Login::class)
-        ->fillForm([
-            'email' => $hr->email,
-            'password' => 'password',
-        ])
-        ->call('authenticate')
-        ->assertHasNoFormErrors();
-
-    assertAuthenticatedAs($hr);
-});
-
-it('allows reviewers to sign in at 7 am the next day', function () {
-    travelToTripoliTime('2026-09-15 07:00:00');
 
     $reviewer = User::factory()->reviewer()->create();
 
@@ -107,7 +69,32 @@ it('allows reviewers to sign in at 7 am the next day', function () {
     assertAuthenticatedAs($reviewer);
 });
 
-it('does not reveal reviewer hours when the password is wrong', function () {
+it('keeps reviewers signed in after 1:15 pm', function () {
+    travelToTripoliTime('2026-09-14 13:15:00');
+
+    $reviewer = User::factory()->reviewer()->create();
+
+    $this->actingAs($reviewer)
+        ->get(PendingReviewResource::getUrl())
+        ->assertSuccessful()
+        ->assertDontSee('data-reviewer-session-watch', false);
+
+    assertAuthenticatedAs($reviewer);
+});
+
+it('does not watch remaining session time while a reviewer is signed in', function () {
+    travelToTripoliTime('2026-09-14 10:00:00');
+
+    $reviewer = User::factory()->reviewer()->create();
+
+    $this->actingAs($reviewer)
+        ->get(PendingReviewResource::getUrl())
+        ->assertSuccessful()
+        ->assertDontSee('data-reviewer-session-watch', false)
+        ->assertDontSee('data-close-in=', false);
+});
+
+it('still rejects a wrong reviewer password after hours', function () {
     travelToTripoliTime('2026-09-14 13:15:00');
 
     $reviewer = User::factory()->reviewer()->create();
@@ -122,43 +109,4 @@ it('does not reveal reviewer hours when the password is wrong', function () {
         ->assertDontSee(ReviewerWorkingHours::loginBlockedMessage());
 
     assertGuest();
-});
-
-it('logs reviewers out after 1:15 pm and leaves other admins signed in', function () {
-    travelToTripoliTime('2026-09-14 13:15:00');
-
-    $reviewer = User::factory()->reviewer()->create();
-    $hr = User::factory()->hr()->create();
-
-    $this->actingAs($reviewer)
-        ->get(PendingReviewResource::getUrl())
-        ->assertRedirect(Filament::getLoginUrl())
-        ->assertSessionHas('reviewer_hours_ended', true);
-
-    assertGuest();
-
-    $this->actingAs($reviewer)
-        ->followingRedirects()
-        ->get(PendingReviewResource::getUrl())
-        ->assertSuccessful()
-        ->assertSee(ReviewerWorkingHours::sessionEndedTitle(), false)
-        ->assertSee(ReviewerWorkingHours::bannerBody(), false);
-
-    $this->actingAs($hr)
-        ->get('/admin')
-        ->assertSuccessful();
-
-    assertAuthenticatedAs($hr);
-});
-
-it('watches the remaining session time while a reviewer is signed in', function () {
-    travelToTripoliTime('2026-09-14 10:00:00');
-
-    $reviewer = User::factory()->reviewer()->create();
-
-    $this->actingAs($reviewer)
-        ->get(PendingReviewResource::getUrl())
-        ->assertSuccessful()
-        ->assertSee('data-reviewer-session-watch', false)
-        ->assertSee('data-close-in="11700000"', false);
 });

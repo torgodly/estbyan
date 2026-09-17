@@ -9,6 +9,8 @@ enum BeneficiaryRelationship: string
     case Daughter = 'daughter';
     case Father = 'father';
     case Mother = 'mother';
+    case Brother = 'brother';
+    case Sister = 'sister';
 
     public function label(?Gender $employeeGender = null): string
     {
@@ -22,6 +24,8 @@ enum BeneficiaryRelationship: string
             self::Daughter => 'ابنة',
             self::Father => 'أب',
             self::Mother => 'أم',
+            self::Brother => 'أخ',
+            self::Sister => 'أخت',
         };
     }
 
@@ -33,14 +37,16 @@ enum BeneficiaryRelationship: string
             self::Daughter => '👧',
             self::Father => '👨',
             self::Mother => '👩',
+            self::Brother => '👦',
+            self::Sister => '👧',
         };
     }
 
     public function expectedGender(?Gender $employeeGender = null): ?Gender
     {
         return match ($this) {
-            self::Son, self::Father => Gender::Male,
-            self::Daughter, self::Mother => Gender::Female,
+            self::Son, self::Father, self::Brother => Gender::Male,
+            self::Daughter, self::Mother, self::Sister => Gender::Female,
             self::Spouse => match ($employeeGender) {
                 Gender::Male => Gender::Female,
                 Gender::Female => Gender::Male,
@@ -53,7 +59,15 @@ enum BeneficiaryRelationship: string
     {
         return match ($this) {
             self::Spouse, self::Son, self::Daughter => true,
-            self::Father, self::Mother => false,
+            self::Father, self::Mother, self::Brother, self::Sister => false,
+        };
+    }
+
+    public function requiresSingleEmployee(): bool
+    {
+        return match ($this) {
+            self::Brother, self::Sister => true,
+            default => false,
         };
     }
 
@@ -73,7 +87,7 @@ enum BeneficiaryRelationship: string
     {
         return match ($this) {
             self::Spouse, self::Mother => true,
-            self::Son, self::Daughter, self::Father => false,
+            self::Son, self::Daughter, self::Father, self::Brother, self::Sister => false,
         };
     }
 
@@ -103,8 +117,17 @@ enum BeneficiaryRelationship: string
 
         return array_values(array_filter(
             self::cases(),
-            fn (self $relationship): bool => ! $relationship->requiresMarriedEmployee()
-                || $status === MaritalStatus::Married,
+            function (self $relationship) use ($status): bool {
+                if ($relationship->requiresMarriedEmployee()) {
+                    return $status === MaritalStatus::Married;
+                }
+
+                if ($relationship->requiresSingleEmployee()) {
+                    return $status === MaritalStatus::Single;
+                }
+
+                return true;
+            },
         ));
     }
 }

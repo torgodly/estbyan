@@ -7,7 +7,7 @@ use Tests\TestCase;
 
 uses(TestCase::class);
 
-it('allows parents for single employees and full family for married employees', function () {
+it('allows parents and siblings for single employees and full family for married employees', function () {
     $single = array_map(
         fn (BeneficiaryRelationship $r) => $r->value,
         BeneficiaryRelationship::availableFor(MaritalStatus::Single),
@@ -18,8 +18,15 @@ it('allows parents for single employees and full family for married employees', 
         BeneficiaryRelationship::availableFor(MaritalStatus::Married),
     );
 
-    expect($single)->toBe(['father', 'mother'])
+    expect($single)->toBe(['father', 'mother', 'brother', 'sister'])
         ->and($married)->toBe(['spouse', 'son', 'daughter', 'father', 'mother']);
+});
+
+it('limits brother and sister to single employees', function () {
+    expect(BeneficiaryRelationship::Brother->requiresSingleEmployee())->toBeTrue()
+        ->and(BeneficiaryRelationship::Sister->requiresSingleEmployee())->toBeTrue()
+        ->and(BeneficiaryRelationship::Father->requiresSingleEmployee())->toBeFalse()
+        ->and(BeneficiaryRelationship::Spouse->requiresSingleEmployee())->toBeFalse();
 });
 
 it('marks spouse and mother as allowed to be non-libyan', function () {

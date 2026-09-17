@@ -151,6 +151,8 @@ class EmployeesFamilyExport
             BeneficiaryRelationship::Daughter->value => 3,
             BeneficiaryRelationship::Father->value => 4,
             BeneficiaryRelationship::Mother->value => 5,
+            BeneficiaryRelationship::Brother->value => 6,
+            BeneficiaryRelationship::Sister->value => 7,
         ];
 
         return $beneficiaries
