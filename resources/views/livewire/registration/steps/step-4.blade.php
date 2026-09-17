@@ -171,56 +171,78 @@
                     </div>
                 @endunless
 
-                <div>
+                <div
+                    x-data="{ uploading: false, progress: 0, error: false }"
+                    x-on:livewire-upload-start="uploading = true; error = false; progress = 0"
+                    x-on:livewire-upload-finish="uploading = false; progress = 100"
+                    x-on:livewire-upload-error="uploading = false; error = true; progress = 0"
+                    x-on:livewire-upload-cancel="uploading = false; progress = 0"
+                    x-on:livewire-upload-progress="progress = $event.detail.progress"
+                    wire:key="beneficiary-photo-upload-{{ $documentUploadGeneration }}-{{ $editingBeneficiaryIndex }}"
+                >
                     <label class="reg-label">صورة المستفيد <span class="reg-required">*</span></label>
                     <x-reg-photo-requirements title-id="beneficiary-photo-requirements" :show-children="true" class="mt-2 mb-4" />
                     @php
                         $beneficiaryHasPhoto = (bool) ($beneficiaryPhoto || $beneficiaryExistingPhotoPath);
+                        $beneficiaryPreviewUrl = $beneficiaryExistingPhotoPath && $editingBeneficiaryIndex !== null
+                            ? $this->beneficiaryPhotoUrl(array_merge(
+                                $beneficiaries[$editingBeneficiaryIndex] ?? [],
+                                ['photo_path' => $beneficiaryExistingPhotoPath],
+                            ))
+                            : null;
                     @endphp
                     <label
                         data-reg-field="beneficiaryPhoto"
                         @class([
-                            'reg-photo-dropzone',
+                            'reg-photo-dropzone relative overflow-hidden',
                             'reg-photo-dropzone-filled' => $beneficiaryHasPhoto,
                             'reg-photo-dropzone-invalid' => $errors->has('beneficiaryPhoto'),
                         ])
                     >
+                        <input
+                            class="reg-upload-hit"
+                            type="file"
+                            accept="{{ \App\Support\RegistrationDocuments::photoAcceptAttribute() }}"
+                            wire:model="beneficiaryPhoto"
+                            x-bind:disabled="uploading"
+                            aria-label="صورة المستفيد"
+                        >
+
                         @if ($beneficiaryPhoto)
-                            <div class="reg-photo-dropzone-frame">
+                            <div class="reg-photo-dropzone-frame pointer-events-none">
                                 <img src="{{ $beneficiaryPhoto->temporaryUrl() }}" alt="معاينة صورة المستفيد" class="size-full object-cover">
                                 <span class="reg-photo-badge">معاينة جديدة</span>
                             </div>
-                        @elseif ($beneficiaryExistingPhotoPath && $editingBeneficiaryIndex !== null)
-                            <div class="reg-photo-dropzone-frame">
-                                <img src="{{ $this->beneficiaryPhotoUrl($beneficiaries[$editingBeneficiaryIndex] ?? null) }}" alt="صورة المستفيد" class="size-full object-cover">
+                        @elseif ($beneficiaryHasPhoto && $beneficiaryPreviewUrl)
+                            <div class="reg-photo-dropzone-frame pointer-events-none">
+                                <img src="{{ $beneficiaryPreviewUrl }}" alt="صورة المستفيد" class="size-full object-cover" wire:key="beneficiary-photo-{{ $beneficiaryExistingPhotoPath }}">
+                                <span class="reg-photo-badge">محفوظة</span>
+                            </div>
+                        @elseif ($beneficiaryHasPhoto)
+                            <div class="reg-photo-dropzone-frame pointer-events-none">
                                 <span class="reg-photo-badge">محفوظة</span>
                             </div>
                         @else
-                            <div class="reg-photo-dropzone-icon" aria-hidden="true">
+                            <div class="reg-photo-dropzone-icon pointer-events-none" aria-hidden="true">
                                 <svg class="size-8" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z"/></svg>
                             </div>
                         @endif
 
-                        <div class="reg-photo-dropzone-copy">
+                        <div class="reg-photo-dropzone-copy pointer-events-none">
                             <p class="reg-photo-dropzone-title">
-                                <span wire:loading.remove wire:target="beneficiaryPhoto">
+                                <span x-show="!uploading">
                                     {{ $beneficiaryHasPhoto ? 'تم اختيار صورة المستفيد' : 'اضغط هنا لاختيار الصورة الشخصية' }}
                                 </span>
-                                <span wire:loading wire:target="beneficiaryPhoto">جاري رفع الصورة…</span>
+                                <span x-show="uploading" x-cloak>جاري رفع الصورة…</span>
                             </p>
                             <p class="reg-photo-dropzone-hint">{{ \App\Support\RegistrationDocuments::photoSizeHint() }} — الوجه واضح على خلفية بيضاء</p>
                             <span class="reg-photo-dropzone-cta">
-                                {{ $beneficiaryHasPhoto ? 'تغيير الصورة' : 'اختيار صورة' }}
+                                <span x-show="!uploading">{{ $beneficiaryHasPhoto ? 'تغيير الصورة' : 'اختيار صورة' }}</span>
+                                <span x-show="uploading" x-cloak class="inline-flex items-center gap-2" x-text="'جاري الرفع… ' + Math.round(progress) + '%'"></span>
                             </span>
                         </div>
-
-                        <input
-                            wire:model="beneficiaryPhoto"
-                            type="file"
-                            accept="{{ \App\Support\RegistrationDocuments::photoAcceptAttribute() }}"
-                            class="sr-only"
-                        >
                     </label>
+                    <p x-show="error" x-cloak class="reg-field-error mt-2 justify-center">تعذر رفع الصورة. جرّب صورة أصغر بصيغة JPG أو PNG.</p>
                     @error('beneficiaryPhoto') <p class="reg-field-error mt-2">{{ $message }}</p> @enderror
                 </div>
 
@@ -293,7 +315,7 @@
                 $rel = \App\Enums\BeneficiaryRelationship::from($beneficiary['relationship']);
                 $blood = \App\Enums\BloodType::tryFrom($beneficiary['blood_type'] ?? '');
             @endphp
-            <article class="reg-beneficiary-card" wire:key="beneficiary-{{ $index }}">
+            <article class="reg-beneficiary-card" wire:key="beneficiary-{{ $index }}-{{ $beneficiary['photo_path'] ?? 'none' }}">
                 <div class="flex items-start justify-between gap-4">
                     <div class="min-w-0">
                         <h4 class="text-lg font-extrabold text-navy-900">{{ $beneficiary['full_name'] }}</h4>

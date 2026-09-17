@@ -1,8 +1,10 @@
 <?php
 
+use App\Enums\BeneficiaryRelationship;
 use App\Enums\Gender;
 use App\Enums\RegistrationStatus;
 use App\Livewire\MedicalRegistrationForm;
+use App\Models\Beneficiary;
 use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Settings\RegistrationSettings;
@@ -1159,6 +1161,132 @@ it('replaces the stored employee photo when a submitted registration is edited',
     RegistrationDocuments::disk()->assertMissing($oldPath);
     RegistrationDocuments::disk()->assertExists($registration->employee_photo_path);
     expect(RegistrationDocuments::disk()->get($registration->employee_photo_path))->not->toBe('old-employee-photo');
+});
+
+it('replaces the employee photo after a declined registration is edited', function () {
+    Storage::fake('local');
+
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1984);
+
+    $employee = Employee::factory()->create([
+        'employee_number' => '7210',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'نوري المبروك',
+        'workplace' => 'tripoli',
+    ]);
+
+    $oldPath = 'registrations/demo/declined-employee.jpg';
+    RegistrationDocuments::disk()->put($oldPath, 'rejected-employee-photo');
+    RegistrationDocuments::disk()->put('registrations/demo/family.pdf', '%PDF-fake');
+
+    $registration = MedicalRegistration::factory()->declined()->create([
+        'employee_id' => $employee->id,
+        'employee_number' => '7210',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'نوري المبروك',
+        'workplace' => 'tripoli',
+        'review_note' => 'الصورة الشخصية غير واضحة',
+        'family_status_document_path' => 'registrations/demo/family.pdf',
+        'employee_photo_path' => $oldPath,
+        'current_step' => 6,
+        'date_of_birth' => '1984-03-03',
+        'phone' => '0912000001',
+        'city' => 'tripoli',
+        'address' => 'طرابلس',
+        'beneficiaries_count' => 0,
+    ]);
+
+    $oldUrl = RegistrationDocuments::url($registration, RegistrationDocuments::EMPLOYEE_PHOTO);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->assertSet('submitted', false)
+        ->assertSet('rejectionReason', 'الصورة الشخصية غير واضحة')
+        ->set('step', 5)
+        ->set('employeePhoto', UploadedFile::fake()->image('replacement-employee.png', 400, 400))
+        ->assertHasNoErrors('employeePhoto')
+        ->assertSet('hasEmployeePhoto', true)
+        ->call('saveDocuments')
+        ->assertHasNoErrors()
+        ->assertSet('step', 6);
+
+    $registration->refresh();
+    $newUrl = RegistrationDocuments::url($registration, RegistrationDocuments::EMPLOYEE_PHOTO);
+
+    expect($registration->employee_photo_path)->not->toBe($oldPath)
+        ->and($registration->employee_photo_path)->not->toBeNull()
+        ->and($newUrl)->not->toBe($oldUrl)
+        ->and(RegistrationDocuments::disk()->get($registration->employee_photo_path))->not->toBe('rejected-employee-photo');
+
+    RegistrationDocuments::disk()->assertMissing($oldPath);
+    RegistrationDocuments::disk()->assertExists($registration->employee_photo_path);
+});
+
+it('replaces a rejected beneficiary photo when the employee edits the declined request', function () {
+    Storage::fake('local');
+
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1979);
+    $beneficiaryNationalId = LibyanNationalId::generate(Gender::Female, 1982);
+
+    $employee = Employee::factory()->create([
+        'employee_number' => '7211',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'بشير التومي',
+        'workplace' => 'benghazi',
+    ]);
+
+    $oldPath = 'registrations/demo/declined-beneficiary.jpg';
+    RegistrationDocuments::disk()->put($oldPath, 'rejected-beneficiary-photo');
+
+    $registration = MedicalRegistration::factory()->declined()->create([
+        'employee_id' => $employee->id,
+        'employee_number' => '7211',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'بشير التومي',
+        'workplace' => 'benghazi',
+        'review_note' => 'صورة المستفيد غير واضحة',
+        'marital_status' => 'married',
+        'date_of_birth' => '1979-04-04',
+        'phone' => '0912000002',
+        'city' => 'benghazi',
+        'address' => 'بنغازي',
+        'beneficiaries_count' => 1,
+    ]);
+
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $registration->id,
+        'full_name' => 'سعاد التومي',
+        'relationship' => BeneficiaryRelationship::Spouse,
+        'national_id' => $beneficiaryNationalId,
+        'date_of_birth' => '1982-06-06',
+        'photo_path' => $oldPath,
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->assertSet('submitted', false)
+        ->assertSet('step', 2)
+        ->set('step', 4)
+        ->set('maritalStatus', 'married')
+        ->call('editBeneficiary', 0)
+        ->set('beneficiaryPhoto', UploadedFile::fake()->image('replacement-beneficiary.png', 400, 400))
+        ->call('saveBeneficiary')
+        ->assertHasNoErrors()
+        ->assertCount('beneficiaries', 1);
+
+    $beneficiary = $registration->fresh('beneficiaries')->beneficiaries->first();
+
+    expect($beneficiary)->not->toBeNull()
+        ->and($beneficiary->photo_path)->not->toBe($oldPath)
+        ->and($beneficiary->photo_path)->not->toBeNull()
+        ->and(RegistrationDocuments::disk()->get($beneficiary->photo_path))->not->toBe('rejected-beneficiary-photo');
+
+    RegistrationDocuments::disk()->assertMissing($oldPath);
+    RegistrationDocuments::disk()->assertExists($beneficiary->photo_path);
 });
 
 it('keeps the same reference number when resubmitting after edit', function () {

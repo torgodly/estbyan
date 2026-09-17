@@ -158,6 +158,8 @@ class MedicalRegistrationForm extends Component
 
     public ?string $rejectionReason = null;
 
+    public int $documentUploadGeneration = 0;
+
     public function mount(): void
     {
         // Never carry a previous toast into a fresh page load / refresh.
@@ -569,18 +571,7 @@ class MedicalRegistrationForm extends Component
             ]);
         }
 
-        $photoPath = $this->beneficiaryExistingPhotoPath;
-
-        if ($this->beneficiaryPhoto instanceof TemporaryUploadedFile) {
-            $photoPath = $this->storeUniqueUpload(
-                $this->beneficiaryPhoto,
-                "registrations/{$registration->uuid}/beneficiaries",
-            );
-
-            if (filled($this->beneficiaryExistingPhotoPath) && $this->beneficiaryExistingPhotoPath !== $photoPath) {
-                RegistrationDocuments::disk()->delete($this->beneficiaryExistingPhotoPath);
-            }
-        }
+        $photoPath = $this->replaceBeneficiaryPhoto($registration) ?? $this->beneficiaryExistingPhotoPath;
 
         if (blank($photoPath)) {
             $this->failValidation([
@@ -653,6 +644,7 @@ class MedicalRegistrationForm extends Component
         $this->beneficiaryTraveledForTreatment = (bool) ($beneficiary['traveled_for_treatment'] ?? false);
         $this->beneficiaryExistingPhotoPath = $beneficiary['photo_path'] ?? null;
         $this->beneficiaryPhoto = null;
+        $this->documentUploadGeneration++;
         $this->showBeneficiaryForm = true;
         $this->syncBeneficiaryCitizenshipToRelationship();
     }
@@ -777,6 +769,23 @@ class MedicalRegistrationForm extends Component
     public function updatedEmployeePhoto(): void
     {
         $this->storeUploadedDocument('employeePhoto');
+    }
+
+    public function updatedBeneficiaryPhoto(): void
+    {
+        if ($this->isFormLocked() || $this->uploadedFile('beneficiaryPhoto') === null) {
+            return;
+        }
+
+        try {
+            $this->validateOnly('beneficiaryPhoto', [
+                'beneficiaryPhoto' => RegistrationDocuments::photoValidationRules(),
+            ], $this->documentValidationMessages());
+        } catch (ValidationException $exception) {
+            $this->dispatchScrollToError('beneficiaryPhoto');
+
+            throw $exception;
+        }
     }
 
     public function saveDraft(): void
@@ -1097,14 +1106,20 @@ class MedicalRegistrationForm extends Component
     public function beneficiaryPhotoUrl(?array $beneficiary): ?string
     {
         $registration = $this->registration();
+        $path = $beneficiary['photo_path'] ?? null;
+        $id = $beneficiary['id'] ?? null;
 
-        if (! $registration || blank($beneficiary['photo_path'] ?? null) || blank($beneficiary['id'] ?? null)) {
+        if (! $registration || blank($path) || blank($id)) {
             return null;
         }
 
-        $model = $registration->beneficiaries->firstWhere('id', $beneficiary['id']);
+        $model = $registration->beneficiaries->firstWhere('id', $id) ?? new Beneficiary;
+        $model->id = (int) $id;
+        $model->medical_registration_id = $registration->id;
+        $model->photo_path = $path;
+        $model->exists = true;
 
-        return $model ? RegistrationDocuments::beneficiaryUrl($registration, $model) : null;
+        return RegistrationDocuments::beneficiaryUrl($registration, $model);
     }
 
     protected function syncBeneficiariesToDatabase(): void
@@ -1297,7 +1312,7 @@ class MedicalRegistrationForm extends Component
             'familyStatusDocument', 'employeePhoto', 'familyStatusDocumentName', 'employeePhotoName',
             'submitted', 'referenceNumber',
             'hasFamilyDocument', 'hasEmployeePhoto', 'hasSavedDraft', 'identityLocked',
-            'approvedLocked', 'approvedMessage', 'rejectionReason',
+            'approvedLocked', 'approvedMessage', 'rejectionReason', 'documentUploadGeneration',
         ]);
 
         $this->step = 1;
@@ -1329,6 +1344,7 @@ class MedicalRegistrationForm extends Component
         $this->beneficiaryTraveledForTreatment = false;
         $this->beneficiaryPhoto = null;
         $this->beneficiaryExistingPhotoPath = null;
+        $this->documentUploadGeneration++;
         $this->resetValidation([
             'beneficiaryName',
             'beneficiaryRelationship',
@@ -1766,7 +1782,7 @@ class MedicalRegistrationForm extends Component
      */
     protected function storeUploadedDocument(string $property): void
     {
-        if ($this->isFormLocked() || ! $this->{$property} instanceof TemporaryUploadedFile) {
+        if ($this->isFormLocked() || $this->uploadedFile($property) === null) {
             return;
         }
 
@@ -1799,17 +1815,19 @@ class MedicalRegistrationForm extends Component
 
     protected function persistFamilyStatusDocument(MedicalRegistration $registration): void
     {
-        if (! $this->familyStatusDocument instanceof TemporaryUploadedFile) {
+        $file = $this->uploadedFile('familyStatusDocument');
+
+        if ($file === null) {
             return;
         }
 
         $previous = $registration->family_status_document_path;
         $path = $this->storeUniqueUpload(
-            $this->familyStatusDocument,
+            $file,
             "registrations/{$registration->uuid}",
         );
 
-        $this->familyStatusDocumentName = $this->familyStatusDocument->getClientOriginalName();
+        $this->familyStatusDocumentName = $file->getClientOriginalName();
         $registration->family_status_document_path = $path;
         $registration->save();
 
@@ -1819,21 +1837,24 @@ class MedicalRegistrationForm extends Component
 
         $this->hasFamilyDocument = true;
         $this->familyStatusDocument = null;
+        $this->documentUploadGeneration++;
     }
 
     protected function persistEmployeePhoto(MedicalRegistration $registration): void
     {
-        if (! $this->employeePhoto instanceof TemporaryUploadedFile) {
+        $file = $this->uploadedFile('employeePhoto');
+
+        if ($file === null) {
             return;
         }
 
         $previous = $registration->employee_photo_path;
         $path = $this->storeUniqueUpload(
-            $this->employeePhoto,
+            $file,
             "registrations/{$registration->uuid}",
         );
 
-        $this->employeePhotoName = $this->employeePhoto->getClientOriginalName();
+        $this->employeePhotoName = $file->getClientOriginalName();
         $registration->employee_photo_path = $path;
         $registration->save();
 
@@ -1843,6 +1864,50 @@ class MedicalRegistrationForm extends Component
 
         $this->hasEmployeePhoto = true;
         $this->employeePhoto = null;
+        $this->documentUploadGeneration++;
+    }
+
+    protected function replaceBeneficiaryPhoto(MedicalRegistration $registration): ?string
+    {
+        $file = $this->uploadedFile('beneficiaryPhoto');
+
+        if ($file === null) {
+            return null;
+        }
+
+        $path = $this->storeUniqueUpload(
+            $file,
+            "registrations/{$registration->uuid}/beneficiaries",
+        );
+
+        if (filled($this->beneficiaryExistingPhotoPath) && $this->beneficiaryExistingPhotoPath !== $path) {
+            RegistrationDocuments::disk()->delete($this->beneficiaryExistingPhotoPath);
+        }
+
+        $this->beneficiaryExistingPhotoPath = $path;
+        $this->beneficiaryPhoto = null;
+        $this->documentUploadGeneration++;
+
+        return $path;
+    }
+
+    protected function uploadedFile(string $property): ?TemporaryUploadedFile
+    {
+        $value = $this->{$property};
+
+        if ($value instanceof TemporaryUploadedFile) {
+            return $value;
+        }
+
+        if (is_array($value)) {
+            $first = $value[0] ?? null;
+
+            if ($first instanceof TemporaryUploadedFile) {
+                return $first;
+            }
+        }
+
+        return null;
     }
 
     protected function storeUniqueUpload(TemporaryUploadedFile $file, string $directory): string

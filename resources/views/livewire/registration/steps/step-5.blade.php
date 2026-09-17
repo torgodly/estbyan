@@ -100,7 +100,7 @@
             x-on:livewire-upload-error="uploading = false; error = true; progress = 0"
             x-on:livewire-upload-cancel="uploading = false; progress = 0"
             x-on:livewire-upload-progress="progress = $event.detail.progress"
-            wire:key="employee-photo-upload-{{ $employeePhotoVersion }}"
+            wire:key="employee-photo-upload-{{ $documentUploadGeneration }}-{{ $employeePhotoVersion }}"
         >
             <p class="reg-label">الصورة الشخصية للموظف <span class="reg-required">*</span></p>
             <p class="mt-1 text-xs text-slate-500">مطلوبة لإصدار بطاقة التأمين</p>
