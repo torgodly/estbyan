@@ -1,11 +1,13 @@
 <?php
 
+use App\Enums\BeneficiaryRelationship;
 use App\Enums\Gender;
 use App\Livewire\MedicalRegistrationForm;
 use App\Models\Beneficiary;
 use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Settings\RegistrationSettings;
+use App\Support\InsuranceCardNumber;
 use App\Support\LibyanNationalId;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -180,4 +182,71 @@ it('allows editing a beneficiary without changing the national id', function () 
     expect(Beneficiary::query()->where('national_id', $daughterNationalId)->count())->toBe(1)
         ->and(Beneficiary::query()->where('national_id', $daughterNationalId)->first()->blood_type->value)
         ->toBe('ab_positive');
+});
+
+it('issues a new card number when a declined registration corrects a duplicate son national id', function () {
+    $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1974);
+    $sharedSonNationalId = LibyanNationalId::generate(Gender::Male, 2008);
+    $correctedSonNationalId = LibyanNationalId::generate(Gender::Male, 2008);
+
+    $employee = Employee::factory()->create([
+        'employee_number' => '9406',
+        'national_id' => $employeeNationalId,
+        'full_name' => 'أب مرفوض',
+        'workplace' => 'tripoli',
+    ]);
+
+    $registration = MedicalRegistration::factory()->declined()->create([
+        'employee_id' => $employee->id,
+        'employee_number' => $employee->employee_number,
+        'national_id' => $employeeNationalId,
+        'full_name' => $employee->full_name,
+        'workplace' => 'tripoli',
+        'marital_status' => 'married',
+        'review_note' => 'رقم وطني مكرر لأحد الأبناء',
+        'beneficiaries_count' => 2,
+    ]);
+
+    $firstSon = Beneficiary::factory()->create([
+        'medical_registration_id' => $registration->id,
+        'full_name' => 'الابن الأول',
+        'relationship' => BeneficiaryRelationship::Son,
+        'national_id' => $sharedSonNationalId,
+        'date_of_birth' => '2008-01-01',
+    ]);
+
+    $secondSon = Beneficiary::factory()->create([
+        'medical_registration_id' => $registration->id,
+        'full_name' => 'الابن الثاني',
+        'relationship' => BeneficiaryRelationship::Son,
+        'national_id' => $sharedSonNationalId,
+        'date_of_birth' => '2008-01-01',
+    ]);
+
+    $sharedCard = $firstSon->card_number;
+
+    expect($secondSon->card_number)->toBe($sharedCard);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('nationalId', $employeeNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->assertSet('submitted', false)
+        ->set('step', 4)
+        ->set('maritalStatus', 'married')
+        ->call('editBeneficiary', 1)
+        ->set('beneficiaryNationalId', $correctedSonNationalId)
+        ->call('saveBeneficiary')
+        ->assertHasNoErrors()
+        ->assertCount('beneficiaries', 2);
+
+    $beneficiaries = $registration->fresh('beneficiaries')->beneficiaries;
+    $unchanged = $beneficiaries->firstWhere('national_id', $sharedSonNationalId);
+    $corrected = $beneficiaries->firstWhere('national_id', $correctedSonNationalId);
+
+    expect($unchanged)->not->toBeNull()
+        ->and($corrected)->not->toBeNull()
+        ->and($unchanged->card_number)->toBe($sharedCard)
+        ->and($corrected->card_number)->not->toBe($sharedCard)
+        ->and(InsuranceCardNumber::isCurrent($corrected->card_number))->toBeTrue();
 });

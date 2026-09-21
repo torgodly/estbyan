@@ -62,3 +62,40 @@ it('gives a different family card number when the same person belongs to another
 
     expect($second->card_number)->not->toBe($first->card_number);
 });
+
+it('issues a new card number when a beneficiary national id changes', function () {
+    $registration = MedicalRegistration::factory()->create();
+    $beneficiary = Beneficiary::factory()->create([
+        'medical_registration_id' => $registration->id,
+        'national_id' => '119880112233',
+    ]);
+    $originalCard = $beneficiary->card_number;
+    $beneficiary->markCardPrinted();
+
+    $beneficiary->update([
+        'national_id' => '119900112233',
+    ]);
+
+    $beneficiary->refresh();
+
+    expect($beneficiary->card_number)->not->toBe($originalCard)
+        ->and(InsuranceCardNumber::isCurrent($beneficiary->card_number))->toBeTrue()
+        ->and($beneficiary->cardIsPrinted())->toBeFalse();
+});
+
+it('does not keep a card number already used by a different family member', function () {
+    $registration = MedicalRegistration::factory()->create();
+    $first = Beneficiary::factory()->create([
+        'medical_registration_id' => $registration->id,
+        'national_id' => '119880112233',
+    ]);
+
+    $second = Beneficiary::factory()->create([
+        'medical_registration_id' => $registration->id,
+        'national_id' => '119900112233',
+        'card_number' => $first->card_number,
+    ]);
+
+    expect($second->card_number)->not->toBe($first->card_number)
+        ->and(InsuranceCardNumber::isCurrent($second->card_number))->toBeTrue();
+});

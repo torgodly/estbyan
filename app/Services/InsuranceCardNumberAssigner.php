@@ -33,10 +33,6 @@ class InsuranceCardNumberAssigner
 
     public function fillBeneficiary(Beneficiary $beneficiary, bool $replaceLegacy = false): void
     {
-        if (! $this->shouldReplace($beneficiary->card_number, $replaceLegacy)) {
-            return;
-        }
-
         $employee = $this->employeeFor($beneficiary);
 
         if ($employee === null) {
@@ -55,6 +51,17 @@ class InsuranceCardNumberAssigner
             }
 
             return;
+        }
+
+        if (
+            ! $this->shouldReplace($beneficiary->card_number, $replaceLegacy)
+            && ! $this->cardNumberUsedByDifferentIdentity($beneficiary)
+        ) {
+            return;
+        }
+
+        if ($this->cardNumberUsedByDifferentIdentity($beneficiary)) {
+            $beneficiary->card_printed_at = null;
         }
 
         $beneficiary->card_number = $this->nextUniqueCardNumber();
@@ -126,6 +133,35 @@ class InsuranceCardNumberAssigner
         return $existing && InsuranceCardNumber::isCurrent($existing->card_number)
             ? $existing
             : null;
+    }
+
+    private function cardNumberUsedByDifferentIdentity(Beneficiary $beneficiary): bool
+    {
+        $number = $beneficiary->card_number;
+
+        if (! InsuranceCardNumber::isCurrent($number)) {
+            return false;
+        }
+
+        $identityKey = InsuranceCardNumber::identityKey(
+            $beneficiary->national_id,
+            $beneficiary->passport_number,
+            $beneficiary->full_name,
+            $beneficiary->date_of_birth,
+        );
+
+        return Beneficiary::query()
+            ->where('card_number', $number)
+            ->when($beneficiary->exists, fn ($query) => $query->whereKeyNot($beneficiary->id))
+            ->get()
+            ->contains(function (Beneficiary $other) use ($identityKey): bool {
+                return InsuranceCardNumber::identityKey(
+                    $other->national_id,
+                    $other->passport_number,
+                    $other->full_name,
+                    $other->date_of_birth,
+                ) !== $identityKey;
+            });
     }
 
     private function cardNumberTaken(string $number): bool

@@ -1160,11 +1160,8 @@ class MedicalRegistrationForm extends Component
                 'nationality' => $beneficiary['nationality'] ?? null,
                 'national_id' => $beneficiary['national_id'] ?? null,
                 'passport_number' => $beneficiary['passport_number'] ?? null,
-                'card_number' => $preservedCardState[$identityKey]['card_number']
-                    ?? InsuranceCardNumber::normalize($beneficiary['card_number'] ?? null),
-                'card_printed_at' => $preservedCardState[$identityKey]['card_printed_at']
-                    ?? $beneficiary['card_printed_at']
-                    ?? null,
+                'card_number' => $preservedCardState[$identityKey]['card_number'] ?? null,
+                'card_printed_at' => $preservedCardState[$identityKey]['card_printed_at'] ?? null,
                 'date_of_birth' => $beneficiary['date_of_birth'] ?: null,
                 'blood_type' => $beneficiary['blood_type'],
                 'has_chronic_condition' => (bool) ($beneficiary['has_chronic_conditions'] ?? $beneficiary['has_chronic_condition'] ?? false),

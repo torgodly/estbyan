@@ -120,6 +120,33 @@ class Beneficiary extends Model
             app(InsuranceCardNumberAssigner::class)->fillBeneficiary($beneficiary);
         });
 
+        static::updating(function (Beneficiary $beneficiary): void {
+            if (! $beneficiary->isDirty(['national_id', 'passport_number'])) {
+                return;
+            }
+
+            $previousKey = InsuranceCardNumber::identityKey(
+                $beneficiary->getOriginal('national_id'),
+                $beneficiary->getOriginal('passport_number'),
+                $beneficiary->getOriginal('full_name'),
+                $beneficiary->getOriginal('date_of_birth'),
+            );
+            $currentKey = InsuranceCardNumber::identityKey(
+                $beneficiary->national_id,
+                $beneficiary->passport_number,
+                $beneficiary->full_name,
+                $beneficiary->date_of_birth,
+            );
+
+            if ($previousKey === $currentKey) {
+                return;
+            }
+
+            $beneficiary->card_number = null;
+            $beneficiary->card_printed_at = null;
+            app(InsuranceCardNumberAssigner::class)->fillBeneficiary($beneficiary, replaceLegacy: true);
+        });
+
         static::saving(function (Beneficiary $beneficiary): void {
             $beneficiary->has_chronic_condition = (bool) $beneficiary->has_chronic_conditions;
         });
