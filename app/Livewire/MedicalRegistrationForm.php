@@ -11,6 +11,7 @@ use App\Models\Beneficiary;
 use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Rules\LibyanNationalId;
+use App\Rules\UniqueBeneficiaryNationalId;
 use App\Support\InsuranceCardNumber;
 use App\Support\LibyanNationalId as LibyanNationalIdSupport;
 use App\Support\RegistrationDocuments;
@@ -486,7 +487,16 @@ class MedicalRegistrationForm extends Component
         ];
 
         if ($isLibyan) {
-            $rules['beneficiaryNationalId'] = ['required', 'string', new LibyanNationalId];
+            $rules['beneficiaryNationalId'] = [
+                'required',
+                'string',
+                new LibyanNationalId,
+                new UniqueBeneficiaryNationalId(
+                    ignoreRegistrationId: $this->registrationId,
+                    employeeNationalId: $this->nationalId,
+                    siblingNationalIds: $this->siblingBeneficiaryNationalIds(),
+                ),
+            ];
             $rules['beneficiaryDateOfBirth'] = [
                 'required',
                 'date',
@@ -1481,6 +1491,28 @@ class MedicalRegistrationForm extends Component
             'traveled_for_treatment' => $beneficiary->traveled_for_treatment,
             'photo_path' => $beneficiary->photo_path,
         ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function siblingBeneficiaryNationalIds(): array
+    {
+        $nationalIds = [];
+
+        foreach ($this->beneficiaries as $index => $beneficiary) {
+            if ($this->editingBeneficiaryIndex !== null && $index === $this->editingBeneficiaryIndex) {
+                continue;
+            }
+
+            $nationalId = trim((string) ($beneficiary['national_id'] ?? ''));
+
+            if ($nationalId !== '') {
+                $nationalIds[] = $nationalId;
+            }
+        }
+
+        return $nationalIds;
     }
 
     public function beneficiaryIdentityLabel(array $beneficiary): string
