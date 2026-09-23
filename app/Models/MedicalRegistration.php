@@ -9,6 +9,7 @@ use App\Enums\RegistrationStatus;
 use App\Support\WorkplaceOptions;
 use Database\Factories\MedicalRegistrationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -99,6 +100,49 @@ class MedicalRegistration extends Model
     public function beneficiaries(): HasMany
     {
         return $this->hasMany(Beneficiary::class);
+    }
+
+    /**
+     * @param  Builder<MedicalRegistration>  $query
+     * @return Builder<MedicalRegistration>
+     */
+    public function scopeCardsFullyPrinted(Builder $query): Builder
+    {
+        return $query
+            ->whereHas('employee', fn (Builder $query) => $query->whereNotNull('card_printed_at'))
+            ->whereDoesntHave('beneficiaries', fn (Builder $query) => $query->whereNull('card_printed_at'));
+    }
+
+    /**
+     * @param  Builder<MedicalRegistration>  $query
+     * @return Builder<MedicalRegistration>
+     */
+    public function scopeCardsUnprinted(Builder $query): Builder
+    {
+        return $query
+            ->where(function (Builder $query): void {
+                $query->whereHas('employee', fn (Builder $query) => $query->whereNull('card_printed_at'))
+                    ->orWhereDoesntHave('employee');
+            })
+            ->whereDoesntHave('beneficiaries', fn (Builder $query) => $query->whereNotNull('card_printed_at'));
+    }
+
+    /**
+     * @param  Builder<MedicalRegistration>  $query
+     * @return Builder<MedicalRegistration>
+     */
+    public function scopeCardsPartiallyPrinted(Builder $query): Builder
+    {
+        return $query
+            ->where(function (Builder $query): void {
+                $query->whereHas('employee', fn (Builder $query) => $query->whereNotNull('card_printed_at'))
+                    ->orWhereHas('beneficiaries', fn (Builder $query) => $query->whereNotNull('card_printed_at'));
+            })
+            ->where(function (Builder $query): void {
+                $query->whereHas('employee', fn (Builder $query) => $query->whereNull('card_printed_at'))
+                    ->orWhereDoesntHave('employee')
+                    ->orWhereHas('beneficiaries', fn (Builder $query) => $query->whereNull('card_printed_at'));
+            });
     }
 
     public function isSubmitted(): bool

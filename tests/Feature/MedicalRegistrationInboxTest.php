@@ -3,6 +3,8 @@
 use App\Enums\RegistrationStatus;
 use App\Filament\Resources\MedicalRegistrations\MedicalRegistrationResource;
 use App\Filament\Resources\MedicalRegistrations\Pages\ListMedicalRegistrations;
+use App\Models\Beneficiary;
+use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Models\User;
 use Livewire\Livewire;
@@ -69,4 +71,61 @@ it('filters submissions by workplace', function () {
         ->filterTable('workplace', 'tripoli')
         ->assertSee('موظف طرابلس')
         ->assertDontSee('موظف سبها');
+});
+
+it('filters requests by insurance card print status', function () {
+    $admin = User::factory()->create();
+
+    $printedEmployee = Employee::factory()->create([
+        'card_printed_at' => now(),
+    ]);
+    $unprintedEmployee = Employee::factory()->create([
+        'card_printed_at' => null,
+    ]);
+    $partialEmployee = Employee::factory()->create([
+        'card_printed_at' => now(),
+    ]);
+
+    $printed = MedicalRegistration::factory()->submitted()->create([
+        'employee_id' => $printedEmployee->id,
+        'full_name' => 'طلب مطبوع بالكامل',
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $printed->id,
+        'card_printed_at' => now(),
+    ]);
+
+    $unprinted = MedicalRegistration::factory()->submitted()->create([
+        'employee_id' => $unprintedEmployee->id,
+        'full_name' => 'طلب غير مطبوع',
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $unprinted->id,
+        'card_printed_at' => null,
+    ]);
+
+    $partial = MedicalRegistration::factory()->submitted()->create([
+        'employee_id' => $partialEmployee->id,
+        'full_name' => 'طلب مطبوع جزئيا',
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $partial->id,
+        'card_printed_at' => null,
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ListMedicalRegistrations::class)
+        ->assertSuccessful()
+        ->assertSee('حالة الطباعة')
+        ->assertCanSeeTableRecords([$printed, $unprinted, $partial])
+        ->filterTable('print_status', 'printed')
+        ->assertCanSeeTableRecords([$printed])
+        ->assertCanNotSeeTableRecords([$unprinted, $partial])
+        ->filterTable('print_status', 'unprinted')
+        ->assertCanSeeTableRecords([$unprinted])
+        ->assertCanNotSeeTableRecords([$printed, $partial])
+        ->filterTable('print_status', 'partial')
+        ->assertCanSeeTableRecords([$partial])
+        ->assertCanNotSeeTableRecords([$printed, $unprinted]);
 });

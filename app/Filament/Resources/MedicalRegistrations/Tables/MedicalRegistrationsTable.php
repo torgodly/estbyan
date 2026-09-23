@@ -32,6 +32,7 @@ class MedicalRegistrationsTable
                     ->label('الإدارة')
                     ->options(fn (): array => config('registration.workplaces', [])),
                 self::cityFilter(),
+                self::printStatusFilter(),
                 Filter::make('submitted_at')
                     ->label('تاريخ الإرسال')
                     ->schema([
@@ -81,6 +82,25 @@ class MedicalRegistrationsTable
         return SelectFilter::make('city')
             ->label('المدينة')
             ->options(fn (): array => config('registration.cities', []));
+    }
+
+    public static function printStatusFilter(): SelectFilter
+    {
+        return SelectFilter::make('print_status')
+            ->label('حالة الطباعة')
+            ->options([
+                'printed' => 'طُبعت بالكامل',
+                'unprinted' => 'لم تُطبع',
+                'partial' => 'طُبع بعضها',
+            ])
+            ->query(function (Builder $query, array $data): Builder {
+                return match ($data['value'] ?? null) {
+                    'printed' => $query->cardsFullyPrinted(),
+                    'unprinted' => $query->cardsUnprinted(),
+                    'partial' => $query->cardsPartiallyPrinted(),
+                    default => $query,
+                };
+            });
     }
 
     /**
