@@ -151,6 +151,31 @@ class RegistrationDocuments
         return filled($path) && (bool) preg_match('/\.(jpe?g|png|webp|gif|heic|heif)$/i', $path);
     }
 
+    public static function isBrowserDisplayableImage(?string $path): bool
+    {
+        return filled($path) && (bool) preg_match('/\.(jpe?g|png|webp|gif)$/i', $path);
+    }
+
+    /**
+     * @return 'image'|'pdf'|'file'|'missing'
+     */
+    public static function browserPreviewKind(?string $path): string
+    {
+        if (! filled($path)) {
+            return 'missing';
+        }
+
+        if (preg_match('/\.pdf$/i', $path) === 1) {
+            return 'pdf';
+        }
+
+        if (self::isBrowserDisplayableImage($path)) {
+            return 'image';
+        }
+
+        return 'file';
+    }
+
     public static function familyAcceptAttribute(): string
     {
         return 'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif';

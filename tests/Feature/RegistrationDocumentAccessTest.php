@@ -1,10 +1,12 @@
 <?php
 
+use App\Filament\Resources\MedicalRegistrations\Pages\ViewMedicalRegistration;
 use App\Models\Beneficiary;
 use App\Models\MedicalRegistration;
 use App\Models\User;
 use App\Support\RegistrationDocuments;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 
 it('blocks guests from registration documents', function () {
     Storage::fake('local');
@@ -108,4 +110,31 @@ it('does not expose documents through the public storage path', function () {
 
     $this->get('/storage/'.$registration->employee_photo_path)
         ->assertClientError();
+});
+
+it('classifies heic family documents as a downloadable file, not a pdf preview', function () {
+    expect(RegistrationDocuments::browserPreviewKind('registrations/demo/family.heic'))->toBe('file')
+        ->and(RegistrationDocuments::browserPreviewKind('registrations/demo/family.heif'))->toBe('file')
+        ->and(RegistrationDocuments::browserPreviewKind('registrations/demo/family.pdf'))->toBe('pdf')
+        ->and(RegistrationDocuments::browserPreviewKind('registrations/demo/family.jpg'))->toBe('image');
+});
+
+it('does not embed a heic family document in an iframe on the registration file', function () {
+    Storage::fake('local');
+
+    $admin = User::factory()->smartCare()->create();
+    $registration = MedicalRegistration::factory()->submitted()->create([
+        'family_status_document_path' => 'registrations/demo/family.heic',
+    ]);
+    RegistrationDocuments::disk()->put($registration->family_status_document_path, 'heic-bytes');
+
+    $familyUrl = RegistrationDocuments::url($registration, RegistrationDocuments::FAMILY_STATUS);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ViewMedicalRegistration::class, ['record' => $registration->getRouteKey()])
+        ->assertSuccessful()
+        ->assertDontSeeHtml('<iframe src="'.$familyUrl)
+        ->assertSee('لا يمكن عرض ملف HEIC داخل الصفحة')
+        ->assertSee('تحميل الشهادة');
 });

@@ -66,10 +66,7 @@
     ];
     $positiveFlags = collect($medicalFlags)->where('value', true)->values();
     $defaultOpen = $positiveFlags->first()['key'] ?? 'chronic';
-    $familyDocType = filled($registration->family_status_document_path)
-        && preg_match('/\.(jpe?g|png|webp|gif)$/i', $registration->family_status_document_path)
-        ? 'image'
-        : 'pdf';
+    $familyDocType = RegistrationDocuments::browserPreviewKind($registration->family_status_document_path);
 @endphp
 
 @if ($this->canManageInsuranceCards())
@@ -327,8 +324,14 @@
                                     @if ($familyDocUrl)
                                         @if ($familyDocType === 'image')
                                             <img src="{{ $familyDocUrl }}" alt="صورة من شهادة الوضع العائلي" loading="lazy" decoding="async">
-                                        @else
+                                        @elseif ($familyDocType === 'pdf')
                                             <iframe src="{{ $familyDocUrl }}#toolbar=0" title="صورة من شهادة الوضع العائلي"></iframe>
+                                        @else
+                                            <div class="hr-doc__missing">
+                                                <x-filament::icon icon="heroicon-o-document" class="h-7 w-7" />
+                                                <span>لا يمكن عرض ملف HEIC داخل الصفحة</span>
+                                                <a href="{{ $familyDocUrl }}" class="hr-doc__action" download>تحميل الشهادة</a>
+                                            </div>
                                         @endif
                                     @else
                                         <div class="hr-doc__missing">
@@ -635,8 +638,14 @@
                     <template x-if="previewType === 'image'">
                         <img :src="previewUrl" alt="">
                     </template>
-                    <template x-if="previewType !== 'image'">
+                    <template x-if="previewType === 'pdf'">
                         <iframe :src="previewUrl" title="معاينة المستند"></iframe>
+                    </template>
+                    <template x-if="previewType === 'file'">
+                        <div class="hr-doc__missing">
+                            <span>لا يمكن عرض هذا الملف هنا. استخدم التحميل.</span>
+                            <a :href="previewUrl" class="hr-doc__action" download>تحميل الملف</a>
+                        </div>
                     </template>
                 </div>
             </div>
