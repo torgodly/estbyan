@@ -5,18 +5,17 @@ namespace App\Console\Commands;
 use App\Enums\UserRole;
 use App\Models\User;
 use App\Support\ReviewerAccounts;
-use App\Support\ReviewerQueueSplitter;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 #[Signature('reviewers:expand')]
-#[Description('Create three extra reviewer accounts and resplit pending reviews across all reviewers')]
+#[Description('Create any missing reviewer accounts; every reviewer sees the full pending queue')]
 class ExpandReviewersCommand extends Command
 {
     public function handle(): int
     {
-        $this->components->info('Creating the three extra reviewer accounts');
+        $this->components->info('Creating reviewer accounts');
         $this->newLine();
 
         $additionalEmails = array_column(ReviewerAccounts::additionalDefinitions(), 'email');
@@ -43,26 +42,11 @@ class ExpandReviewersCommand extends Command
             ));
         }
 
-        $split = ReviewerQueueSplitter::pendingSplit();
-        $totalPending = array_sum(array_column($split, 'pending'));
-
         $this->newLine();
-        $this->components->info(sprintf(
-            'Pending reviews resplit across %d reviewer accounts (%d submitted)',
-            count($split),
-            $totalPending,
+        $this->components->success(sprintf(
+            '%d reviewer accounts are ready. Every reviewer can see every pending request.',
+            count(ReviewerAccounts::definitions()),
         ));
-
-        $this->table(
-            ['Reviewer', 'Email', 'Pending'],
-            array_map(fn (array $row): array => [
-                $row['name'],
-                $row['email'],
-                (string) $row['pending'],
-            ], $split),
-        );
-
-        $this->components->success('Reviewer accounts are ready and the queue is split by record id.');
 
         return self::SUCCESS;
     }

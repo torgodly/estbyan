@@ -8,7 +8,6 @@ use App\Filament\Resources\PendingReviews\Pages\ListPendingReviews;
 use App\Filament\Resources\PendingReviews\Pages\ViewPendingReview;
 use App\Models\MedicalRegistration;
 use App\Models\User;
-use App\Support\ReviewerQueueSplitter;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
@@ -37,17 +36,9 @@ class PendingReviewResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery()
+        return parent::getEloquentQuery()
             ->with(['reviewer', 'employee'])
             ->where('status', RegistrationStatus::Submitted);
-
-        $user = Auth::user();
-
-        if ($user instanceof User && $user->isReviewer()) {
-            ReviewerQueueSplitter::constrain($query, $user);
-        }
-
-        return $query;
     }
 
     public static function table(Table $table): Table
@@ -75,7 +66,7 @@ class PendingReviewResource extends Resource
         return $record instanceof MedicalRegistration
             && $record->isPendingReview()
             && $user instanceof User
-            && ReviewerQueueSplitter::owns($user, $record);
+            && $user->isReviewer();
     }
 
     public static function canCreate(): bool

@@ -6,8 +6,6 @@ use App\Filament\Resources\PendingReviews\Pages\ViewPendingReview;
 use App\Filament\Resources\PendingReviews\PendingReviewResource;
 use App\Models\MedicalRegistration;
 use App\Models\User;
-use App\Support\ReviewerAccounts;
-use App\Support\ReviewerQueueSplitter;
 use Filament\Tables\Enums\FiltersLayout;
 use Livewire\Livewire;
 
@@ -100,73 +98,23 @@ it('filters the review queue by city', function () {
         ->assertDontSee('موظف سبها للمراجعة');
 });
 
-it('splits pending requests across reviewers without storing an assignment', function () {
-    $reviewers = User::factory()->reviewer()->count(4)->create();
-    $pending = MedicalRegistration::factory()->submitted()->count(12)->create();
-
-    $seen = [];
+it('lets every reviewer see every pending request', function () {
+    $reviewers = User::factory()->reviewer()->count(3)->create();
+    $pending = MedicalRegistration::factory()->submitted()->count(6)->create();
 
     foreach ($reviewers as $reviewer) {
         $this->actingAs($reviewer);
 
-        $ids = PendingReviewResource::getEloquentQuery()->pluck('id')->all();
-
-        expect(array_intersect($seen, $ids))->toBeEmpty();
+        expect(PendingReviewResource::getEloquentQuery()->pluck('id')->sort()->values()->all())
+            ->toEqual($pending->pluck('id')->sort()->values()->all())
+            ->and(PendingReviewResource::canView($pending->first()))->toBeTrue();
 
         Livewire::test(ListPendingReviews::class)
-            ->assertCanSeeTableRecords($pending->whereIn('id', $ids)->values())
-            ->assertCanNotSeeTableRecords($pending->whereNotIn('id', $ids)->values());
+            ->assertCanSeeTableRecords($pending);
 
-        $seen = [...$seen, ...$ids];
+        $this->get(PendingReviewResource::getUrl('view', ['record' => $pending->first()]))
+            ->assertSuccessful();
     }
-
-    expect($seen)->toHaveCount($pending->count())
-        ->and(collect($seen)->sort()->values()->all())
-        ->toEqual($pending->pluck('id')->sort()->values()->all());
-
-    $foreign = $pending->first(
-        fn (MedicalRegistration $registration): bool => ! ReviewerQueueSplitter::owns($reviewers[0], $registration),
-    );
-
-    expect($foreign)->not->toBeNull();
-
-    $this->actingAs($reviewers[0]);
-
-    expect(PendingReviewResource::canView($foreign))->toBeFalse();
-
-    expect($this->get(PendingReviewResource::getUrl('view', ['record' => $foreign]))->status())
-        ->toBeIn([403, 404]);
-});
-
-it('keeps the fixed reviewer slots stable when new requests arrive', function () {
-    $accounts = collect(ReviewerAccounts::definitions())->map(
-        fn (array $definition): User => User::factory()->reviewer()->create([
-            'name' => $definition['name'],
-            'email' => $definition['email'],
-        ]),
-    );
-
-    User::factory()->reviewer()->create([
-        'email' => 'extra-reviewer@example.com',
-    ]);
-
-    $firstBatch = MedicalRegistration::factory()->submitted()->count(8)->create();
-    $ownedByFirst = $firstBatch->filter(
-        fn (MedicalRegistration $registration): bool => ReviewerQueueSplitter::owns($accounts[0], $registration),
-    );
-
-    $later = MedicalRegistration::factory()->submitted()->create();
-    $owner = $accounts[(int) $later->id % count(ReviewerAccounts::emails())];
-
-    expect(ReviewerQueueSplitter::owns($owner, $later))->toBeTrue()
-        ->and($ownedByFirst->every(
-            fn (MedicalRegistration $registration): bool => ReviewerQueueSplitter::owns($accounts[0], $registration),
-        ))->toBeTrue();
-
-    $this->actingAs($owner);
-
-    Livewire::test(ListPendingReviews::class)
-        ->assertCanSeeTableRecords([$later]);
 });
 
 it('redirects a reviewer back to the queue after approving and blocks the record', function () {

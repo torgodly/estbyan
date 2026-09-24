@@ -47,11 +47,16 @@ class ReviewerAccounts
                 'email' => 'reviewer7@smartcare.com.ly',
                 'password' => 'Reviewer-7!2026',
             ],
+            [
+                'name' => 'مراجع 8',
+                'email' => 'reviewer8@smartcare.com.ly',
+                'password' => 'Reviewer-8!2026',
+            ],
         ];
     }
 
     /**
-     * The three extra reviewer accounts added after the original four.
+     * Reviewer accounts added after the original four.
      *
      * @return list<array{name: string, email: string, password: string}>
      */
