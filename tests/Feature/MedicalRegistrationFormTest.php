@@ -193,6 +193,7 @@ it('unlocks the form for a valid employee and prefills locked fields', function 
         ->assertSet('bloodType', '')
         ->assertSet('beneficiaryBloodType', '')
         ->assertSet('identityLocked', true)
+        ->assertSet('workplaceLocked', true)
         ->assertSee('الإدارة')
         ->assertSee('— اختر —')
         ->assertSee('المكتب')
@@ -206,6 +207,58 @@ it('unlocks the form for a valid employee and prefills locked fields', function 
         ->and($registration->full_name)->toBe('أحمد محمد')
         ->and($registration->workplace)->toBe('general_admin')
         ->and($registration->gender)->toBe(Gender::Male);
+});
+
+it('lets an employee without a workplace pick one from the survey list', function () {
+    $nationalId = LibyanNationalId::generate(Gender::Male, 1978);
+
+    $employee = Employee::factory()->create([
+        'employee_number' => '8439',
+        'national_id' => $nationalId,
+        'full_name' => 'موظف بلا إدارة',
+        'workplace' => null,
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('nationalId', $nationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->assertSet('step', 2)
+        ->assertSet('workplace', '')
+        ->assertSet('workplaceLocked', false)
+        ->assertSee('ابحث عن الإدارة...')
+        ->assertSee('طرابلس')
+        ->assertSee('الإدارة العامة')
+        ->set('workplace', 'tripoli')
+        ->set('dateOfBirth', '1978-01-01')
+        ->set('bloodType', 'o_positive')
+        ->set('city', 'tripoli')
+        ->set('address', 'طرابلس')
+        ->set('phone', '0912345678')
+        ->call('saveEmployeeDetails')
+        ->assertHasNoErrors();
+
+    expect($employee->fresh()->workplace)->toBe('tripoli')
+        ->and(MedicalRegistration::query()->where('employee_id', $employee->id)->value('workplace'))->toBe('tripoli');
+});
+
+it('unlocks an unknown workplace so the employee can pick a survey value', function () {
+    $nationalId = LibyanNationalId::generate(Gender::Male, 1976);
+
+    Employee::factory()->create([
+        'employee_number' => '8440',
+        'national_id' => $nationalId,
+        'full_name' => 'موظف بإدارة غير معروفة',
+        'workplace' => 'unknown_office',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('nationalId', $nationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->assertSet('workplace', '')
+        ->assertSet('workplaceLocked', false)
+        ->assertSee('ابحث عن الإدارة...');
 });
 
 it('persists step one draft in session and restores on remount', function () {

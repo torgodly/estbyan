@@ -32,6 +32,11 @@ class WorkplaceOptions
         return config('registration.workplaces.'.$key) ?? $key;
     }
 
+    public static function isKnownKey(?string $key): bool
+    {
+        return filled($key) && array_key_exists($key, config('registration.workplaces', []));
+    }
+
     /**
      * Resolve a workplace key from the Tax Authority spreadsheet "الإدارة" column.
      */

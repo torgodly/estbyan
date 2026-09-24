@@ -23,17 +23,19 @@
         <div class="reg-grid-2">
             <div>
                 <label class="reg-label">الإدارة <span class="reg-required">*</span></label>
-                @if ($identityLocked)
+                @if ($workplaceLocked)
                     <div class="reg-input bg-slate-50 font-bold text-navy-900" data-reg-field="workplace">
                         {{ $workplaces[$workplace] ?? $workplace }}
                     </div>
                 @else
-                    <select wire:model.live="workplace" data-reg-field="workplace" @class(['reg-select', 'reg-input-invalid' => $errors->has('workplace')])>
-                        <option value="">— اختر —</option>
-                        @foreach ($workplaces as $key => $label)
-                            <option value="{{ $key }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
+                    <x-reg-searchable-select
+                        wire:model.live="workplace"
+                        :options="$workplaces"
+                        placeholder="— اختر —"
+                        search-placeholder="ابحث عن الإدارة..."
+                        data-reg-field="workplace"
+                        @class(['reg-input-invalid' => $errors->has('workplace')])
+                    />
                 @endif
                 @error('workplace') <p class="reg-field-error">{{ $message }}</p> @enderror
             </div>

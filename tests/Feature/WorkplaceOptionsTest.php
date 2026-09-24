@@ -28,7 +28,11 @@ it('resolves tax authority workplaces and spreadsheet admin labels', function ()
 });
 
 it('returns null for unknown workplaces', function () {
-    expect(WorkplaceOptions::keyForLabel('مكان غير موجود'))->toBeNull();
+    expect(WorkplaceOptions::keyForLabel('مكان غير موجود'))->toBeNull()
+        ->and(WorkplaceOptions::isKnownKey('tripoli'))->toBeTrue()
+        ->and(WorkplaceOptions::isKnownKey('unknown_office'))->toBeFalse()
+        ->and(WorkplaceOptions::isKnownKey(null))->toBeFalse()
+        ->and(WorkplaceOptions::isKnownKey(''))->toBeFalse();
 });
 
 it('treats slash spreadsheet offices as empty', function () {

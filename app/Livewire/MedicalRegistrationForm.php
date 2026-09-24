@@ -15,6 +15,7 @@ use App\Rules\UniqueBeneficiaryNationalId;
 use App\Support\InsuranceCardNumber;
 use App\Support\LibyanNationalId as LibyanNationalIdSupport;
 use App\Support\RegistrationDocuments;
+use App\Support\WorkplaceOptions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -152,6 +153,8 @@ class MedicalRegistrationForm extends Component
     public bool $hasSavedDraft = false;
 
     public bool $identityLocked = false;
+
+    public bool $workplaceLocked = false;
 
     public bool $approvedLocked = false;
 
@@ -1087,7 +1090,24 @@ class MedicalRegistrationForm extends Component
             'traveled_for_treatment' => $this->traveledForTreatment,
         ]);
 
+        $this->syncEmployeeWorkplace($registration);
+
         $this->hasSavedDraft = true;
+    }
+
+    protected function syncEmployeeWorkplace(MedicalRegistration $registration): void
+    {
+        $employee = $registration->employee;
+
+        if ($employee === null || ! WorkplaceOptions::isKnownKey($this->workplace)) {
+            return;
+        }
+
+        if (WorkplaceOptions::isKnownKey($employee->workplace)) {
+            return;
+        }
+
+        $employee->update(['workplace' => $this->workplace]);
     }
 
     protected function registration(): ?MedicalRegistration
@@ -1266,6 +1286,8 @@ class MedicalRegistrationForm extends Component
         $this->hasEmployeePhoto = (bool) $registration->employee_photo_path;
         $this->rejectionReason = $this->rejectionReasonFor($registration);
 
+        $this->syncWorkplaceLock();
+
         if ($registration->isDeclined()) {
             $this->step = 2;
             $this->identityLocked = true;
@@ -1318,7 +1340,7 @@ class MedicalRegistrationForm extends Component
             'beneficiaryPhoto', 'beneficiaryExistingPhotoPath', 'editingBeneficiaryIndex',
             'familyStatusDocument', 'employeePhoto', 'familyStatusDocumentName', 'employeePhotoName',
             'submitted', 'referenceNumber',
-            'hasFamilyDocument', 'hasEmployeePhoto', 'hasSavedDraft', 'identityLocked',
+            'hasFamilyDocument', 'hasEmployeePhoto', 'hasSavedDraft', 'identityLocked', 'workplaceLocked',
             'approvedLocked', 'approvedMessage', 'rejectionReason', 'documentUploadGeneration',
         ]);
 
@@ -1799,11 +1821,24 @@ class MedicalRegistrationForm extends Component
 
     protected function syncDirectoryFromEmployee(Employee $employee): void
     {
-        if (blank($this->workplace) && filled($employee->workplace)) {
+        if (! WorkplaceOptions::isKnownKey($this->workplace) && WorkplaceOptions::isKnownKey($employee->workplace)) {
             $this->workplace = $employee->workplace;
         }
 
         $this->office = $employee->officeLabel() ?? '';
+        $this->syncWorkplaceLock();
+    }
+
+    protected function syncWorkplaceLock(): void
+    {
+        if (! WorkplaceOptions::isKnownKey($this->workplace)) {
+            $this->workplace = '';
+            $this->workplaceLocked = false;
+
+            return;
+        }
+
+        $this->workplaceLocked = true;
     }
 
     /**
