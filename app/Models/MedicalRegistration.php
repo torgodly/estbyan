@@ -106,6 +106,30 @@ class MedicalRegistration extends Model
      * @param  Builder<MedicalRegistration>  $query
      * @return Builder<MedicalRegistration>
      */
+    public function scopeMatchingNationalId(Builder $query, string $search): Builder
+    {
+        $search = trim($search);
+
+        if ($search === '') {
+            return $query;
+        }
+
+        $beneficiary = new Beneficiary;
+
+        return $query
+            ->where($query->qualifyColumn('national_id'), 'like', '%'.$search.'%')
+            ->orWhereIn(
+                $query->qualifyColumn('id'),
+                $beneficiary->newQuery()
+                    ->where($beneficiary->qualifyColumn('national_id'), 'like', '%'.$search.'%')
+                    ->select($beneficiary->qualifyColumn('medical_registration_id')),
+            );
+    }
+
+    /**
+     * @param  Builder<MedicalRegistration>  $query
+     * @return Builder<MedicalRegistration>
+     */
     public function scopeCardsFullyPrinted(Builder $query): Builder
     {
         return $query

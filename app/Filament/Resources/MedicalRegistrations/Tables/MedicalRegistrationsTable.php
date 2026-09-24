@@ -148,6 +148,11 @@ class MedicalRegistrationsTable
                 ->label('الرقم الوظيفي')
                 ->searchable()
                 ->sortable(),
+            TextColumn::make('national_id')
+                ->label('الرقم الوطني')
+                ->searchable(query: fn (Builder $query, string $search): Builder => $query->matchingNationalId($search))
+                ->toggleable(isToggledHiddenByDefault: true)
+                ->copyable(),
             TextColumn::make('workplace')
                 ->label('الإدارة')
                 ->formatStateUsing(fn (?string $state, MedicalRegistration $record): string => $record->workplaceLabel() ?? '—')

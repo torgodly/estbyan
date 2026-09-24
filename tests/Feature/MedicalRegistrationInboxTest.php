@@ -129,3 +129,36 @@ it('filters requests by insurance card print status', function () {
         ->assertCanSeeTableRecords([$partial])
         ->assertCanNotSeeTableRecords([$printed, $unprinted]);
 });
+
+it('finds a request by employee or family member national id', function () {
+    $admin = User::factory()->create();
+
+    $employeeMatch = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'موظف بالرقم الوطني',
+        'national_id' => '119890111111',
+    ]);
+    $familyMatch = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'موظف لابنته',
+        'national_id' => '119890222222',
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $familyMatch->id,
+        'full_name' => 'ابنة المستفيد',
+        'national_id' => '219890263624',
+    ]);
+    $other = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'موظف آخر للبحث',
+        'national_id' => '119890333333',
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ListMedicalRegistrations::class)
+        ->set('activeTab', 'all')
+        ->searchTable('119890111111')
+        ->assertCanSeeTableRecords([$employeeMatch])
+        ->assertCanNotSeeTableRecords([$familyMatch, $other])
+        ->searchTable('219890263624')
+        ->assertCanSeeTableRecords([$familyMatch])
+        ->assertCanNotSeeTableRecords([$employeeMatch, $other]);
+});
