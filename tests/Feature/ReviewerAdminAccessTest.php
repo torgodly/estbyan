@@ -3,6 +3,7 @@
 use App\Filament\Pages\ChronicDiseasesReport;
 use App\Filament\Pages\CityRegistrationsReport;
 use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\ExportPrintedCards;
 use App\Filament\Pages\ManageRegistrationSettings;
 use App\Filament\Resources\Employees\Pages\ListEmployees;
 use App\Filament\Resources\MedicalRegistrations\Pages\ListMedicalRegistrations;
@@ -27,6 +28,7 @@ it('keeps reviewers off the full admin pages and on the review queue', function 
     Livewire::test(ManageRegistrationSettings::class)->assertForbidden();
     Livewire::test(ChronicDiseasesReport::class)->assertForbidden();
     Livewire::test(CityRegistrationsReport::class)->assertForbidden();
+    Livewire::test(ExportPrintedCards::class)->assertForbidden();
 });
 
 it('keeps hr users off the reviewer queue', function () {
