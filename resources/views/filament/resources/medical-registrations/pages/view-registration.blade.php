@@ -3,7 +3,7 @@
 
     $registration = $this->getRecord();
     $photoUrl = RegistrationDocuments::url($registration, RegistrationDocuments::EMPLOYEE_PHOTO);
-    $reviewLogs = $registration->reviewLogs;
+    $reviewLogs = $registration->reviewHistory();
     $familyDocUrl = RegistrationDocuments::url($registration, RegistrationDocuments::FAMILY_STATUS);
     $chronicLabels = collect($registration->chronic_conditions ?? [])
         ->map(fn (string $key) => config('registration.chronic_conditions.'.$key) ?? $key)

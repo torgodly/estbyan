@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 #[Fillable([
@@ -100,6 +101,39 @@ class MedicalRegistration extends Model
     public function reviewLogs(): HasMany
     {
         return $this->hasMany(RegistrationReviewLog::class)->latest('id');
+    }
+
+    /**
+     * Stored history, or the latest approve/decline on the request when logs were never written.
+     *
+     * @return Collection<int, RegistrationReviewLog>
+     */
+    public function reviewHistory(): Collection
+    {
+        $logs = $this->relationLoaded('reviewLogs')
+            ? $this->reviewLogs
+            : $this->reviewLogs()->with('user')->get();
+
+        if ($logs->isNotEmpty()) {
+            return $logs;
+        }
+
+        if (! $this->status instanceof RegistrationStatus
+            || ! in_array($this->status, [RegistrationStatus::Approved, RegistrationStatus::Declined], true)
+            || $this->reviewed_at === null) {
+            return $logs;
+        }
+
+        $fallback = new RegistrationReviewLog([
+            'medical_registration_id' => $this->id,
+            'user_id' => $this->reviewed_by,
+            'action' => $this->status,
+            'note' => $this->review_note,
+        ]);
+        $fallback->created_at = $this->reviewed_at;
+        $fallback->setRelation('user', $this->reviewer);
+
+        return collect([$fallback]);
     }
 
     public function beneficiaries(): HasMany
