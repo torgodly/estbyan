@@ -3,6 +3,7 @@
 
     $registration = $this->getRecord();
     $photoUrl = RegistrationDocuments::url($registration, RegistrationDocuments::EMPLOYEE_PHOTO);
+    $reviewLogs = $registration->reviewLogs;
     $familyDocUrl = RegistrationDocuments::url($registration, RegistrationDocuments::FAMILY_STATUS);
     $chronicLabels = collect($registration->chronic_conditions ?? [])
         ->map(fn (string $key) => config('registration.chronic_conditions.'.$key) ?? $key)
@@ -590,25 +591,54 @@
                 <section class="hr-panel">
                     <div class="hr-panel__head">
                         <h3 class="hr-panel__title">سجل القرار</h3>
+                        <span class="hr-panel__meta">{{ $reviewLogs->count() }} إجراء</span>
                     </div>
                     <div class="hr-panel__body">
                         <div class="hr-rows">
                             <div class="hr-row">
-                                <div class="hr-row__label">راجع بواسطة</div>
+                                <div class="hr-row__label">آخر مراجعة بواسطة</div>
                                 <div class="hr-row__value">{{ $registration->reviewer?->name ?: 'لم تُراجع بعد' }}</div>
                             </div>
                             <div class="hr-row">
-                                <div class="hr-row__label">تاريخ المراجعة</div>
+                                <div class="hr-row__label">تاريخ آخر مراجعة</div>
                                 <div class="hr-row__value">{{ $registration->reviewed_at?->format('Y-m-d H:i') ?: '—' }}</div>
                             </div>
                             <div class="hr-row">
-                                <div class="hr-row__label">الملاحظة</div>
+                                <div class="hr-row__label">آخر ملاحظة</div>
                                 <div class="hr-row__value">{{ $registration->review_note ?: 'لا توجد ملاحظة' }}</div>
                             </div>
                             <div class="hr-row">
                                 <div class="hr-row__label">تاريخ الإنشاء</div>
                                 <div class="hr-row__value">{{ $registration->created_at?->format('Y-m-d H:i') ?: '—' }}</div>
                             </div>
+                        </div>
+
+                        <div class="mt-5 space-y-3">
+                            <p class="text-sm font-bold text-slate-700">سجل الاعتماد والرفض</p>
+                            @forelse ($reviewLogs as $log)
+                                <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <span @class([
+                                            'inline-flex rounded-full px-2.5 py-1 text-xs font-bold',
+                                            'bg-emerald-100 text-emerald-800' => $log->action->value === 'approved',
+                                            'bg-rose-100 text-rose-800' => $log->action->value === 'declined',
+                                        ])>
+                                            {{ $log->action->label() }}
+                                        </span>
+                                        <span class="text-xs text-slate-500" dir="ltr">{{ $log->created_at?->format('Y-m-d H:i') }}</span>
+                                    </div>
+                                    <p class="mt-2 text-sm font-semibold text-slate-800">{{ $log->user?->name ?: 'مستخدم غير معروف' }}</p>
+                                    @if (filled($log->note))
+                                        <p class="mt-1 text-sm leading-relaxed text-slate-600">{{ $log->note }}</p>
+                                    @elseif ($log->action->value === 'declined')
+                                        <p class="mt-1 text-sm text-rose-600">بدون سبب مسجّل</p>
+                                    @endif
+                                </div>
+                            @empty
+                                <p class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
+                                    لا توجد قرارات اعتماد أو رفض بعد.
+                                </p>
+                            @endforelse
                         </div>
                     </div>
                 </section>

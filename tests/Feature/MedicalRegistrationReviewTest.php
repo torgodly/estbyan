@@ -6,6 +6,7 @@ use App\Filament\Resources\MedicalRegistrations\Pages\ViewMedicalRegistration;
 use App\Models\Beneficiary;
 use App\Models\MedicalRegistration;
 use App\Models\User;
+use App\Services\RegistrationReviewService;
 use Livewire\Livewire;
 
 it('approves a registration with an optional note', function () {
@@ -25,7 +26,11 @@ it('approves a registration with an optional note', function () {
     expect($registration->status)->toBe(RegistrationStatus::Approved)
         ->and($registration->review_note)->toBe('مستوفي الشروط')
         ->and($registration->reviewed_by)->toBe($admin->id)
-        ->and($registration->reviewed_at)->not->toBeNull();
+        ->and($registration->reviewed_at)->not->toBeNull()
+        ->and($registration->reviewLogs()->count())->toBe(1)
+        ->and($registration->reviewLogs()->first()->action)->toBe(RegistrationStatus::Approved)
+        ->and($registration->reviewLogs()->first()->note)->toBe('مستوفي الشروط')
+        ->and($registration->reviewLogs()->first()->user_id)->toBe($admin->id);
 });
 
 it('declines a registration and requires a note', function () {
@@ -50,7 +55,32 @@ it('declines a registration and requires a note', function () {
 
     expect($registration->status)->toBe(RegistrationStatus::Declined)
         ->and($registration->review_note)->toBe('المستندات غير مكتملة')
-        ->and($registration->reviewed_by)->toBe($admin->id);
+        ->and($registration->reviewed_by)->toBe($admin->id)
+        ->and($registration->reviewLogs()->count())->toBe(1)
+        ->and($registration->reviewLogs()->first()->action)->toBe(RegistrationStatus::Declined)
+        ->and($registration->reviewLogs()->first()->note)->toBe('المستندات غير مكتملة');
+});
+
+it('shows review history when opening a registration', function () {
+    $first = User::factory()->create(['name' => 'مراجع أول']);
+    $second = User::factory()->create(['name' => 'مراجع ثان']);
+    $registration = MedicalRegistration::factory()->submitted()->create();
+
+    $service = app(RegistrationReviewService::class);
+    $service->approve($registration, $first, 'اعتماد أولي');
+    $service->decline($registration->fresh(), $second, 'نقص بيانات');
+
+    $this->actingAs($second);
+
+    Livewire::test(ViewMedicalRegistration::class, ['record' => $registration->getRouteKey()])
+        ->assertSuccessful()
+        ->assertSee('سجل الاعتماد والرفض')
+        ->assertSee('مراجع أول')
+        ->assertSee('اعتماد أولي')
+        ->assertSee('مراجع ثان')
+        ->assertSee('نقص بيانات')
+        ->assertSee('مقبول')
+        ->assertSee('مرفوض');
 });
 
 it('renders the custom registration dossier with key sections', function () {
@@ -93,6 +123,8 @@ it('renders the custom registration dossier with key sections', function () {
         ->assertSee('بدون صورة')
         ->assertSee('ملخص المراجعة')
         ->assertSee('سجل القرار')
+        ->assertSee('سجل الاعتماد والرفض')
+        ->assertSee('لا توجد قرارات اعتماد أو رفض بعد')
         ->assertActionVisible('approve')
         ->assertActionVisible('decline');
 });

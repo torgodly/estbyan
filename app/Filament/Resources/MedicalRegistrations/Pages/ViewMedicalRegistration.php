@@ -43,7 +43,7 @@ class ViewMedicalRegistration extends ViewRecord
     {
         parent::mount($record);
 
-        $this->record->loadMissing(['employee', 'beneficiaries', 'reviewer']);
+        $this->record->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
     }
 
     public function content(Schema $schema): Schema
@@ -92,7 +92,7 @@ class ViewMedicalRegistration extends ViewRecord
                         return;
                     }
 
-                    $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer']);
+                    $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
                 }),
             Action::make('decline')
                 ->label('رفض')
@@ -126,7 +126,7 @@ class ViewMedicalRegistration extends ViewRecord
                         return;
                     }
 
-                    $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer']);
+                    $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
                 }),
             Action::make('viewEmployee')
                 ->label('ملف الموظف')
@@ -238,6 +238,6 @@ class ViewMedicalRegistration extends ViewRecord
 
     private function refreshInsuranceCardRecords(): void
     {
-        $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer']);
+        $this->record->refresh()->loadMissing(['employee', 'beneficiaries', 'reviewer', 'reviewLogs.user']);
     }
 }

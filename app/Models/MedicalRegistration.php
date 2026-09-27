@@ -97,6 +97,11 @@ class MedicalRegistration extends Model
         return $this->belongsTo(User::class, 'reviewed_by');
     }
 
+    public function reviewLogs(): HasMany
+    {
+        return $this->hasMany(RegistrationReviewLog::class)->latest('id');
+    }
+
     public function beneficiaries(): HasMany
     {
         return $this->hasMany(Beneficiary::class);
