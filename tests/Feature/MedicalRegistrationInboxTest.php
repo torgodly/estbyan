@@ -162,3 +162,30 @@ it('finds a request by employee or family member national id', function () {
         ->assertCanSeeTableRecords([$familyMatch])
         ->assertCanNotSeeTableRecords([$employeeMatch, $other]);
 });
+
+it('finds a request by family member name', function () {
+    $admin = User::factory()->create();
+
+    $familyMatch = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'حليمة مصطفى محمد الاسطى',
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $familyMatch->id,
+        'full_name' => 'عمر نور الدين عمر',
+    ]);
+    $other = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'موظف آخر للأسماء',
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $other->id,
+        'full_name' => 'سارة علي',
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ListMedicalRegistrations::class)
+        ->set('activeTab', 'all')
+        ->searchTable('عمر نور الدين')
+        ->assertCanSeeTableRecords([$familyMatch])
+        ->assertCanNotSeeTableRecords([$other]);
+});

@@ -142,7 +142,7 @@ class MedicalRegistrationsTable
                 ->copyable(),
             TextColumn::make('full_name')
                 ->label('الاسم')
-                ->searchable()
+                ->searchable(query: fn (Builder $query, string $search): Builder => $query->matchingName($search))
                 ->sortable(),
             TextColumn::make('employee_number')
                 ->label('الرقم الوظيفي')
