@@ -257,6 +257,17 @@ class MedicalRegistration extends Model
         return $this->status === RegistrationStatus::Submitted;
     }
 
+    public function wasResubmittedAfterDecline(): bool
+    {
+        if (! $this->isPendingReview() || $this->submitted_at === null) {
+            return false;
+        }
+
+        return $this->reviewHistory()->contains(
+            fn (RegistrationReviewLog $log): bool => $log->action === RegistrationStatus::Declined,
+        );
+    }
+
     public function hasDocuments(): bool
     {
         return filled($this->family_status_document_path) && filled($this->employee_photo_path);

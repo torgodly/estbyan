@@ -145,6 +145,49 @@ it('shows selected chronic conditions inside the medical accordion details', fun
         ->assertSee('الصرع');
 });
 
+it('shows the last submission time after an employee resubmits a declined registration', function () {
+    $reviewer = User::factory()->create();
+    $registration = MedicalRegistration::factory()->submitted()->create([
+        'submitted_at' => '2026-09-24 10:00:00',
+    ]);
+
+    app(RegistrationReviewService::class)->decline($registration, $reviewer, 'صور غير صحيحة');
+
+    $registration->update([
+        'status' => RegistrationStatus::Submitted,
+        'submitted_at' => '2026-09-29 18:25:00',
+        'review_note' => null,
+        'reviewed_at' => null,
+        'reviewed_by' => null,
+    ]);
+
+    $this->actingAs($reviewer);
+
+    Livewire::test(ViewMedicalRegistration::class, ['record' => $registration->getRouteKey()])
+        ->assertSuccessful()
+        ->assertSee('الموظف عدّل وأعاد الإرسال')
+        ->assertSee('آخر إرسال')
+        ->assertSee('2026-09-29 18:25')
+        ->assertSee('صور غير صحيحة')
+        ->assertActionVisible('approve')
+        ->assertActionVisible('decline');
+});
+
+it('does not treat a first submission as a resubmission after decline', function () {
+    $admin = User::factory()->create();
+    $registration = MedicalRegistration::factory()->submitted()->create([
+        'submitted_at' => '2026-09-29 18:25:00',
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ViewMedicalRegistration::class, ['record' => $registration->getRouteKey()])
+        ->assertSuccessful()
+        ->assertSee('آخر إرسال')
+        ->assertSee('2026-09-29 18:25')
+        ->assertDontSee('الموظف عدّل وأعاد الإرسال');
+});
+
 it('hides approve action for already approved registrations', function () {
     $admin = User::factory()->create();
     $registration = MedicalRegistration::factory()->approved()->create();

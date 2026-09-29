@@ -197,7 +197,7 @@
                                     <div class="hr-kpi__value">{{ $registration->blood_type?->label() ?? '—' }}</div>
                                 </div>
                                 <div class="hr-kpi">
-                                    <span class="hr-kpi__label">تاريخ الإرسال</span>
+                                    <span class="hr-kpi__label">{{ $registration->wasResubmittedAfterDecline() ? 'آخر إرسال' : 'تاريخ الإرسال' }}</span>
                                     <div class="hr-kpi__value">{{ $registration->submitted_at?->format('Y-m-d H:i') ?: '—' }}</div>
                                 </div>
                             </div>
@@ -571,6 +571,16 @@
                             <span class="hr-side-stat__label">الحالة الحالية</span>
                             <div class="hr-side-stat__value">{{ $registration->status->label() }}</div>
                         </div>
+                        <div class="hr-side-stat">
+                            <span class="hr-side-stat__label">آخر إرسال</span>
+                            <div class="hr-side-stat__value" dir="ltr">{{ $registration->submitted_at?->format('Y-m-d H:i') ?: '—' }}</div>
+                        </div>
+                        @if ($registration->wasResubmittedAfterDecline())
+                            <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+                                <p class="text-sm font-bold text-amber-950">الموظف عدّل وأعاد الإرسال</p>
+                                <p class="mt-1 text-xs text-amber-800" dir="ltr">{{ $registration->submitted_at?->format('Y-m-d H:i') }}</p>
+                            </div>
+                        @endif
                         <div class="hr-side-stat">
                             <span class="hr-side-stat__label">رقم المرجع</span>
                             <div class="hr-side-stat__value">{{ $registration->reference_number ?: '—' }}</div>
