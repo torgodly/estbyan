@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Models\User;
 use App\Support\PrintedEmployeesPeriodExport;
+use App\Support\PrintedEmployeesPeriodPdf;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
@@ -98,6 +99,18 @@ class ExportPrintedCards extends Page
         );
     }
 
+    public function exportPdf(): StreamedResponse
+    {
+        abort_unless(static::canAccess(), 403);
+
+        $data = $this->form->getState();
+
+        return PrintedEmployeesPeriodPdf::download(
+            $data['printed_from'],
+            $data['printed_until'],
+        );
+    }
+
     public function content(Schema $schema): Schema
     {
         return $schema->components([
@@ -110,6 +123,11 @@ class ExportPrintedCards extends Page
                             ->label('تصدير Excel')
                             ->icon(Heroicon::OutlinedArrowDownTray)
                             ->submit('export'),
+                        Action::make('exportPdf')
+                            ->label('تحميل PDF')
+                            ->icon(Heroicon::OutlinedDocumentArrowDown)
+                            ->color('gray')
+                            ->action('exportPdf'),
                     ])->key('form-actions'),
                 ]),
         ]);
