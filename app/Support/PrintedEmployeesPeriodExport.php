@@ -37,6 +37,10 @@ class PrintedEmployeesPeriodExport
         return Employee::query()
             ->whereNotNull('card_printed_at')
             ->whereBetween('card_printed_at', [$start, $end])
+            ->whereDoesntHave(
+                'medicalRegistrations.beneficiaries',
+                fn (Builder $query) => $query->whereNull('card_printed_at'),
+            )
             ->with(['latestSubmittedRegistration', 'latestMedicalRegistration'])
             ->orderBy('full_name')
             ->orderBy('id');

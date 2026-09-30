@@ -1,7 +1,10 @@
 <?php
 
+use App\Enums\BeneficiaryRelationship;
 use App\Filament\Pages\ExportPrintedCards;
+use App\Models\Beneficiary;
 use App\Models\Employee;
+use App\Models\MedicalRegistration;
 use App\Models\User;
 use App\Support\PrintedEmployeesPeriodExport;
 use Carbon\Carbon;
@@ -57,6 +60,50 @@ it('exports only employees printed in the selected period', function () {
         ->and($rows[0]['workplace'])->toBe('طرابلس')
         ->and($rows[0]['office'])->toBe('مكتب التحصيل')
         ->and($rows[0]['status'])->toBe('تمت الطباعه');
+});
+
+it('hides a printed employee when any family member is not printed', function () {
+    $printedAt = Carbon::parse('2026-09-24 10:00:00', PrintedEmployeesPeriodExport::TIMEZONE);
+
+    $complete = Employee::factory()->create([
+        'full_name' => 'كامل الطباعة',
+        'card_printed_at' => $printedAt,
+    ]);
+    $completeRegistration = MedicalRegistration::factory()->submitted()->create([
+        'employee_id' => $complete->id,
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $completeRegistration->id,
+        'relationship' => BeneficiaryRelationship::Spouse,
+        'card_printed_at' => $printedAt,
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $completeRegistration->id,
+        'relationship' => BeneficiaryRelationship::Mother,
+        'card_printed_at' => $printedAt,
+    ]);
+
+    $incomplete = Employee::factory()->create([
+        'full_name' => 'ناقص ابن',
+        'card_printed_at' => $printedAt,
+    ]);
+    $incompleteRegistration = MedicalRegistration::factory()->submitted()->create([
+        'employee_id' => $incomplete->id,
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $incompleteRegistration->id,
+        'relationship' => BeneficiaryRelationship::Spouse,
+        'card_printed_at' => $printedAt,
+    ]);
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $incompleteRegistration->id,
+        'relationship' => BeneficiaryRelationship::Son,
+        'card_printed_at' => null,
+    ]);
+
+    $rows = PrintedEmployeesPeriodExport::rows('2026-09-24', '2026-09-24');
+
+    expect(collect($rows)->pluck('name')->all())->toBe(['كامل الطباعة']);
 });
 
 it('builds an arabic excel workbook for the selected period', function () {
