@@ -31,8 +31,8 @@ it('lets support users open the printed cards export', function () {
     Livewire::test(ExportPrintedCards::class)
         ->assertSuccessful()
         ->assertSee('تصدير البطاقات المطبوعة')
-        ->assertSee('من تاريخ')
-        ->assertSee('إلى تاريخ')
+        ->assertSee('من تاريخ ووقت')
+        ->assertSee('إلى تاريخ ووقت')
         ->assertSee('تصدير Excel')
         ->assertSee('تحميل PDF');
 });
@@ -62,6 +62,31 @@ it('exports only employees printed in the selected period', function () {
         ->and($rows[0]['workplace'])->toBe('طرابلس')
         ->and($rows[0]['office'])->toBe('مكتب التحصيل')
         ->and($rows[0]['status'])->toBe('تمت الطباعه');
+});
+
+it('filters printed employees by exact datetime range', function () {
+    Employee::factory()->create([
+        'full_name' => 'داخل الفترة',
+        'workplace' => 'tripoli',
+        'card_printed_at' => Carbon::parse('2026-09-24 12:00:00', PrintedEmployeesPeriodExport::TIMEZONE)->utc(),
+    ]);
+    Employee::factory()->create([
+        'full_name' => 'قبل الفترة',
+        'workplace' => 'tripoli',
+        'card_printed_at' => Carbon::parse('2026-09-24 08:00:00', PrintedEmployeesPeriodExport::TIMEZONE)->utc(),
+    ]);
+    Employee::factory()->create([
+        'full_name' => 'بعد الفترة',
+        'workplace' => 'tripoli',
+        'card_printed_at' => Carbon::parse('2026-09-24 18:00:00', PrintedEmployeesPeriodExport::TIMEZONE)->utc(),
+    ]);
+
+    $rows = PrintedEmployeesPeriodExport::rows(
+        '2026-09-24 10:00:00',
+        '2026-09-24 15:00:00',
+    );
+
+    expect(collect($rows)->pluck('name')->all())->toBe(['داخل الفترة']);
 });
 
 it('hides a printed employee when any family member is not printed', function () {
@@ -154,8 +179,8 @@ it('lets support export the selected period from the page', function () {
 
     Livewire::test(ExportPrintedCards::class)
         ->fillForm([
-            'printed_from' => '2026-09-24',
-            'printed_until' => '2026-09-24',
+            'printed_from' => '2026-09-24 00:00:00',
+            'printed_until' => '2026-09-24 23:59:00',
         ])
         ->call('export')
         ->assertHasNoFormErrors()
@@ -193,8 +218,8 @@ it('lets support export the selected period as pdf', function () {
 
     Livewire::test(ExportPrintedCards::class)
         ->fillForm([
-            'printed_from' => '2026-09-24',
-            'printed_until' => '2026-09-24',
+            'printed_from' => '2026-09-24 00:00:00',
+            'printed_until' => '2026-09-24 23:59:00',
         ])
         ->call('exportPdf')
         ->assertHasNoFormErrors()

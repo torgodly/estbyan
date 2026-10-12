@@ -7,7 +7,7 @@ use App\Support\PrintedEmployeesPeriodExport;
 use App\Support\PrintedEmployeesPeriodPdf;
 use BackedEnum;
 use Filament\Actions\Action;
-use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Actions;
 use Filament\Schemas\Components\EmbeddedSchema;
@@ -51,11 +51,11 @@ class ExportPrintedCards extends Page
     {
         abort_unless(static::canAccess(), 403);
 
-        $today = now(PrintedEmployeesPeriodExport::TIMEZONE)->toDateString();
+        $today = now(PrintedEmployeesPeriodExport::TIMEZONE);
 
         $this->form->fill([
-            'printed_from' => $today,
-            'printed_until' => $today,
+            'printed_from' => $today->copy()->startOfDay()->format('Y-m-d H:i:s'),
+            'printed_until' => $today->copy()->endOfDay()->format('Y-m-d H:i:s'),
         ]);
     }
 
@@ -68,18 +68,24 @@ class ExportPrintedCards extends Page
     {
         return $schema->components([
             Section::make('فترة الطباعة')
-                ->description('اختر تاريخ البداية والنهاية. يمكن أن يكونا نفس اليوم.')
+                ->description('اختر تاريخ ووقت البداية والنهاية.')
                 ->icon(Heroicon::OutlinedCalendarDays)
                 ->schema([
-                    DatePicker::make('printed_from')
-                        ->label('من تاريخ')
+                    DateTimePicker::make('printed_from')
+                        ->label('من تاريخ ووقت')
                         ->required()
                         ->native(false)
+                        ->seconds(false)
+                        ->timezone(PrintedEmployeesPeriodExport::TIMEZONE)
+                        ->displayFormat('Y-m-d H:i')
                         ->live(),
-                    DatePicker::make('printed_until')
-                        ->label('إلى تاريخ')
+                    DateTimePicker::make('printed_until')
+                        ->label('إلى تاريخ ووقت')
                         ->required()
                         ->native(false)
+                        ->seconds(false)
+                        ->timezone(PrintedEmployeesPeriodExport::TIMEZONE)
+                        ->displayFormat('Y-m-d H:i')
                         ->minDate(fn (Get $get): ?string => $get('printed_from'))
                         ->live(),
                 ])

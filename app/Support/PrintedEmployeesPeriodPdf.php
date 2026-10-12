@@ -2,7 +2,6 @@
 
 namespace App\Support;
 
-use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -38,9 +37,8 @@ class PrintedEmployeesPeriodPdf
     public static function download(CarbonInterface|string $from, CarbonInterface|string $until): StreamedResponse
     {
         $binary = self::binary($from, $until);
-        $fromLabel = Carbon::parse($from, PrintedEmployeesPeriodExport::TIMEZONE)->toDateString();
-        $untilLabel = Carbon::parse($until, PrintedEmployeesPeriodExport::TIMEZONE)->toDateString();
-        $filename = "قسائم-البطاقات-المطبوعة-{$fromLabel}-إلى-{$untilLabel}.pdf";
+        $filename = 'قسائم-البطاقات-المطبوعة-'.PrintedEmployeesPeriodExport::periodFilenameLabel($from)
+            .'-إلى-'.PrintedEmployeesPeriodExport::periodFilenameLabel($until).'.pdf';
 
         return response()->streamDownload(
             function () use ($binary): void {

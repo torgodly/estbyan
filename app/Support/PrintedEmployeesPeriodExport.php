@@ -160,9 +160,7 @@ class PrintedEmployeesPeriodExport
     public static function download(CarbonInterface|string $from, CarbonInterface|string $until): StreamedResponse
     {
         $binary = self::binary($from, $until);
-        $fromLabel = Carbon::parse($from, self::TIMEZONE)->toDateString();
-        $untilLabel = Carbon::parse($until, self::TIMEZONE)->toDateString();
-        $filename = "البطاقات-المطبوعة-{$fromLabel}-إلى-{$untilLabel}.xlsx";
+        $filename = 'البطاقات-المطبوعة-'.self::periodFilenameLabel($from).'-إلى-'.self::periodFilenameLabel($until).'.xlsx';
 
         return response()->streamDownload(
             function () use ($binary): void {
@@ -175,14 +173,38 @@ class PrintedEmployeesPeriodExport
         );
     }
 
+    public static function periodFilenameLabel(CarbonInterface|string $value): string
+    {
+        $parsed = Carbon::parse($value, self::TIMEZONE);
+
+        if (self::isDateOnly($value)) {
+            return $parsed->toDateString();
+        }
+
+        return $parsed->format('Y-m-d_H-i');
+    }
+
     /**
      * @return array{0: Carbon, 1: Carbon}
      */
     public static function periodBounds(CarbonInterface|string $from, CarbonInterface|string $until): array
     {
-        $start = Carbon::parse($from, self::TIMEZONE)->startOfDay()->utc();
-        $end = Carbon::parse($until, self::TIMEZONE)->endOfDay()->utc();
+        $start = Carbon::parse($from, self::TIMEZONE);
+        $end = Carbon::parse($until, self::TIMEZONE);
 
-        return [$start, $end];
+        if (self::isDateOnly($from)) {
+            $start = $start->startOfDay();
+        }
+
+        if (self::isDateOnly($until)) {
+            $end = $end->endOfDay();
+        }
+
+        return [$start->utc(), $end->utc()];
+    }
+
+    private static function isDateOnly(CarbonInterface|string $value): bool
+    {
+        return is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1;
     }
 }
