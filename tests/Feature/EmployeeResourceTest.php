@@ -245,6 +245,35 @@ it('lists employees and supports search', function () {
         );
 });
 
+it('filters employees by birth year from date of birth or national id', function () {
+    $admin = User::factory()->create();
+
+    $byDate = Employee::factory()->create([
+        'full_name' => 'مواليد بالتاريخ',
+        'date_of_birth' => '1995-06-15',
+        'national_id' => '119950011223',
+    ]);
+    $byNationalId = Employee::factory()->create([
+        'full_name' => 'مواليد بالرقم الوطني',
+        'date_of_birth' => null,
+        'national_id' => '119950099887',
+    ]);
+    $otherYear = Employee::factory()->create([
+        'full_name' => 'مواليد سنة أخرى',
+        'date_of_birth' => '1988-03-01',
+        'national_id' => '119880045493',
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ListEmployees::class)
+        ->assertSuccessful()
+        ->assertSee('سنة الميلاد')
+        ->filterTable('birth_year', '1995')
+        ->assertCanSeeTableRecords([$byDate, $byNationalId])
+        ->assertCanNotSeeTableRecords([$otherYear]);
+});
+
 it('filters employees who submitted the form versus those who have not', function () {
     $admin = User::factory()->create();
 

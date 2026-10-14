@@ -13,6 +13,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 
 class EmployeesTable
@@ -101,6 +102,27 @@ class EmployeesTable
                 SelectFilter::make('workplace')
                     ->label('الإدارة')
                     ->options(fn (): array => config('registration.workplaces', [])),
+                SelectFilter::make('birth_year')
+                    ->label('سنة الميلاد')
+                    ->options(fn (): array => self::birthYearOptions())
+                    ->searchable()
+                    ->query(function (Builder $query, array $data): Builder {
+                        $year = $data['value'] ?? null;
+
+                        if (blank($year)) {
+                            return $query;
+                        }
+
+                        $year = (string) $year;
+
+                        return $query->where(function (Builder $query) use ($year): void {
+                            $query->whereYear('date_of_birth', $year)
+                                ->orWhere(function (Builder $query) use ($year): void {
+                                    $query->whereNull('date_of_birth')
+                                        ->whereRaw('SUBSTR(national_id, 2, 4) = ?', [$year]);
+                                });
+                        });
+                    }),
                 TernaryFilter::make('has_submitted_form')
                     ->label('تعبئة النموذج')
                     ->placeholder('الكل')
@@ -142,5 +164,19 @@ class EmployeesTable
         $user = Auth::user();
 
         return $user instanceof User && $user->canManageInsuranceCards();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function birthYearOptions(): array
+    {
+        $currentYear = (int) now()->format('Y');
+        $years = range($currentYear, 1940);
+
+        return array_combine(
+            array_map(strval(...), $years),
+            array_map(strval(...), $years),
+        );
     }
 }
