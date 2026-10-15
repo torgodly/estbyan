@@ -6,6 +6,7 @@ use App\Filament\Resources\MedicalRegistrations\MedicalRegistrationResource;
 use App\Models\Beneficiary;
 use App\Models\Employee;
 use App\Models\MedicalRegistration;
+use App\Models\User;
 use App\Support\EmployeeInsuranceCard;
 use App\Support\InsuranceCardNumber;
 use App\Support\InsuranceCardScanHit;
@@ -56,11 +57,13 @@ class InsuranceCardScanService
 
         $byEmployee = collect($scanned)->groupBy('employee_id');
         $employeeIds = $byEmployee->keys()->map(fn (mixed $id): int => (int) $id)->all();
+        $canOpenRegistration = User::authenticatedCanAccessFullAdmin();
 
         $employees = Employee::query()
             ->with([
                 'latestSubmittedRegistration.beneficiaries',
                 'latestMedicalRegistration.beneficiaries',
+                'cardsDeliveredBy',
             ])
             ->whereIn('id', $employeeIds)
             ->get()
@@ -68,7 +71,7 @@ class InsuranceCardScanService
 
         $order = collect($scanned)->pluck('employee_id')->reverse()->unique()->values();
 
-        return $order->map(function (mixed $employeeId) use ($byEmployee, $employees): array {
+        return $order->map(function (mixed $employeeId) use ($byEmployee, $employees, $canOpenRegistration): array {
             $employeeId = (int) $employeeId;
             $hits = $byEmployee->get($employeeId) ?? collect();
             $employee = $employees->get($employeeId);
@@ -92,6 +95,7 @@ class InsuranceCardScanService
                         'scanned' => $hit !== null,
                         'is_printed' => $card->isPrinted,
                         'person_key' => $card->personKey,
+                        'required' => true,
                     ];
 
                     if ($digits) {
@@ -109,24 +113,33 @@ class InsuranceCardScanService
                     'scanned' => true,
                     'is_printed' => (bool) $hit['is_printed'],
                     'person_key' => $hit['person_key'],
+                    'required' => true,
                 ];
             }
 
             $employeeHit = $hits->firstWhere('kind', 'employee');
+            $deliveredTo = $employee?->cards_delivered_to;
+            $expectedCount = count($members);
+            $scannedCount = $hits->count();
 
             return [
                 'employee_id' => $employeeId,
                 'employee_name' => $employee?->full_name
                     ?: ($employeeHit['name'] ?? $hits->first()['name'] ?? '—'),
                 'registration_id' => $registration?->id,
-                'registration_url' => $registration
+                'registration_url' => $registration && $canOpenRegistration
                     ? MedicalRegistrationResource::getUrl('view', ['record' => $registration])
                     : null,
                 'reference' => $registration?->reference_number,
-                'scanned_count' => $hits->count(),
-                'expected_count' => count($members),
-                'complete' => count($members) > 0 && $hits->count() >= count($members),
+                'scanned_count' => $scannedCount,
+                'expected_count' => $expectedCount,
+                'complete' => $expectedCount > 0 && $scannedCount >= $expectedCount,
                 'members' => $members,
+                'is_delivered' => $employee?->cardsAreDelivered() ?? false,
+                'delivered_to' => $deliveredTo?->value,
+                'delivered_to_label' => $deliveredTo?->getLabel(),
+                'delivered_at' => $employee?->cards_delivered_at?->timezone('Africa/Tripoli')->format('Y-m-d H:i'),
+                'delivered_by_name' => $employee?->cardsDeliveredBy?->name,
             ];
         })->all();
     }
@@ -136,9 +149,18 @@ class InsuranceCardScanService
      */
     public function markPrinted(array $scanned): int
     {
+        $marked = 0;
+
         foreach ($scanned as $hit) {
+            $employee = Employee::query()->find($hit['employee_id'] ?? null);
+
+            if ($employee?->cardsAreDelivered()) {
+                continue;
+            }
+
             if (($hit['kind'] ?? '') === 'employee') {
-                Employee::query()->find($hit['employee_id'] ?? null)?->markCardPrinted();
+                $employee?->markCardPrinted();
+                $marked++;
 
                 continue;
             }
@@ -147,10 +169,11 @@ class InsuranceCardScanService
 
             if ($registration && filled($hit['person_key'] ?? null)) {
                 $this->marker->mark($registration, $hit['person_key']);
+                $marked++;
             }
         }
 
-        return count($scanned);
+        return $marked;
     }
 
     private function hitFromEmployee(Employee $employee, string $digits): InsuranceCardScanHit

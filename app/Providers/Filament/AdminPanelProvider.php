@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Filament\Auth\Login;
 use App\Filament\Pages\Dashboard;
+use App\Filament\Pages\DeliverInsuranceCards;
 use App\Filament\Resources\PendingReviews\PendingReviewResource;
 use App\Filament\Widgets\CoverageStatsOverview;
 use App\Filament\Widgets\EmployeeStatsOverview;
@@ -54,6 +55,10 @@ class AdminPanelProvider extends PanelProvider
             ->homeUrl(function (): string {
                 if (User::authenticatedIsReviewer()) {
                     return PendingReviewResource::getUrl();
+                }
+
+                if (User::authenticatedIsCardDelivery()) {
+                    return DeliverInsuranceCards::getUrl();
                 }
 
                 return Dashboard::getUrl();

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CardDeliveryRecipient;
 use App\Enums\RegistrationStatus;
 use App\Models\Concerns\HasInsuranceCardPrint;
 use App\Services\InsuranceCardNumberAssigner;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -19,6 +21,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'employee_number',
     'card_number',
     'card_printed_at',
+    'cards_delivered_at',
+    'cards_delivered_to',
+    'cards_delivered_by',
     'national_id',
     'date_of_birth',
     'full_name',
@@ -51,8 +56,29 @@ class Employee extends Model
         return [
             'date_of_birth' => 'date',
             'card_printed_at' => 'datetime',
+            'cards_delivered_at' => 'datetime',
+            'cards_delivered_to' => CardDeliveryRecipient::class,
             'is_active' => 'boolean',
         ];
+    }
+
+    public function cardsDeliveredBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cards_delivered_by');
+    }
+
+    public function cardsAreDelivered(): bool
+    {
+        return $this->cards_delivered_at !== null;
+    }
+
+    public function markCardsDelivered(User $by, CardDeliveryRecipient $to): void
+    {
+        $this->forceFill([
+            'cards_delivered_at' => now(),
+            'cards_delivered_to' => $to,
+            'cards_delivered_by' => $by->id,
+        ])->save();
     }
 
     public function medicalRegistrations(): HasMany

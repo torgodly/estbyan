@@ -55,14 +55,26 @@ class User extends Authenticatable implements FilamentUser
         return $this->role === UserRole::Reviewer;
     }
 
+    public function isCardDelivery(): bool
+    {
+        return $this->role === UserRole::CardDelivery;
+    }
+
     public function canAccessFullAdmin(): bool
     {
-        return ! $this->isReviewer();
+        return ! $this->isReviewer() && ! $this->isCardDelivery();
     }
 
     public function canManageInsuranceCards(): bool
     {
         return $this->isSmartCare();
+    }
+
+    public function canDeliverInsuranceCards(): bool
+    {
+        return $this->isCardDelivery()
+            || $this->isSmartCare()
+            || $this->isHr();
     }
 
     public static function authenticatedCanAccessFullAdmin(): bool
@@ -77,5 +89,19 @@ class User extends Authenticatable implements FilamentUser
         $user = Auth::user();
 
         return $user instanceof self && $user->isReviewer();
+    }
+
+    public static function authenticatedIsCardDelivery(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof self && $user->isCardDelivery();
+    }
+
+    public static function authenticatedCanDeliverInsuranceCards(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof self && $user->canDeliverInsuranceCards();
     }
 }

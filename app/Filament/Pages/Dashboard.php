@@ -17,6 +17,12 @@ class Dashboard extends BaseDashboard
     {
         if (User::authenticatedIsReviewer()) {
             $this->redirect(PendingReviewResource::getUrl());
+
+            return;
+        }
+
+        if (User::authenticatedIsCardDelivery()) {
+            $this->redirect(DeliverInsuranceCards::getUrl());
         }
     }
 }

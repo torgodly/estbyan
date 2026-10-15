@@ -7,6 +7,7 @@ enum UserRole: string
     case Hr = 'hr';
     case SmartCare = 'smart_care';
     case Reviewer = 'reviewer';
+    case CardDelivery = 'card_delivery';
 
     public function label(): string
     {
@@ -14,6 +15,7 @@ enum UserRole: string
             self::Hr => 'الموارد البشرية',
             self::SmartCare => 'سمارت كير',
             self::Reviewer => 'مراجع',
+            self::CardDelivery => 'تسليم البطاقات',
         };
     }
 }
