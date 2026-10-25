@@ -63,12 +63,20 @@ class DeliveredInsuranceCardsReport extends Page implements HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->query(
-                Employee::query()
+            ->query(Employee::query())
+            ->modifyQueryUsing(function (Builder $query): Builder {
+                return $query
                     ->cardsDelivered()
-                    ->with(['cardsDeliveredBy', 'latestSubmittedRegistration' => fn ($query) => $query->withCount('beneficiaries')]),
-            )
+                    ->with([
+                        'cardsDeliveredBy',
+                        'latestSubmittedRegistration' => fn ($registrationQuery) => $registrationQuery->withCount('beneficiaries'),
+                    ]);
+            })
             ->defaultSort('cards_delivered_at', 'desc')
+            ->modelLabel('عائلة مُسلَّمة')
+            ->pluralModelLabel('عائلات مُسلَّمة')
+            ->emptyStateHeading('لا توجد عائلات مُسلَّمة بعد')
+            ->emptyStateDescription('بعد تأكيد التسليم من صفحة «تسليم البطاقات» تظهر العائلات هنا مع العدد وجهة الاستلام والمُسلِّم.')
             ->columns([
                 TextColumn::make('full_name')
                     ->label('الموظف')

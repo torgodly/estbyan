@@ -1,11 +1,6 @@
 @php
     $family = $family ?? [];
     $members = $family['members'] ?? [];
-    $statePath = $getStatePath();
-    $id = $getId();
-    $wireModelAttribute = $applyStateBindingModifiers('wire:model');
-    $state = $getState();
-    $stateValue = $state instanceof \BackedEnum ? $state->value : (string) ($state ?? '');
     $alreadyDelivered = (bool) ($family['is_delivered'] ?? false);
 @endphp
 
@@ -52,36 +47,5 @@
                 @endforeach
             </ul>
         @endif
-    </div>
-
-    <div>
-        <p class="hr-deliver-modal__ask">
-            إلى من سُلّمت البطاقات؟
-        </p>
-        <p class="hr-deliver-modal__hint">
-            اختر جهة التسليم قبل التأكيد. لا يمكن التراجع بعد التسجيل.
-        </p>
-    </div>
-
-    <div class="hr-deliver-modal__choices" role="radiogroup" aria-label="جهة التسليم">
-        @foreach (\App\Enums\CardDeliveryRecipient::cases() as $option)
-            <label class="hr-deliver-choice">
-                <input
-                    type="radio"
-                    class="hr-deliver-choice__input"
-                    name="{{ $id }}"
-                    value="{{ $option->value }}"
-                    @checked($stateValue === $option->value)
-                    {{ $wireModelAttribute }}="{{ $statePath }}"
-                >
-                <span class="hr-deliver-choice__icon" aria-hidden="true">
-                    <x-filament::icon :icon="$option->icon()" class="h-5 w-5" />
-                </span>
-                <span class="hr-deliver-choice__copy">
-                    <strong>{{ $option->getLabel() }}</strong>
-                    <span>{{ $option->description() }}</span>
-                </span>
-            </label>
-        @endforeach
     </div>
 </div>

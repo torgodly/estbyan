@@ -9,6 +9,7 @@ use App\Services\InsuranceCardScanService;
 use App\Support\InsuranceCardNumber;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\ViewField;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -16,6 +17,7 @@ use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use UnitEnum;
 
 class DeliverInsuranceCards extends Page
@@ -232,8 +234,12 @@ class DeliverInsuranceCards extends Page
             return;
         }
 
-        app(InsuranceCardScanService::class)->markPrinted($this->scanned);
-        $employee->markCardsDelivered($user, $recipient);
+        DB::transaction(function () use ($employee, $user, $recipient): void {
+            app(InsuranceCardScanService::class)->markPrinted($this->scanned);
+            $employee->markCardsDelivered($user, $recipient);
+        });
+
+        $employee->refresh();
 
         $this->reset(['scan', 'scanned']);
         $this->deliveryNotice = [
@@ -270,12 +276,17 @@ class DeliverInsuranceCards extends Page
                     'delivered_to' => $this->family()['delivered_to'] ?? null,
                 ])
                 ->schema([
-                    ViewField::make('delivered_to')
+                    ViewField::make('family_summary')
                         ->hiddenLabel()
                         ->view('filament.pages.partials.deliver-cards-modal')
                         ->viewData(fn (): array => [
                             'family' => $this->family() ?? [],
                         ])
+                        ->dehydrated(false),
+                    Radio::make('delivered_to')
+                        ->label('إلى من سُلّمت البطاقات؟')
+                        ->helperText('اختر جهة التسليم قبل التأكيد. لا يمكن التراجع بعد التسجيل.')
+                        ->options(CardDeliveryRecipient::class)
                         ->required()
                         ->live(),
                 ])
