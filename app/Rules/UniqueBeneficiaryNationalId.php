@@ -3,6 +3,7 @@
 namespace App\Rules;
 
 use App\Models\Beneficiary;
+use App\Models\Employee;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 
@@ -37,6 +38,18 @@ class UniqueBeneficiaryNationalId implements ValidationRule
 
         if (in_array($nationalId, $this->normalizedSiblingNationalIds(), true)) {
             $fail('هذا الرقم الوطني مضاف بالفعل لمستفيد آخر في هذه الاستمارة.');
+
+            return;
+        }
+
+        $existingEmployee = Employee::query()
+            ->whereNotNull('national_id')
+            ->where('national_id', '!=', '')
+            ->where('national_id', $nationalId)
+            ->first();
+
+        if ($existingEmployee !== null) {
+            $fail('هذا الرقم الوطني يخص موظفاً مسجّلاً ('.$existingEmployee->full_name.'). لا يمكن إضافته كفرد عائلة.');
 
             return;
         }

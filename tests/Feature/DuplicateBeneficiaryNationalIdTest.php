@@ -145,6 +145,46 @@ it('rejects using the employee national id as a beneficiary', function () {
         ->assertCount('beneficiaries', 0);
 });
 
+it('rejects adding another employee as a family member by national id', function () {
+    $husbandNationalId = LibyanNationalId::generate(Gender::Male, 1981);
+    $wifeNationalId = LibyanNationalId::generate(Gender::Female, 1984);
+
+    Employee::factory()->create([
+        'employee_number' => '9410',
+        'national_id' => $husbandNationalId,
+        'full_name' => 'الزوج الموظف',
+        'workplace' => 'tripoli',
+    ]);
+
+    Employee::factory()->create([
+        'employee_number' => '9411',
+        'national_id' => $wifeNationalId,
+        'full_name' => 'الزوجة الموظفة',
+        'workplace' => 'tripoli',
+    ]);
+
+    Livewire::test(MedicalRegistrationForm::class)
+        ->set('nationalId', $husbandNationalId)
+        ->set('consent', true)
+        ->call('verifyIdentity')
+        ->set('step', 4)
+        ->set('maritalStatus', 'married')
+        ->set('showBeneficiaryForm', true)
+        ->set('beneficiaryName', 'زوجتي الموظفة')
+        ->set('beneficiaryRelationship', 'spouse')
+        ->set('beneficiaryNationalId', $wifeNationalId)
+        ->set('beneficiaryDateOfBirth', '1984-06-01')
+        ->set('beneficiaryBloodType', 'a_positive')
+        ->set('beneficiaryPhoto', UploadedFile::fake()->image('employee-spouse.jpg'))
+        ->call('saveBeneficiary')
+        ->assertHasErrors(['beneficiaryNationalId'])
+        ->assertSee('هذا الرقم الوطني يخص موظفاً مسجّلاً')
+        ->assertSee('الزوجة الموظفة')
+        ->assertCount('beneficiaries', 0);
+
+    expect(Beneficiary::query()->where('national_id', $wifeNationalId)->count())->toBe(0);
+});
+
 it('allows editing a beneficiary without changing the national id', function () {
     $employeeNationalId = LibyanNationalId::generate(Gender::Male, 1976);
     $daughterNationalId = LibyanNationalId::generate(Gender::Female, 2001);
