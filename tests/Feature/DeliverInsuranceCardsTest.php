@@ -103,15 +103,22 @@ it('requires every family member including parents before delivery', function ()
         ->callAction('markDelivered', [
             'delivered_to' => CardDeliveryRecipient::Employee->value,
         ])
-        ->assertNotified('تم تسليم بطاقات الموظف '.$registration->employee->full_name.' بنجاح');
+        ->assertNotified('تم تسليم بطاقات الموظف '.$registration->employee->full_name.' بنجاح')
+        ->assertRedirect(DeliverInsuranceCards::getUrl());
 
     $employee = $registration->employee->fresh();
 
     expect($employee->cardsAreDelivered())->toBeTrue()
         ->and($employee->cards_delivered_to)->toBe(CardDeliveryRecipient::Employee)
         ->and($employee->cards_delivered_by)->toBe($east->id)
-        ->and($employee->cards_delivered_at)->not->toBeNull()
-        ->and($page->instance()->scanned)->toBe([]);
+        ->and($employee->cards_delivered_at)->not->toBeNull();
+
+    $this->actingAs($east);
+
+    Livewire::test(DeliverInsuranceCards::class)
+        ->assertSee('تم تسليم بطاقات الموظف')
+        ->assertSee($employee->full_name)
+        ->assertSee('لا توجد عائلة قيد التسليم');
 });
 
 it('records who delivered and when, and treats delivered families as view-only', function () {

@@ -55,6 +55,18 @@ class DeliverInsuranceCards extends Page
      */
     public ?array $deliveryNotice = null;
 
+    public function mount(): void
+    {
+        $notice = session()->pull('deliveryNotice');
+
+        if (is_array($notice) && isset($notice['name'], $notice['recipient'])) {
+            $this->deliveryNotice = [
+                'name' => (string) $notice['name'],
+                'recipient' => (string) $notice['recipient'],
+            ];
+        }
+    }
+
     public static function canAccess(): bool
     {
         return User::authenticatedCanDeliverInsuranceCards();
@@ -222,17 +234,24 @@ class DeliverInsuranceCards extends Page
 
         app(InsuranceCardScanService::class)->markPrinted($this->scanned);
         $employee->markCardsDelivered($user, $recipient);
-        $this->scanned = [];
+
+        $this->reset(['scan', 'scanned']);
         $this->deliveryNotice = [
             'name' => $employee->full_name,
             'recipient' => $recipient->getLabel(),
         ];
+
+        session()->flash('deliveryNotice', $this->deliveryNotice);
 
         Notification::make()
             ->title('تم تسليم بطاقات الموظف '.$employee->full_name.' بنجاح')
             ->body('إلى '.$recipient->getLabel().' · بواسطة '.$user->name)
             ->success()
             ->send();
+
+        // Full navigation: modal actions can leave the scan UI stuck even after
+        // clearing state, so delivery staff had to reopen the page manually.
+        $this->redirect(static::getUrl());
     }
 
     protected function getHeaderActions(): array
