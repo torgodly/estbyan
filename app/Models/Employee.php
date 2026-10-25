@@ -81,6 +81,24 @@ class Employee extends Model
         ])->save();
     }
 
+    /**
+     * @param  Builder<Employee>  $query
+     * @return Builder<Employee>
+     */
+    public function scopeCardsDelivered(Builder $query): Builder
+    {
+        return $query->whereNotNull('cards_delivered_at');
+    }
+
+    public function familyCardsCount(): int
+    {
+        $beneficiariesCount = $this->latestSubmittedRegistration?->beneficiaries_count
+            ?? $this->latestSubmittedRegistration?->beneficiaries()->count()
+            ?? 0;
+
+        return 1 + (int) $beneficiariesCount;
+    }
+
     public function medicalRegistrations(): HasMany
     {
         return $this->hasMany(MedicalRegistration::class);
