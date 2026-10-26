@@ -6,9 +6,11 @@ use App\Enums\CardDeliveryRecipient;
 use App\Filament\Widgets\DeliveredCardsStatsOverview;
 use App\Models\Employee;
 use App\Models\User;
+use App\Support\DeliveredEmployeesExport;
 use App\Support\InsuranceCardNumber;
 use App\Support\PrintedEmployeesPeriodExport;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -20,6 +22,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Database\Eloquent\Builder;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use UnitEnum;
 
 class DeliveredInsuranceCardsReport extends Page implements HasTable
@@ -34,7 +37,7 @@ class DeliveredInsuranceCardsReport extends Page implements HasTable
 
     protected static string|UnitEnum|null $navigationGroup = 'التسجيل الطبي';
 
-    protected static ?int $navigationSort = 7;
+    protected static ?int $navigationSort = 8;
 
     protected static ?string $slug = 'delivered-insurance-cards-report';
 
@@ -58,6 +61,26 @@ class DeliveredInsuranceCardsReport extends Page implements HasTable
         return [
             DeliveredCardsStatsOverview::class,
         ];
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('exportExcel')
+                ->label('تصدير Excel')
+                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->color('success')
+                ->action(fn (): StreamedResponse => $this->exportExcel()),
+        ];
+    }
+
+    public function exportExcel(): StreamedResponse
+    {
+        abort_unless(static::canAccess(), 403);
+
+        return DeliveredEmployeesExport::download(
+            $this->getFilteredSortedTableQuery() ?? Employee::query()->cardsDelivered(),
+        );
     }
 
     public function table(Table $table): Table

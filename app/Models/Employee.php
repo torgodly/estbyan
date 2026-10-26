@@ -90,6 +90,22 @@ class Employee extends Model
         return $query->whereNotNull('cards_delivered_at');
     }
 
+    /**
+     * Employee card printed and every beneficiary on the latest submitted form is printed too.
+     *
+     * @param  Builder<Employee>  $query
+     * @return Builder<Employee>
+     */
+    public function scopeCardsFullyPrinted(Builder $query): Builder
+    {
+        return $query
+            ->whereNotNull('card_printed_at')
+            ->whereDoesntHave(
+                'latestSubmittedRegistration.beneficiaries',
+                fn (Builder $beneficiaryQuery) => $beneficiaryQuery->whereNull('card_printed_at'),
+            );
+    }
+
     public function familyCardsCount(): int
     {
         $beneficiariesCount = $this->latestSubmittedRegistration?->beneficiaries_count

@@ -33,7 +33,7 @@ class ExportPrintedCards extends Page
 
     protected static string|UnitEnum|null $navigationGroup = 'التسجيل الطبي';
 
-    protected static ?int $navigationSort = 8;
+    protected static ?int $navigationSort = 9;
 
     protected static ?string $slug = 'export-printed-cards';
 
