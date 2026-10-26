@@ -101,9 +101,12 @@ it('exports fully printed families to excel', function () {
     $sheet = IOFactory::load($temp)->getActiveSheet();
 
     expect($sheet->getCell('A1')->getValue())->toBe('الاسم')
+        ->and($sheet->getCell('B1')->getValue())->toBe('الإدارة')
+        ->and($sheet->getCell('C1')->getValue())->toBe('المكتب')
+        ->and($sheet->getCell('D1')->getValue())->toBe('الحالة')
         ->and($sheet->getCell('A2')->getValue())->toBe('موظف للتصدير المطبوع')
-        ->and($sheet->getCell('G2')->getValue())->toBe('2')
-        ->and($sheet->getCell('I2')->getValue())->toBe('طُبعت بالكامل')
+        ->and($sheet->getCell('B2')->getValue())->toBe('طرابلس')
+        ->and($sheet->getCell('D2')->getValue())->toBe('تمت الطباعه')
         ->and($sheet->getCell('A3')->getValue())->toBeNull();
 
     @unlink($temp);

@@ -44,10 +44,12 @@ it('exports delivered families to excel from the report page', function () {
     $sheet = IOFactory::load($temp)->getActiveSheet();
 
     expect($sheet->getCell('A1')->getValue())->toBe('الاسم')
+        ->and($sheet->getCell('B1')->getValue())->toBe('الإدارة')
+        ->and($sheet->getCell('C1')->getValue())->toBe('المكتب')
+        ->and($sheet->getCell('D1')->getValue())->toBe('الحالة')
         ->and($sheet->getCell('A2')->getValue())->toBe('عائلة مُسلَّمة للتصدير')
-        ->and($sheet->getCell('G2')->getValue())->toBe('2')
-        ->and($sheet->getCell('H2')->getValue())->toBe('الإدارة')
-        ->and($sheet->getCell('I2')->getValue())->toBe('المنطقة الغربية');
+        ->and($sheet->getCell('B2')->getValue())->toBe('سبها')
+        ->and($sheet->getCell('D2')->getValue())->toBe('تم التسليم');
 
     @unlink($temp);
 });

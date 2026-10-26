@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class FullyPrintedEmployeesExport
 {
-    public const STATUS = 'طُبعت بالكامل';
+    public const STATUS = 'تمت الطباعه';
 
     public const FILENAME = 'العائلات-المطبوعة-بالكامل.xlsx';
 
@@ -23,58 +23,22 @@ class FullyPrintedEmployeesExport
      */
     public static function headings(): array
     {
-        return [
-            'الاسم',
-            'الرقم الوظيفي',
-            'رقم البطاقة',
-            'الرقم الوطني',
-            'الإدارة',
-            'المكتب',
-            'عدد البطاقات',
-            'تاريخ طباعة الموظف',
-            'الحالة',
-            'المرجع',
-        ];
+        return ['الاسم', 'الإدارة', 'المكتب', 'الحالة'];
     }
 
     /**
      * @param  Builder<Employee>|Collection<int, Employee>|null  $employees
-     * @return list<array{
-     *     name: string,
-     *     employee_number: string,
-     *     card_number: string,
-     *     national_id: string,
-     *     workplace: string,
-     *     office: string,
-     *     family_cards: int,
-     *     printed_at: string,
-     *     status: string,
-     *     reference: string
-     * }>
+     * @return list<array{name: string, workplace: string, office: string, status: string}>
      */
     public static function rows(Builder|Collection|null $employees = null): array
     {
-        $records = self::employees($employees);
-
-        return $records
-            ->map(function (Employee $employee): array {
-                $registration = $employee->latestSubmittedRegistration;
-
-                return [
-                    'name' => $employee->full_name ?: '—',
-                    'employee_number' => (string) ($employee->employee_number ?: '—'),
-                    'card_number' => InsuranceCardNumber::display($employee->card_number),
-                    'national_id' => (string) ($employee->national_id ?: '—'),
-                    'workplace' => $employee->workplaceLabel() ?? '—',
-                    'office' => $employee->officeLabel() ?? '—',
-                    'family_cards' => $employee->familyCardsCount(),
-                    'printed_at' => $employee->card_printed_at
-                        ?->timezone(PrintedEmployeesPeriodExport::TIMEZONE)
-                        ->format('Y-m-d H:i') ?? '—',
-                    'status' => self::STATUS,
-                    'reference' => (string) ($registration?->reference_number ?: '—'),
-                ];
-            })
+        return self::employees($employees)
+            ->map(fn (Employee $employee): array => [
+                'name' => $employee->full_name ?: '—',
+                'workplace' => $employee->workplaceLabel() ?? '—',
+                'office' => $employee->officeLabel() ?? '—',
+                'status' => self::STATUS,
+            ])
             ->values()
             ->all();
     }
@@ -92,43 +56,30 @@ class FullyPrintedEmployeesExport
             $sheet->setCellValueExplicit(chr(ord('A') + $index).'1', $heading, DataType::TYPE_STRING);
         }
 
-        $lastColumn = chr(ord('A') + count(self::headings()) - 1);
-        $sheet->getStyle('A1:'.$lastColumn.'1')->getFont()->setBold(true);
-        $sheet->getStyle('A1:'.$lastColumn.'1')->getFill()
+        $sheet->getStyle('A1:D1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:D1')->getFill()
             ->setFillType(Fill::FILL_SOLID)
             ->getStartColor()
             ->setRGB('1E3A5F');
-        $sheet->getStyle('A1:'.$lastColumn.'1')->getFont()->getColor()->setRGB('FFFFFF');
+        $sheet->getStyle('A1:D1')->getFont()->getColor()->setRGB('FFFFFF');
 
         $rowNumber = 2;
 
         foreach (self::rows($employees) as $row) {
             $sheet->setCellValueExplicit('A'.$rowNumber, $row['name'], DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit('B'.$rowNumber, $row['employee_number'], DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit('C'.$rowNumber, $row['card_number'], DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit('D'.$rowNumber, $row['national_id'], DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit('E'.$rowNumber, $row['workplace'], DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit('F'.$rowNumber, $row['office'], DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit('G'.$rowNumber, (string) $row['family_cards'], DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit('H'.$rowNumber, $row['printed_at'], DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit('I'.$rowNumber, $row['status'], DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit('J'.$rowNumber, $row['reference'], DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('B'.$rowNumber, $row['workplace'], DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('C'.$rowNumber, $row['office'], DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('D'.$rowNumber, $row['status'], DataType::TYPE_STRING);
             $rowNumber++;
         }
 
         $lastRow = max(1, $rowNumber - 1);
         $sheet->getStyle('A1:A'.$lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-        $sheet->getStyle('B1:'.$lastColumn.$lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('B1:D'.$lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $sheet->getColumnDimension('A')->setWidth(36);
-        $sheet->getColumnDimension('B')->setWidth(14);
-        $sheet->getColumnDimension('C')->setWidth(16);
+        $sheet->getColumnDimension('B')->setWidth(24);
+        $sheet->getColumnDimension('C')->setWidth(24);
         $sheet->getColumnDimension('D')->setWidth(16);
-        $sheet->getColumnDimension('E')->setWidth(24);
-        $sheet->getColumnDimension('F')->setWidth(20);
-        $sheet->getColumnDimension('G')->setWidth(12);
-        $sheet->getColumnDimension('H')->setWidth(18);
-        $sheet->getColumnDimension('I')->setWidth(16);
-        $sheet->getColumnDimension('J')->setWidth(18);
 
         $writer = new Xlsx($spreadsheet);
 
@@ -168,9 +119,6 @@ class FullyPrintedEmployeesExport
             : Employee::query()->cardsFullyPrinted();
 
         return $query
-            ->with([
-                'latestSubmittedRegistration' => fn ($registrationQuery) => $registrationQuery->withCount('beneficiaries'),
-            ])
             ->reorder()
             ->orderByDesc('card_printed_at')
             ->orderBy('full_name')
