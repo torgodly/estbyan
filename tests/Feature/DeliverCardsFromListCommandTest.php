@@ -257,3 +257,16 @@ it('finds a list by its name inside the delivery lists folder', function () {
         ->expectsOutputToContain('matching by exact, unique name only')
         ->assertSuccessful();
 });
+
+it('finds rows without an employee number by exact unique name, and reports the rest', function () {
+    $withNumber = fullyPrintedFamily('001433', 'محبة نجيب احمد شنيب');
+    $byName = fullyPrintedFamily('017041', 'عبدالفتاح رمضان بركة فرج');
+
+    deliverFromList(deliveryNumbersFile([['001433'], ['', 'عبد الفتاح رمضان بركة فرج'], ['', 'محمد الشطي احمد احومة']]))
+        ->expectsOutputToContain('لا يوجد رقم وظيفي')
+        ->expectsOutputToContain('Delivered 2 famil(ies).')
+        ->assertSuccessful();
+
+    expect($withNumber->employee->fresh()->cardsAreDelivered())->toBeTrue()
+        ->and($byName->employee->fresh()->cardsAreDelivered())->toBeTrue();
+});

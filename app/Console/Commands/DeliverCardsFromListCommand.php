@@ -145,6 +145,7 @@ class DeliverCardsFromListCommand extends Command
         }
 
         $rows = [];
+        $namesWithoutNumber = [];
 
         foreach ($sheetRows as $rowNumber => $cells) {
             if ((int) $rowNumber === $headerRow) {
@@ -154,6 +155,12 @@ class DeliverCardsFromListCommand extends Command
             $number = $this->cellText($cells[$numberColumn] ?? null);
 
             if ($number === '') {
+                $name = $nameColumn !== false ? $this->cellText($cells[$nameColumn] ?? null) : '';
+
+                if ($name !== '') {
+                    $namesWithoutNumber[(int) $rowNumber] = $name;
+                }
+
                 continue;
             }
 
@@ -161,6 +168,17 @@ class DeliverCardsFromListCommand extends Command
                 'employee_number' => $number,
                 'name' => $nameColumn !== false ? $this->cellText($cells[$nameColumn] ?? null) : null,
             ];
+        }
+
+        if ($namesWithoutNumber !== []) {
+            ['rows' => $resolved, 'uncertain' => $uncertain] = $processor->resolveNames($namesWithoutNumber);
+
+            $rows += $resolved;
+            ksort($rows);
+            $this->uncertainNames = array_map(
+                fn (array $item): array => [...$item, 'problem' => 'لا يوجد رقم وظيفي، و'.$item['problem']],
+                $uncertain,
+            );
         }
 
         if ($rows === []) {
@@ -199,7 +217,7 @@ class DeliverCardsFromListCommand extends Command
         }
 
         if ($this->uncertainNames !== []) {
-            $this->components->warn('Name not certain, will NOT be marked:');
+            $this->components->warn('Name not certain or employee number missing, will NOT be marked:');
             $this->table(['Row', 'Name in list', 'Problem'], collect($this->uncertainNames)->map(fn (array $item): array => [
                 $item['row'], $item['name'], $item['problem'],
             ])->all());

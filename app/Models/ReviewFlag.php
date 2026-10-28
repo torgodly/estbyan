@@ -65,11 +65,14 @@ class ReviewFlag extends Model
         return $this->resolved_at !== null;
     }
 
-    public function resolve(User $by, ?string $note = null): void
+    /**
+     * A null user means the system closed it (e.g. a data decision command).
+     */
+    public function resolve(?User $by, ?string $note = null): void
     {
         $this->forceFill([
             'resolved_at' => now(),
-            'resolved_by' => $by->id,
+            'resolved_by' => $by?->id,
             'resolution_note' => $note,
         ])->save();
     }

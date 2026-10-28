@@ -84,6 +84,19 @@ Reasons (`App\Enums\ReviewFlagReason`):
 
 "One typo apart" = one digit different, or two neighbouring digits swapped.
 
+### October 2026: flags decided without a human
+
+Nobody was available to review the 17 flags raised on 2026-10-28, so each was decided from the
+records and applied by `php artisan review:apply-decisions-2026-10` (checks every record still
+matches before changing it; the reason is saved on each closed flag):
+
+- **Kept, not duplicates:** father of 014049 and mother of 002557 (name typed wrong), and son
+  قاسم of 001255 (probably the twin of employee 001654, whose ID was typed for him).
+- **Deleted:** unprinted copy of the mother ساسية under 036004 (same mother as 036010, printed).
+- **Deactivated** (`is_active = false`) empty duplicate employee records: 004131, 030089, 040235,
+  001387. The records with a registration (040285, 007198, 122303, 040186) are kept.
+- **Cancelled as employee duplicate:** family records #60342, #11093, #61520, #48424.
+
 ## Marking families delivered from an Excel list
 
 The fully printed report's Excel has a `الرقم الوظيفي` column (unique in `employees`). When the
