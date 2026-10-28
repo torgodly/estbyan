@@ -4,9 +4,12 @@ namespace App\Services;
 
 use App\Enums\BeneficiaryCancellationReason;
 use App\Enums\RegistrationStatus;
+use App\Enums\ReviewFlagReason;
 use App\Models\Beneficiary;
 use App\Models\Employee;
 use App\Models\MedicalRegistration;
+use App\Models\ReviewFlag;
+use App\Support\PersonName;
 use App\Support\RegistrationDocuments;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +17,9 @@ use Illuminate\Support\Facades\DB;
 /**
  * Employees registered as someone else's family member are cancelled, not deleted,
  * so their already printed cards are recognised and held back when scanned.
- * Other duplicate family members are deleted.
+ * Other duplicate family members are deleted. When the national ID matches an
+ * employee but the first name does not, nothing is changed and the record is
+ * flagged for a human to review instead.
  *
  * @see docs/cancelled-family-members.md
  */
@@ -26,6 +31,7 @@ class DuplicateFamilyMemberCleaner
      *     employee_as_beneficiary: int,
      *     duplicate_beneficiaries: int,
      *     registrations_updated: int,
+     *     flagged_for_review: list<array{id: int, name: string, employee_name: string}>,
      *     records: list<array{id: int, name: string, national_id: ?string, passport_number: ?string, reason: string, printed: bool, registration_id: ?int, employee_id: ?int}>
      * }
      */
@@ -33,10 +39,28 @@ class DuplicateFamilyMemberCleaner
     {
         $employeeNationalIds = $this->employeeNationalIds();
 
-        $employeeAsBeneficiary = $this->beneficiariesMatchingEmployees($employeeNationalIds)
-            ->reject(fn (Beneficiary $beneficiary): bool => in_array($beneficiary->id, $exceptIds, true))
-            ->values();
-        $duplicates = $this->duplicateBeneficiariesToDelete([...$employeeAsBeneficiary->modelKeys(), ...$exceptIds]);
+        $matchingEmployees = $this->beneficiariesMatchingEmployees($employeeNationalIds)
+            ->reject(fn (Beneficiary $beneficiary): bool => in_array($beneficiary->id, $exceptIds, true));
+
+        $employeesByNationalId = Employee::query()
+            ->whereIn('national_id', $matchingEmployees->pluck('national_id')->map(fn (mixed $id): string => trim((string) $id))->all())
+            ->get()
+            ->keyBy(fn (Employee $employee): string => trim((string) $employee->national_id));
+
+        [$employeeAsBeneficiary, $nameMismatches] = $matchingEmployees->partition(
+            fn (Beneficiary $beneficiary): bool => PersonName::sameFirstName(
+                $beneficiary->full_name,
+                $employeesByNationalId->get(trim((string) $beneficiary->national_id))?->full_name,
+            ),
+        );
+        $employeeAsBeneficiary = $employeeAsBeneficiary->values();
+
+        $flaggedForReview = $nameMismatches->map(fn (Beneficiary $beneficiary): array => [
+            'id' => $beneficiary->id,
+            'name' => $beneficiary->full_name ?: '—',
+            'employee_name' => $employeesByNationalId->get(trim((string) $beneficiary->national_id))?->full_name ?? '—',
+        ])->values()->all();
+        $duplicates = $this->duplicateBeneficiariesToDelete([...$matchingEmployees->modelKeys(), ...$exceptIds]);
 
         $employeeAsBeneficiaryIds = array_flip($employeeAsBeneficiary->modelKeys());
 
@@ -60,11 +84,27 @@ class DuplicateFamilyMemberCleaner
             ];
         })->all();
 
+        if (! $dryRun) {
+            foreach ($nameMismatches as $beneficiary) {
+                ReviewFlag::raise(
+                    $beneficiary,
+                    ReviewFlagReason::EmployeeNationalIdNameMismatch,
+                    sprintf(
+                        'الرقم الوطني %s يخص الموظف "%s" لكن الاسم المسجل هنا "%s".',
+                        $beneficiary->national_id,
+                        $employeesByNationalId->get(trim((string) $beneficiary->national_id))?->full_name ?? '—',
+                        trim((string) $beneficiary->full_name),
+                    ),
+                );
+            }
+        }
+
         if ($dryRun || $affected->isEmpty()) {
             return [
                 'employee_as_beneficiary' => $employeeAsBeneficiary->count(),
                 'duplicate_beneficiaries' => $duplicates->count(),
                 'registrations_updated' => 0,
+                'flagged_for_review' => $flaggedForReview,
                 'records' => $records,
             ];
         }
@@ -101,6 +141,7 @@ class DuplicateFamilyMemberCleaner
             'employee_as_beneficiary' => $employeeAsBeneficiary->count(),
             'duplicate_beneficiaries' => $duplicates->count(),
             'registrations_updated' => $registrationsUpdated,
+            'flagged_for_review' => $flaggedForReview,
             'records' => $records,
         ];
     }
@@ -190,25 +231,13 @@ class DuplicateFamilyMemberCleaner
 
     private function nameAndBirthDateKey(Beneficiary $beneficiary): ?string
     {
-        $name = $this->normalizedName($beneficiary->full_name);
+        $name = PersonName::normalize($beneficiary->full_name);
 
         if ($name === '' || $beneficiary->date_of_birth === null) {
             return null;
         }
 
         return 'name:'.$name.':'.$beneficiary->date_of_birth->format('Y-m-d');
-    }
-
-    /**
-     * Ignore spelling variants that do not change the name: hamza forms of alef,
-     * ى/ي, ة/ه, diacritics and spaces.
-     */
-    private function normalizedName(?string $name): string
-    {
-        $name = strtr((string) $name, ['أ' => 'ا', 'إ' => 'ا', 'آ' => 'ا', 'ى' => 'ي', 'ة' => 'ه']);
-        $name = (string) preg_replace('/[\x{064B}-\x{0652}]/u', '', $name);
-
-        return (string) preg_replace('/\s+/u', '', $name);
     }
 
     private function identityKey(Beneficiary $beneficiary): ?string

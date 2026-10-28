@@ -1,6 +1,6 @@
 # Project notes
 
-- Family members (`beneficiaries`) can be **cancelled**, not deleted. Cancelled records are hidden by a global scope. Read `docs/cancelled-family-members.md` before changing beneficiaries, card scanning, card numbers or delivery.
+- Family members (`beneficiaries`) can be **cancelled**, not deleted. Cancelled records are hidden by a global scope. Uncertain duplicates are never changed automatically; they get a `ReviewFlag` (page "مراجعة يدوية"). Read `docs/cancelled-family-members.md` before changing beneficiaries, card scanning, card numbers, duplicates or delivery.
 
 <laravel-boost-guidelines>
 === foundation rules ===

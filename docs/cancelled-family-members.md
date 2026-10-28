@@ -40,7 +40,7 @@ Why cancel instead of delete:
 | Deliver cards page (`DeliverInsuranceCards`) | Scanning a cancelled card shows a red persistent warning: *keep this card, do not hand it over*. The card is not added, and the family can be delivered without it. |
 | Print scan page (`ScanInsuranceCards`) | Same warning. A cancelled card cannot be marked as printed. |
 | `InsuranceCardNumberAssigner` | Cancelled card numbers stay reserved and are never given to someone else. |
-| `beneficiaries:cleanup-duplicates` | Cancels employees-as-family (does **not** delete them). Other duplicates (same person under two families) are still deleted, keeping the printed / approved copy. |
+| `beneficiaries:cleanup-duplicates` | Cancels employees-as-family (does **not** delete them) when the first name matches the employee. If the national ID matches but the first name does not, nothing changes and the record is flagged for manual review. Other duplicates (same person under two families) are still deleted, keeping the printed / approved copy. |
 
 ### How "same family member twice" is detected
 
@@ -61,29 +61,45 @@ The copy that is kept is: printed card first, then approved registration, then t
 4. If a new cancellation reason is needed, add a case to `BeneficiaryCancellationReason`
    with its label and scan warning.
 
+## Manual review (people the system is not sure about)
+
+When the system *thinks* two records are the same person but cannot be sure, it never
+changes them. It adds a **review flag** instead (`review_flags` table, `App\Models\ReviewFlag`).
+
+- Page: **التسجيل الطبي → مراجعة يدوية** (`ReviewFlagResource`, HR and Smart Care only).
+  The menu shows how many are still open.
+- Each row shows the person, the reason, and the other record it may be confused with.
+  "فتح الطلب" opens the registration. "تمت المراجعة" closes it with a note on what was found.
+- **Do not print or deliver cards for a flagged person until the flag is closed.**
+- Raising the same flag again only refreshes its note; a closed flag stays closed.
+
+Reasons (`App\Enums\ReviewFlagReason`):
+
+| Reason | Raised by | Meaning |
+|---|---|---|
+| `possible_duplicate_employee` | `review:flag-possible-duplicates` | Two employee records, national IDs one typo apart, same first two names. |
+| `possible_employee_as_family` | `review:flag-possible-duplicates` | A family member with the same full name as an employee (different ID), or an ID one typo apart with the same first two names. |
+| `possible_duplicate_family_member` | `review:flag-possible-duplicates` | Same first name, IDs one typo apart, under two different employees. |
+| `employee_national_id_name_mismatch` | `beneficiaries:cleanup-duplicates` | Family member has an employee's exact national ID but a different first name. |
+
+"One typo apart" = one digit different, or two neighbouring digits swapped.
+
 ## Running it on production
 
 ```bash
 php artisan migrate
-php artisan beneficiaries:cleanup-duplicates --dry-run --except=45594
-php artisan beneficiaries:cleanup-duplicates --except=45594
+php artisan beneficiaries:cleanup-duplicates --dry-run
+php artisan beneficiaries:cleanup-duplicates
+php artisan review:flag-possible-duplicates
 ```
 
-`--except=45594` skips beneficiary #45594 (قاسم خالد بلقاسم بن طالب). Their national ID matches
-employee 001654 (**محمد** خالد بلقاسم بن طالب), but the first name is different, so it may be a
-wrong ID and not the same person. Check the real ID documents before cancelling it.
+Run the cleanup **before** the flagging, so automatic cases are not also flagged.
 
-On the 2026-10-28 data this cancels 47 records and deletes 6 unprinted duplicates
-(4 الشبو sons with fake IDs, سميحة مجدي خليل, عبدالمالك عبدالوهاب سليمان).
+On the 2026-10-28 data:
 
-### Not handled automatically: check by hand
-
-These look like the same person, but the name or ID is not close enough to be sure:
-
-| Case | Records |
-|---|---|
-| Employee with two employee records (ID differs by 1 digit) | حسام الدين اسماعيل محمد الهليب: employees 004131 and 040285 |
-| Employee with two employee records (ID differs by 1 digit) | امحمد زكريا امحمد عبدالقادر: employees 040235 and 122303 |
-| Employee also added as wife (ID differs by 1 digit) | سالمة احمد علي الاشهب: employee 014031, beneficiary #60342 under 014030 |
-| Employee also added as wife (birth year in ID differs) | أميرة طارق انبيه جاب الله: employee 001612, beneficiary #11093 under 001613 |
-| Mother under two employees (name and ID slightly different) | ساسية ميلاد الصغير: #61697 (printed) under 036010, #49459 under 036004 |
+- Cleanup cancels 45 employees-as-family and deletes 6 unprinted duplicates
+  (4 الشبو sons with fake IDs, سميحة مجدي خليل, عبدالمالك عبدالوهاب سليمان).
+- 3 are flagged instead of cancelled because the first name differs:
+  #45594 قاسم/محمد خالد بن طالب, #48424 الامعة/اللامعة مختار, #61520 سييد/سيد محمد عابدين.
+- `review:flag-possible-duplicates` flags 14 people, including 4 employees registered twice
+  (حسام الدين الهليب, امحمد زكريا عبدالقادر, نجوى أبوعجيلة غيث, عبدالرازق عبدالفتاح عبدالرازق).

@@ -166,6 +166,7 @@ it('supports dry-run without deleting records', function () {
 
     $family = Beneficiary::factory()->create([
         'medical_registration_id' => $otherRegistration->id,
+        'full_name' => $employeeRegistration->employee->full_name,
         'national_id' => $employeeRegistration->employee->national_id,
         'photo_path' => $path,
     ]);

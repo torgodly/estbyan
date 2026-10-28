@@ -34,6 +34,16 @@ class CleanupDuplicateFamilyMembersCommand extends Command
 
         $result = $cleaner->cleanup(dryRun: $dryRun, exceptIds: $exceptIds);
 
+        foreach ($result['flagged_for_review'] as $row) {
+            $this->components->warn(sprintf(
+                '%s #%d %s: national ID belongs to employee %s, but the name is different. Left unchanged for human review.',
+                $dryRun ? 'Would flag' : 'Flagged',
+                $row['id'],
+                $row['name'],
+                $row['employee_name'],
+            ));
+        }
+
         if ($result['records'] === []) {
             $this->components->info('No duplicate family members found.');
 
