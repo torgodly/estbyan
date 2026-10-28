@@ -23,17 +23,20 @@ class FullyPrintedEmployeesExport
      */
     public static function headings(): array
     {
-        return ['الاسم', 'الإدارة', 'المكتب', 'الحالة'];
+        return ['الرقم الوظيفي', 'الاسم', 'الإدارة', 'المكتب', 'الحالة'];
     }
 
     /**
      * @param  Builder<Employee>|Collection<int, Employee>|null  $employees
-     * @return list<array{name: string, workplace: string, office: string, status: string}>
+     *                                                                       The employee number identifies each family, so the sheet can be matched back later
+     *                                                                       (e.g. to mark the families as delivered).
+     * @return list<array{employee_number: string, name: string, workplace: string, office: string, status: string}>
      */
     public static function rows(Builder|Collection|null $employees = null): array
     {
         return self::employees($employees)
             ->map(fn (Employee $employee): array => [
+                'employee_number' => (string) $employee->employee_number,
                 'name' => $employee->full_name ?: '—',
                 'workplace' => $employee->workplaceLabel() ?? '—',
                 'office' => $employee->officeLabel() ?? '—',
@@ -56,30 +59,33 @@ class FullyPrintedEmployeesExport
             $sheet->setCellValueExplicit(chr(ord('A') + $index).'1', $heading, DataType::TYPE_STRING);
         }
 
-        $sheet->getStyle('A1:D1')->getFont()->setBold(true);
-        $sheet->getStyle('A1:D1')->getFill()
+        $sheet->getStyle('A1:E1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:E1')->getFill()
             ->setFillType(Fill::FILL_SOLID)
             ->getStartColor()
             ->setRGB('1E3A5F');
-        $sheet->getStyle('A1:D1')->getFont()->getColor()->setRGB('FFFFFF');
+        $sheet->getStyle('A1:E1')->getFont()->getColor()->setRGB('FFFFFF');
 
         $rowNumber = 2;
 
         foreach (self::rows($employees) as $row) {
-            $sheet->setCellValueExplicit('A'.$rowNumber, $row['name'], DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit('B'.$rowNumber, $row['workplace'], DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit('C'.$rowNumber, $row['office'], DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit('D'.$rowNumber, $row['status'], DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('A'.$rowNumber, $row['employee_number'], DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('B'.$rowNumber, $row['name'], DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('C'.$rowNumber, $row['workplace'], DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('D'.$rowNumber, $row['office'], DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('E'.$rowNumber, $row['status'], DataType::TYPE_STRING);
             $rowNumber++;
         }
 
         $lastRow = max(1, $rowNumber - 1);
-        $sheet->getStyle('A1:A'.$lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-        $sheet->getStyle('B1:D'.$lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->getColumnDimension('A')->setWidth(36);
-        $sheet->getColumnDimension('B')->setWidth(24);
+        $sheet->getStyle('A1:A'.$lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('B1:B'.$lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle('C1:E'.$lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getColumnDimension('A')->setWidth(16);
+        $sheet->getColumnDimension('B')->setWidth(36);
         $sheet->getColumnDimension('C')->setWidth(24);
-        $sheet->getColumnDimension('D')->setWidth(16);
+        $sheet->getColumnDimension('D')->setWidth(24);
+        $sheet->getColumnDimension('E')->setWidth(16);
 
         $writer = new Xlsx($spreadsheet);
 

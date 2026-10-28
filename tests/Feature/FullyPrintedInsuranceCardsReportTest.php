@@ -72,6 +72,7 @@ it('exports fully printed families to excel', function () {
     $complete = MedicalRegistration::factory()->submitted()->create();
     $complete->employee->update([
         'full_name' => 'موظف للتصدير المطبوع',
+        'employee_number' => '001433',
         'workplace' => 'tripoli',
     ]);
     $complete->employee->markCardPrinted();
@@ -100,13 +101,15 @@ it('exports fully printed families to excel', function () {
 
     $sheet = IOFactory::load($temp)->getActiveSheet();
 
-    expect($sheet->getCell('A1')->getValue())->toBe('الاسم')
-        ->and($sheet->getCell('B1')->getValue())->toBe('الإدارة')
-        ->and($sheet->getCell('C1')->getValue())->toBe('المكتب')
-        ->and($sheet->getCell('D1')->getValue())->toBe('الحالة')
-        ->and($sheet->getCell('A2')->getValue())->toBe('موظف للتصدير المطبوع')
-        ->and($sheet->getCell('B2')->getValue())->toBe('طرابلس')
-        ->and($sheet->getCell('D2')->getValue())->toBe('تمت الطباعه')
+    expect($sheet->getCell('A1')->getValue())->toBe('الرقم الوظيفي')
+        ->and($sheet->getCell('B1')->getValue())->toBe('الاسم')
+        ->and($sheet->getCell('C1')->getValue())->toBe('الإدارة')
+        ->and($sheet->getCell('D1')->getValue())->toBe('المكتب')
+        ->and($sheet->getCell('E1')->getValue())->toBe('الحالة')
+        ->and($sheet->getCell('A2')->getValue())->toBe('001433')
+        ->and($sheet->getCell('B2')->getValue())->toBe('موظف للتصدير المطبوع')
+        ->and($sheet->getCell('C2')->getValue())->toBe('طرابلس')
+        ->and($sheet->getCell('E2')->getValue())->toBe('تمت الطباعه')
         ->and($sheet->getCell('A3')->getValue())->toBeNull();
 
     @unlink($temp);
