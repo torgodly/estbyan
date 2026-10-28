@@ -40,7 +40,16 @@ Why cancel instead of delete:
 | Deliver cards page (`DeliverInsuranceCards`) | Scanning a cancelled card shows a red persistent warning: *keep this card, do not hand it over*. The card is not added, and the family can be delivered without it. |
 | Print scan page (`ScanInsuranceCards`) | Same warning. A cancelled card cannot be marked as printed. |
 | `InsuranceCardNumberAssigner` | Cancelled card numbers stay reserved and are never given to someone else. |
-| `beneficiaries:cleanup-duplicates` | Cancels employees-as-family (does **not** delete them). Other duplicates (same person under two families) are still deleted. |
+| `beneficiaries:cleanup-duplicates` | Cancels employees-as-family (does **not** delete them). Other duplicates (same person under two families) are still deleted, keeping the printed / approved copy. |
+
+### How "same family member twice" is detected
+
+1. Same national ID (or same passport + nationality).
+2. Otherwise, same **full name + date of birth**. Spelling variants are ignored
+   (أ/إ/آ → ا, ى → ي, ة → ه, diacritics, spaces). This catches a child added under both
+   parents where one parent typed a wrong or fake ID (e.g. `120150000000`).
+
+The copy that is kept is: printed card first, then approved registration, then the oldest record.
 
 ## Rules for future changes
 
@@ -64,5 +73,17 @@ php artisan beneficiaries:cleanup-duplicates --except=45594
 employee 001654 (**محمد** خالد بلقاسم بن طالب), but the first name is different, so it may be a
 wrong ID and not the same person. Check the real ID documents before cancelling it.
 
-Also check by hand: beneficiary #11093 (أميرة طارق انبيه جاب الله) has the same name as
-employee 001612 but a national ID that differs by one digit. It is not matched automatically.
+On the 2026-10-28 data this cancels 47 records and deletes 6 unprinted duplicates
+(4 الشبو sons with fake IDs, سميحة مجدي خليل, عبدالمالك عبدالوهاب سليمان).
+
+### Not handled automatically: check by hand
+
+These look like the same person, but the name or ID is not close enough to be sure:
+
+| Case | Records |
+|---|---|
+| Employee with two employee records (ID differs by 1 digit) | حسام الدين اسماعيل محمد الهليب: employees 004131 and 040285 |
+| Employee with two employee records (ID differs by 1 digit) | امحمد زكريا امحمد عبدالقادر: employees 040235 and 122303 |
+| Employee also added as wife (ID differs by 1 digit) | سالمة احمد علي الاشهب: employee 014031, beneficiary #60342 under 014030 |
+| Employee also added as wife (birth year in ID differs) | أميرة طارق انبيه جاب الله: employee 001612, beneficiary #11093 under 001613 |
+| Mother under two employees (name and ID slightly different) | ساسية ميلاد الصغير: #61697 (printed) under 036010, #49459 under 036004 |

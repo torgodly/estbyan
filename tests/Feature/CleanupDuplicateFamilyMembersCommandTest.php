@@ -87,6 +87,55 @@ it('keeps only one family record when the same person was added under multiple e
         ->and($brotherB->fresh()->beneficiaries_count)->toBe(0);
 });
 
+it('treats a child with the same name and birth date under both parents as one person', function () {
+    $father = MedicalRegistration::factory()->submitted()->create(['beneficiaries_count' => 1]);
+    $mother = MedicalRegistration::factory()->approved()->create(['beneficiaries_count' => 1]);
+
+    $printed = Beneficiary::factory()->create([
+        'medical_registration_id' => $mother->id,
+        'full_name' => 'سميحة مجدي خليل بالقاسم',
+        'relationship' => BeneficiaryRelationship::Daughter,
+        'national_id' => '219980319963',
+        'date_of_birth' => '1998-09-14',
+        'card_printed_at' => now(),
+    ]);
+    $mistyped = Beneficiary::factory()->create([
+        'medical_registration_id' => $father->id,
+        'full_name' => 'سميحه مجدى خليل  بالقاسم',
+        'relationship' => BeneficiaryRelationship::Daughter,
+        'national_id' => '219980319966',
+        'date_of_birth' => '1998-09-14',
+    ]);
+
+    $this->artisan('beneficiaries:cleanup-duplicates', ['--force' => true])
+        ->expectsOutputToContain('Cancelled 0 employee-as-family record(s) and deleted 1 duplicate family record(s).')
+        ->assertSuccessful();
+
+    expect(Beneficiary::query()->find($printed->id))->not->toBeNull()
+        ->and(Beneficiary::queryWithCancelled()->find($mistyped->id))->toBeNull()
+        ->and($father->fresh()->beneficiaries_count)->toBe(0);
+});
+
+it('keeps people with the same name but a different birth date', function () {
+    $first = MedicalRegistration::factory()->approved()->create();
+    $second = MedicalRegistration::factory()->approved()->create();
+
+    foreach ([[$first, '2010-01-01'], [$second, '2012-05-05']] as [$registration, $birthDate]) {
+        Beneficiary::factory()->create([
+            'medical_registration_id' => $registration->id,
+            'full_name' => 'محمد علي سالم',
+            'relationship' => BeneficiaryRelationship::Son,
+            'date_of_birth' => $birthDate,
+        ]);
+    }
+
+    $this->artisan('beneficiaries:cleanup-duplicates', ['--force' => true])
+        ->expectsOutputToContain('No duplicate family members found.')
+        ->assertSuccessful();
+
+    expect(Beneficiary::query()->count())->toBe(2);
+});
+
 it('does not delete unique family members', function () {
     $registration = MedicalRegistration::factory()->approved()->create([
         'beneficiaries_count' => 1,

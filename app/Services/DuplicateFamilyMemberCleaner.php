@@ -143,6 +143,10 @@ class DuplicateFamilyMemberCleaner
     }
 
     /**
+     * The same person is matched by national ID / passport first, then by
+     * full name + date of birth. The second pass catches a child added under
+     * both parents with a mistyped or fake national ID.
+     *
      * @param  list<int>  $alreadyRemovingIds
      * @return Collection<int, Beneficiary>
      */
@@ -150,21 +154,29 @@ class DuplicateFamilyMemberCleaner
     {
         $beneficiaries = Beneficiary::query()
             ->with('medicalRegistration')
-            ->where(function ($query): void {
-                $query->where(function ($nationalIdQuery): void {
-                    $nationalIdQuery->whereNotNull('national_id')
-                        ->where('national_id', '!=', '');
-                })->orWhere(function ($passportQuery): void {
-                    $passportQuery->whereNotNull('passport_number')
-                        ->where('passport_number', '!=', '');
-                });
-            })
             ->when($alreadyRemovingIds !== [], fn ($query) => $query->whereKeyNot($alreadyRemovingIds))
             ->orderBy('id')
             ->get();
 
+        $byIdentity = $this->duplicatesWithinGroups($beneficiaries, fn (Beneficiary $beneficiary): ?string => $this->identityKey($beneficiary));
+
+        $byNameAndBirthDate = $this->duplicatesWithinGroups(
+            $beneficiaries->whereNotIn('id', $byIdentity->pluck('id')->all()),
+            fn (Beneficiary $beneficiary): ?string => $this->nameAndBirthDateKey($beneficiary),
+        );
+
+        return $byIdentity->concat($byNameAndBirthDate)->values();
+    }
+
+    /**
+     * @param  Collection<int, Beneficiary>  $beneficiaries
+     * @param  callable(Beneficiary): ?string  $keyFor
+     * @return Collection<int, Beneficiary>
+     */
+    private function duplicatesWithinGroups(Collection $beneficiaries, callable $keyFor): Collection
+    {
         return $beneficiaries
-            ->groupBy(fn (Beneficiary $beneficiary): string => $this->identityKey($beneficiary) ?? 'skip:'.$beneficiary->id)
+            ->groupBy(fn (Beneficiary $beneficiary): string => $keyFor($beneficiary) ?? 'skip:'.$beneficiary->id)
             ->filter(fn (Collection $group, string $key): bool => ! str_starts_with($key, 'skip:') && $group->count() > 1)
             ->flatMap(function (Collection $group): Collection {
                 $keep = $this->preferredBeneficiary($group);
@@ -174,6 +186,29 @@ class DuplicateFamilyMemberCleaner
                     ->values();
             })
             ->values();
+    }
+
+    private function nameAndBirthDateKey(Beneficiary $beneficiary): ?string
+    {
+        $name = $this->normalizedName($beneficiary->full_name);
+
+        if ($name === '' || $beneficiary->date_of_birth === null) {
+            return null;
+        }
+
+        return 'name:'.$name.':'.$beneficiary->date_of_birth->format('Y-m-d');
+    }
+
+    /**
+     * Ignore spelling variants that do not change the name: hamza forms of alef,
+     * ى/ي, ة/ه, diacritics and spaces.
+     */
+    private function normalizedName(?string $name): string
+    {
+        $name = strtr((string) $name, ['أ' => 'ا', 'إ' => 'ا', 'آ' => 'ا', 'ى' => 'ي', 'ة' => 'ه']);
+        $name = (string) preg_replace('/[\x{064B}-\x{0652}]/u', '', $name);
+
+        return (string) preg_replace('/\s+/u', '', $name);
     }
 
     private function identityKey(Beneficiary $beneficiary): ?string
