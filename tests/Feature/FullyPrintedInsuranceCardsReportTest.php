@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\BeneficiaryRelationship;
+use App\Enums\CardDeliveryRecipient;
 use App\Filament\Pages\FullyPrintedInsuranceCardsReport;
 use App\Models\Beneficiary;
 use App\Models\Employee;
@@ -110,6 +111,40 @@ it('exports fully printed families to excel', function () {
         ->and($sheet->getCell('B2')->getValue())->toBe('موظف للتصدير المطبوع')
         ->and($sheet->getCell('C2')->getValue())->toBe('طرابلس')
         ->and($sheet->getCell('E2')->getValue())->toBe('تمت الطباعه')
+        ->and($sheet->getCell('A3')->getValue())->toBeNull();
+
+    @unlink($temp);
+});
+
+it('exports only fully printed families that were not delivered yet', function () {
+    $admin = User::factory()->hr()->create();
+
+    $waiting = MedicalRegistration::factory()->submitted()->create();
+    $waiting->employee->update(['full_name' => 'مطبوع ينتظر التسليم', 'employee_number' => '001433']);
+    $waiting->employee->markCardPrinted();
+
+    $delivered = MedicalRegistration::factory()->submitted()->create();
+    $delivered->employee->update(['full_name' => 'مطبوع وتم تسليمه']);
+    $delivered->employee->markCardPrinted();
+    $delivered->employee->markCardsDelivered($admin, CardDeliveryRecipient::Administration);
+
+    $this->actingAs($admin);
+
+    $page = Livewire::test(FullyPrintedInsuranceCardsReport::class);
+    $page->callAction('exportNotDeliveredExcel')
+        ->assertFileDownloaded(FullyPrintedEmployeesExport::NOT_DELIVERED_FILENAME);
+
+    ob_start();
+    $page->instance()->exportNotDeliveredExcel()->sendContent();
+    $temp = tempnam(sys_get_temp_dir(), 'not-delivered-');
+    file_put_contents($temp, ob_get_clean());
+
+    $sheet = IOFactory::load($temp)->getActiveSheet();
+
+    expect($sheet->getCell('A1')->getValue())->toBe('الرقم الوظيفي')
+        ->and($sheet->getCell('A2')->getValue())->toBe('001433')
+        ->and($sheet->getCell('B2')->getValue())->toBe('مطبوع ينتظر التسليم')
+        ->and($sheet->getCell('E2')->getValue())->toBe('مطبوعة ولم تُسلَّم')
         ->and($sheet->getCell('A3')->getValue())->toBeNull();
 
     @unlink($temp);

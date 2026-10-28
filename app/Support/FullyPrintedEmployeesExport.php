@@ -18,6 +18,10 @@ class FullyPrintedEmployeesExport
 
     public const FILENAME = 'العائلات-المطبوعة-بالكامل.xlsx';
 
+    public const NOT_DELIVERED_STATUS = 'مطبوعة ولم تُسلَّم';
+
+    public const NOT_DELIVERED_FILENAME = 'العائلات-المطبوعة-غير-المسلمة.xlsx';
+
     /**
      * @return list<string>
      */
@@ -32,7 +36,7 @@ class FullyPrintedEmployeesExport
      *                                                                       (e.g. to mark the families as delivered).
      * @return list<array{employee_number: string, name: string, workplace: string, office: string, status: string}>
      */
-    public static function rows(Builder|Collection|null $employees = null): array
+    public static function rows(Builder|Collection|null $employees = null, string $status = self::STATUS): array
     {
         return self::employees($employees)
             ->map(fn (Employee $employee): array => [
@@ -40,13 +44,13 @@ class FullyPrintedEmployeesExport
                 'name' => $employee->full_name ?: '—',
                 'workplace' => $employee->workplaceLabel() ?? '—',
                 'office' => $employee->officeLabel() ?? '—',
-                'status' => self::STATUS,
+                'status' => $status,
             ])
             ->values()
             ->all();
     }
 
-    public static function binary(Builder|Collection|null $employees = null): string
+    public static function binary(Builder|Collection|null $employees = null, string $status = self::STATUS): string
     {
         $spreadsheet = new Spreadsheet;
         $spreadsheet->getDefaultStyle()->getFont()->setName('Tahoma')->setSize(11);
@@ -68,7 +72,7 @@ class FullyPrintedEmployeesExport
 
         $rowNumber = 2;
 
-        foreach (self::rows($employees) as $row) {
+        foreach (self::rows($employees, $status) as $row) {
             $sheet->setCellValueExplicit('A'.$rowNumber, $row['employee_number'], DataType::TYPE_STRING);
             $sheet->setCellValueExplicit('B'.$rowNumber, $row['name'], DataType::TYPE_STRING);
             $sheet->setCellValueExplicit('C'.$rowNumber, $row['workplace'], DataType::TYPE_STRING);
@@ -95,15 +99,18 @@ class FullyPrintedEmployeesExport
         return (string) ob_get_clean();
     }
 
-    public static function download(Builder|Collection|null $employees = null): StreamedResponse
-    {
-        $binary = self::binary($employees);
+    public static function download(
+        Builder|Collection|null $employees = null,
+        string $status = self::STATUS,
+        string $filename = self::FILENAME,
+    ): StreamedResponse {
+        $binary = self::binary($employees, $status);
 
         return response()->streamDownload(
             function () use ($binary): void {
                 echo $binary;
             },
-            self::FILENAME,
+            $filename,
             [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             ],

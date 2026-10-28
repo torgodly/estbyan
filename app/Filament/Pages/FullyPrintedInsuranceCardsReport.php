@@ -59,7 +59,28 @@ class FullyPrintedInsuranceCardsReport extends Page implements HasTable
                 ->icon(Heroicon::OutlinedArrowDownTray)
                 ->color('success')
                 ->action(fn (): StreamedResponse => $this->exportExcel()),
+            Action::make('exportNotDeliveredExcel')
+                ->label('تصدير غير المسلَّم')
+                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->color('warning')
+                ->action(fn (): StreamedResponse => $this->exportNotDeliveredExcel()),
         ];
+    }
+
+    /**
+     * Fully printed families whose cards were not delivered yet (respects the table filters).
+     */
+    public function exportNotDeliveredExcel(): StreamedResponse
+    {
+        abort_unless(static::canAccess(), 403);
+
+        $query = $this->getFilteredSortedTableQuery() ?? Employee::query()->cardsFullyPrinted();
+
+        return FullyPrintedEmployeesExport::download(
+            $query->whereNull('cards_delivered_at'),
+            FullyPrintedEmployeesExport::NOT_DELIVERED_STATUS,
+            FullyPrintedEmployeesExport::NOT_DELIVERED_FILENAME,
+        );
     }
 
     public function exportExcel(): StreamedResponse
