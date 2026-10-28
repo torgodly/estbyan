@@ -32,7 +32,7 @@ class InsuranceCardScanService
             return $this->hitFromEmployee($employee, $digits);
         }
 
-        $beneficiary = Beneficiary::query()
+        $beneficiary = Beneficiary::queryWithCancelled()
             ->with('medicalRegistration.employee')
             ->where('card_number', $digits)
             ->orderByDesc('id')
@@ -208,6 +208,7 @@ class InsuranceCardScanService
             roleLabel: $beneficiary->relationship?->label($registration->gender) ?: 'مستفيد',
             personKey: 'beneficiary-'.$beneficiary->id,
             isPrinted: $beneficiary->cardIsPrinted(),
+            cancellationReason: $beneficiary->isCancelled() ? $beneficiary->cancellation_reason : null,
         );
     }
 

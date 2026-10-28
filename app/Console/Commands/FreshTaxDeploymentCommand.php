@@ -38,7 +38,7 @@ class FreshTaxDeploymentCommand extends Command
                     $registration->delete();
                 });
 
-            Beneficiary::query()->delete();
+            Beneficiary::queryWithCancelled()->delete();
             Employee::query()->delete();
         });
 

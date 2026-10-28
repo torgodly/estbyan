@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\BeneficiaryCancellationReason;
 use App\Enums\RegistrationStatus;
 use App\Models\Beneficiary;
 use App\Models\Employee;
@@ -10,31 +11,41 @@ use App\Support\RegistrationDocuments;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Employees registered as someone else's family member are cancelled, not deleted,
+ * so their already printed cards are recognised and held back when scanned.
+ * Other duplicate family members are deleted.
+ *
+ * @see docs/cancelled-family-members.md
+ */
 class DuplicateFamilyMemberCleaner
 {
     /**
+     * @param  list<int>  $exceptIds  Beneficiary IDs to leave untouched (e.g. pending manual review).
      * @return array{
      *     employee_as_beneficiary: int,
      *     duplicate_beneficiaries: int,
      *     registrations_updated: int,
-     *     deleted: list<array{id: int, name: string, national_id: ?string, passport_number: ?string, reason: string, registration_id: ?int, employee_id: ?int}>
+     *     records: list<array{id: int, name: string, national_id: ?string, passport_number: ?string, reason: string, printed: bool, registration_id: ?int, employee_id: ?int}>
      * }
      */
-    public function cleanup(bool $dryRun = false): array
+    public function cleanup(bool $dryRun = false, array $exceptIds = []): array
     {
         $employeeNationalIds = $this->employeeNationalIds();
 
-        $employeeAsBeneficiary = $this->beneficiariesMatchingEmployees($employeeNationalIds);
-        $duplicates = $this->duplicateBeneficiariesToDelete($employeeAsBeneficiary->modelKeys());
+        $employeeAsBeneficiary = $this->beneficiariesMatchingEmployees($employeeNationalIds)
+            ->reject(fn (Beneficiary $beneficiary): bool => in_array($beneficiary->id, $exceptIds, true))
+            ->values();
+        $duplicates = $this->duplicateBeneficiariesToDelete([...$employeeAsBeneficiary->modelKeys(), ...$exceptIds]);
 
         $employeeAsBeneficiaryIds = array_flip($employeeAsBeneficiary->modelKeys());
 
-        $toDelete = $employeeAsBeneficiary
+        $affected = $employeeAsBeneficiary
             ->concat($duplicates)
             ->unique('id')
             ->values();
 
-        $deleted = $toDelete->map(function (Beneficiary $beneficiary) use ($employeeAsBeneficiaryIds): array {
+        $records = $affected->map(function (Beneficiary $beneficiary) use ($employeeAsBeneficiaryIds): array {
             return [
                 'id' => $beneficiary->id,
                 'name' => $beneficiary->full_name ?: '—',
@@ -43,29 +54,34 @@ class DuplicateFamilyMemberCleaner
                 'reason' => array_key_exists($beneficiary->id, $employeeAsBeneficiaryIds)
                     ? 'employee_as_beneficiary'
                     : 'duplicate_beneficiary',
+                'printed' => $beneficiary->card_printed_at !== null,
                 'registration_id' => $beneficiary->medical_registration_id,
                 'employee_id' => $beneficiary->medicalRegistration?->employee_id,
             ];
         })->all();
 
-        if ($dryRun || $toDelete->isEmpty()) {
+        if ($dryRun || $affected->isEmpty()) {
             return [
                 'employee_as_beneficiary' => $employeeAsBeneficiary->count(),
                 'duplicate_beneficiaries' => $duplicates->count(),
                 'registrations_updated' => 0,
-                'deleted' => $deleted,
+                'records' => $records,
             ];
         }
 
-        $registrationIds = $toDelete
+        $registrationIds = $affected
             ->pluck('medical_registration_id')
             ->filter()
             ->unique()
             ->values()
             ->all();
 
-        DB::transaction(function () use ($toDelete): void {
-            foreach ($toDelete as $beneficiary) {
+        DB::transaction(function () use ($employeeAsBeneficiary, $duplicates): void {
+            foreach ($employeeAsBeneficiary as $beneficiary) {
+                $beneficiary->cancel(BeneficiaryCancellationReason::EmployeeDuplicate);
+            }
+
+            foreach ($duplicates as $beneficiary) {
                 $this->deletePhoto($beneficiary);
                 $beneficiary->delete();
             }
@@ -85,7 +101,7 @@ class DuplicateFamilyMemberCleaner
             'employee_as_beneficiary' => $employeeAsBeneficiary->count(),
             'duplicate_beneficiaries' => $duplicates->count(),
             'registrations_updated' => $registrationsUpdated,
-            'deleted' => $deleted,
+            'records' => $records,
         ];
     }
 

@@ -100,6 +100,12 @@ class ScanInsuranceCards extends Page
             return;
         }
 
+        if ($hit->isCancelled()) {
+            $hit->sendCancelledNotification();
+
+            return;
+        }
+
         $existingIndex = collect($this->scanned)->search(
             fn (array $item): bool => $item['card_number'] === $hit->cardNumber,
         );

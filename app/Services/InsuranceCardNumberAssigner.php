@@ -150,7 +150,7 @@ class InsuranceCardNumberAssigner
             $beneficiary->date_of_birth,
         );
 
-        return Beneficiary::query()
+        return Beneficiary::queryWithCancelled()
             ->where('card_number', $number)
             ->when($beneficiary->exists, fn ($query) => $query->whereKeyNot($beneficiary->id))
             ->get()
@@ -167,7 +167,7 @@ class InsuranceCardNumberAssigner
     private function cardNumberTaken(string $number): bool
     {
         return Employee::query()->where('card_number', $number)->exists()
-            || Beneficiary::query()->where('card_number', $number)->exists();
+            || Beneficiary::queryWithCancelled()->where('card_number', $number)->exists();
     }
 
     private function employeeFor(Beneficiary $beneficiary): ?Employee

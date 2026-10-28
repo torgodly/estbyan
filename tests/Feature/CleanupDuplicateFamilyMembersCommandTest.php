@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\BeneficiaryCancellationReason;
 use App\Enums\BeneficiaryRelationship;
 use App\Enums\Gender;
 use App\Models\Beneficiary;
@@ -7,7 +8,7 @@ use App\Models\MedicalRegistration;
 use App\Support\LibyanNationalId;
 use Illuminate\Support\Facades\Storage;
 
-it('removes family members who are already employees', function () {
+it('cancels family members who are already employees instead of deleting them', function () {
     $husband = MedicalRegistration::factory()->approved()->create([
         'full_name' => 'أحمد الزوج',
         'gender' => Gender::Male,
@@ -33,11 +34,17 @@ it('removes family members who are already employees', function () {
     ]);
 
     $this->artisan('beneficiaries:cleanup-duplicates', ['--force' => true])
-        ->expectsOutputToContain('Deleted 2 employee-as-family record(s) and 0 duplicate family record(s).')
+        ->expectsOutputToContain('Cancelled 2 employee-as-family record(s) and deleted 0 duplicate family record(s).')
         ->assertSuccessful();
+
+    $wifeAsFamily = Beneficiary::queryWithCancelled()->find($wifeAsFamily->id);
+    $husbandAsFamily = Beneficiary::queryWithCancelled()->find($husbandAsFamily->id);
 
     expect(Beneficiary::query()->find($wifeAsFamily->id))->toBeNull()
         ->and(Beneficiary::query()->find($husbandAsFamily->id))->toBeNull()
+        ->and($wifeAsFamily->isCancelled())->toBeTrue()
+        ->and($wifeAsFamily->cancellation_reason)->toBe(BeneficiaryCancellationReason::EmployeeDuplicate)
+        ->and($husbandAsFamily->isCancelled())->toBeTrue()
         ->and($husband->employee->fresh())->not->toBeNull()
         ->and($wife->employee->fresh())->not->toBeNull()
         ->and($husband->fresh()->beneficiaries_count)->toBe(0)
@@ -71,7 +78,7 @@ it('keeps only one family record when the same person was added under multiple e
     ]);
 
     $this->artisan('beneficiaries:cleanup-duplicates', ['--force' => true])
-        ->expectsOutputToContain('Deleted 0 employee-as-family record(s) and 1 duplicate family record(s).')
+        ->expectsOutputToContain('Cancelled 0 employee-as-family record(s) and deleted 1 duplicate family record(s).')
         ->assertSuccessful();
 
     expect(Beneficiary::query()->find($keep->id))->not->toBeNull()
@@ -115,9 +122,27 @@ it('supports dry-run without deleting records', function () {
     ]);
 
     $this->artisan('beneficiaries:cleanup-duplicates', ['--dry-run' => true])
-        ->expectsOutputToContain('Would delete 1 employee-as-family record(s) and 0 duplicate family record(s).')
+        ->expectsOutputToContain('Would cancel 1 employee-as-family record(s) and would delete 0 duplicate family record(s).')
         ->assertSuccessful();
 
     expect(Beneficiary::query()->find($family->id))->not->toBeNull()
         ->and(Storage::disk('local')->exists($path))->toBeTrue();
+});
+
+it('leaves beneficiaries passed with --except untouched', function () {
+    $employeeRegistration = MedicalRegistration::factory()->approved()->create();
+    $otherRegistration = MedicalRegistration::factory()->approved()->create([
+        'beneficiaries_count' => 2,
+    ]);
+
+    $skipped = Beneficiary::factory()->create([
+        'medical_registration_id' => $otherRegistration->id,
+        'national_id' => $employeeRegistration->employee->national_id,
+    ]);
+
+    $this->artisan('beneficiaries:cleanup-duplicates', ['--force' => true, '--except' => [(string) $skipped->id]])
+        ->expectsOutputToContain('No duplicate family members found.')
+        ->assertSuccessful();
+
+    expect(Beneficiary::query()->find($skipped->id))->not->toBeNull();
 });

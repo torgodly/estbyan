@@ -7,8 +7,8 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('beneficiaries:cleanup-duplicates {--dry-run : Show what would be deleted without changing data} {--force : Skip the confirmation prompt}')]
-#[Description('Remove family members who are already employees, and keep only one record when the same person was added under multiple employees')]
+#[Signature('beneficiaries:cleanup-duplicates {--dry-run : Show what would change without changing data} {--except=* : Beneficiary IDs to leave untouched} {--force : Skip the confirmation prompt}')]
+#[Description('Cancel family members who are already employees, and keep only one record when the same person was added under multiple employees')]
 class CleanupDuplicateFamilyMembersCommand extends Command
 {
     public function handle(DuplicateFamilyMemberCleaner $cleaner): int
@@ -18,37 +18,46 @@ class CleanupDuplicateFamilyMembersCommand extends Command
         if (
             ! $dryRun
             && ! $this->option('force')
-            && ! $this->confirm('Delete duplicate family member records?', false)
+            && ! $this->confirm('Cancel/delete duplicate family member records?', false)
         ) {
             $this->components->warn('Cancelled.');
 
             return self::SUCCESS;
         }
 
-        $result = $cleaner->cleanup(dryRun: $dryRun);
+        $exceptIds = collect($this->option('except'))
+            ->flatMap(fn (string $value): array => explode(',', $value))
+            ->map(fn (string $id): int => (int) trim($id))
+            ->filter()
+            ->values()
+            ->all();
 
-        if ($result['deleted'] === []) {
+        $result = $cleaner->cleanup(dryRun: $dryRun, exceptIds: $exceptIds);
+
+        if ($result['records'] === []) {
             $this->components->info('No duplicate family members found.');
 
             return self::SUCCESS;
         }
 
         $this->table(
-            ['ID', 'Name', 'National ID', 'Reason', 'Registration', 'Employee'],
-            collect($result['deleted'])->map(fn (array $row): array => [
+            ['ID', 'Name', 'National ID', 'Reason', 'Printed', 'Registration', 'Employee'],
+            collect($result['records'])->map(fn (array $row): array => [
                 $row['id'],
                 $row['name'],
                 $row['national_id'] ?? $row['passport_number'] ?? '—',
                 $row['reason'],
+                $row['printed'] ? 'yes' : 'no',
                 $row['registration_id'] ?? '—',
                 $row['employee_id'] ?? '—',
             ])->all(),
         );
 
         $this->components->info(sprintf(
-            '%s %d employee-as-family record(s) and %d duplicate family record(s).',
-            $dryRun ? 'Would delete' : 'Deleted',
+            '%s %d employee-as-family record(s) and %s %d duplicate family record(s).',
+            $dryRun ? 'Would cancel' : 'Cancelled',
             $result['employee_as_beneficiary'],
+            $dryRun ? 'would delete' : 'deleted',
             $result['duplicate_beneficiaries'],
         ));
 

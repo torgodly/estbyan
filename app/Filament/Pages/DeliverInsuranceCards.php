@@ -130,6 +130,12 @@ class DeliverInsuranceCards extends Page
             return;
         }
 
+        if ($hit->isCancelled()) {
+            $hit->sendCancelledNotification();
+
+            return;
+        }
+
         $activeEmployeeId = $this->activeEmployeeId();
 
         if ($activeEmployeeId !== null && $hit->employeeId !== $activeEmployeeId) {

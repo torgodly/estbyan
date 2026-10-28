@@ -1,3 +1,7 @@
+# Project notes
+
+- Family members (`beneficiaries`) can be **cancelled**, not deleted. Cancelled records are hidden by a global scope. Read `docs/cancelled-family-members.md` before changing beneficiaries, card scanning, card numbers or delivery.
+
 <laravel-boost-guidelines>
 === foundation rules ===
 

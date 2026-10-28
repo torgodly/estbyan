@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\BeneficiaryCancellationReason;
 use App\Enums\BeneficiaryRelationship;
 use App\Enums\BloodType;
 use App\Models\Concerns\HasInsuranceCardPrint;
@@ -24,6 +25,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'passport_number',
     'card_number',
     'card_printed_at',
+    'cancelled_at',
+    'cancellation_reason',
     'date_of_birth',
     'blood_type',
     'has_chronic_condition',
@@ -43,6 +46,8 @@ class Beneficiary extends Model
 
     use HasInsuranceCardPrint;
 
+    public const ACTIVE_SCOPE = 'active';
+
     protected $attributes = [
         'is_libyan' => true,
     ];
@@ -52,6 +57,8 @@ class Beneficiary extends Model
         return [
             'date_of_birth' => 'date',
             'card_printed_at' => 'datetime',
+            'cancelled_at' => 'datetime',
+            'cancellation_reason' => BeneficiaryCancellationReason::class,
             'relationship' => BeneficiaryRelationship::class,
             'blood_type' => BloodType::class,
             'is_libyan' => 'boolean',
@@ -69,6 +76,31 @@ class Beneficiary extends Model
     public function medicalRegistration(): BelongsTo
     {
         return $this->belongsTo(MedicalRegistration::class);
+    }
+
+    /**
+     * Cancelled family members are hidden from every normal query by the
+     * "active" global scope. Use this when cancelled cards must still be
+     * found, e.g. card scanning and card number uniqueness checks.
+     *
+     * @return Builder<Beneficiary>
+     */
+    public static function queryWithCancelled(): Builder
+    {
+        return static::query()->withoutGlobalScope(self::ACTIVE_SCOPE);
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->cancelled_at !== null;
+    }
+
+    public function cancel(BeneficiaryCancellationReason $reason): void
+    {
+        $this->forceFill([
+            'cancelled_at' => now(),
+            'cancellation_reason' => $reason,
+        ])->saveQuietly();
     }
 
     public function nationalityLabel(): ?string
@@ -116,6 +148,11 @@ class Beneficiary extends Model
 
     protected static function booted(): void
     {
+        static::addGlobalScope(
+            self::ACTIVE_SCOPE,
+            fn (Builder $query) => $query->whereNull($query->qualifyColumn('cancelled_at')),
+        );
+
         static::creating(function (Beneficiary $beneficiary): void {
             app(InsuranceCardNumberAssigner::class)->fillBeneficiary($beneficiary);
         });

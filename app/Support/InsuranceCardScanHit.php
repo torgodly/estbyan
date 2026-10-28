@@ -2,6 +2,9 @@
 
 namespace App\Support;
 
+use App\Enums\BeneficiaryCancellationReason;
+use Filament\Notifications\Notification;
+
 final readonly class InsuranceCardScanHit
 {
     /**
@@ -17,11 +20,30 @@ final readonly class InsuranceCardScanHit
         public string $roleLabel,
         public string $personKey,
         public bool $isPrinted,
+        public ?BeneficiaryCancellationReason $cancellationReason = null,
     ) {}
 
     public function cardLabel(): string
     {
         return InsuranceCardNumber::display($this->cardNumber);
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->cancellationReason !== null;
+    }
+
+    /**
+     * Warn the operator that a cancelled card was scanned and must be kept, not handed over or reprinted.
+     */
+    public function sendCancelledNotification(): void
+    {
+        Notification::make()
+            ->title('بطاقة ملغاة: '.$this->name)
+            ->body($this->cancellationReason?->scanWarning())
+            ->danger()
+            ->persistent()
+            ->send();
     }
 
     /**
