@@ -84,6 +84,34 @@ Reasons (`App\Enums\ReviewFlagReason`):
 
 "One typo apart" = one digit different, or two neighbouring digits swapped.
 
+## Marking families delivered from an Excel list
+
+The fully printed report's Excel has a `الرقم الوظيفي` column (unique in `employees`). When the
+administration sends that sheet back (or any sheet with that column), mark those families delivered:
+
+```bash
+php artisan cards:deliver-from-list tafeel-2026-10.xlsx
+```
+
+- The file is a path, or just a name inside `database/data/delivery-lists/`.
+- It always shows the full preview first, then asks who is recording the delivery and asks for
+  confirmation. Nothing changes if you answer no. `--dry-run` only shows the preview.
+- Cards are recorded as delivered to the administration; use `--to=employee` if they were handed to
+  the employees. `--by=<email>` skips the user question.
+
+Safety rules (`App\Services\DeliveryListProcessor`):
+
+- Match only on the exact employee number. `1433` never matches `001433`; the output says the
+  leading zeros were probably lost in Excel.
+- If the sheet also has `الاسم`, the name must match the employee (spelling variants ignored).
+- A sheet with **only** `الاسم` (e.g. `database/data/delivery-lists/tafeel-2026-10.xlsx`) is accepted, but a name is used only when it
+  matches exactly one employee (notes after `/` dropped, spelling variants ignored). Typos and names
+  shared by two employees are listed as uncertain and never marked; fix them by hand.
+- Not marked: registration not approved, any unprinted card (cancelled family members ignored),
+  or the employee / a family member has an open manual review flag.
+- Already delivered families are left as they are. Repeated numbers count once.
+- Shows the full preview and asks for confirmation before changing anything.
+
 ## Accepted employees API
 
 `GET /api/accepted-employees` (header `X-Api-Key: <ACCEPTED_REGISTRATIONS_API_KEY>`) returns approved
