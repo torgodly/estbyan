@@ -84,6 +84,18 @@ Reasons (`App\Enums\ReviewFlagReason`):
 
 "One typo apart" = one digit different, or two neighbouring digits swapped.
 
+## Accepted employees API
+
+`GET /api/accepted-employees` (header `X-Api-Key: <ACCEPTED_REGISTRATIONS_API_KEY>`) returns approved
+employees whose cards were delivered, with their family members, in the same format as the
+estbyan-audit project. Differences in this project:
+
+- Cancelled family members are never returned (global scope), and their photo URL returns 404.
+  `beneficiaries_count` is the number of family members actually returned.
+- `office` (employee's office) is included.
+- `needs_review` is `true` on the employee or a family member who has an open review flag.
+  The importer should not treat these people as confirmed until the flag is closed.
+
 ## Running it on production
 
 ```bash

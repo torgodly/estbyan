@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'accepted_registrations' => [
+        'key' => env('ACCEPTED_REGISTRATIONS_API_KEY'),
+    ],
+
 ];
