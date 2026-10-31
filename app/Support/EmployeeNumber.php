@@ -45,7 +45,7 @@ class EmployeeNumber
 
     public static function isTaken(string $number): bool
     {
-        return Employee::query()
+        return Employee::withTrashed()
             ->where(function ($query) use ($number): void {
                 $query->where('employee_number', $number);
 
@@ -60,7 +60,7 @@ class EmployeeNumber
     {
         $max = 0;
 
-        foreach (Employee::query()->pluck('employee_number') as $number) {
+        foreach (Employee::withTrashed()->pluck('employee_number') as $number) {
             if (! is_string($number) || ! ctype_digit($number) || strlen($number) !== 6) {
                 continue;
             }

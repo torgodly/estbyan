@@ -26,6 +26,38 @@ class DualWriteObserver
             return;
         }
 
+        if ($this->wasSoftDeleted($model)) {
+            $this->mirrorUpsert($model);
+
+            return;
+        }
+
+        $this->mirrorHardDelete($model);
+    }
+
+    public function forceDeleted(Model $model): void
+    {
+        if (! DualWrite::enabled()) {
+            return;
+        }
+
+        $this->mirrorHardDelete($model);
+    }
+
+    public function restored(Model $model): void
+    {
+        $this->mirrorUpsert($model);
+    }
+
+    private function wasSoftDeleted(Model $model): bool
+    {
+        return method_exists($model, 'isForceDeleting')
+            && method_exists($model, 'getDeletedAtColumn')
+            && ! $model->isForceDeleting();
+    }
+
+    private function mirrorHardDelete(Model $model): void
+    {
         $this->safe(function () use ($model): void {
             DB::connection(DualWrite::targetConnection())
                 ->table($model->getTable())

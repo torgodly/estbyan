@@ -29,17 +29,17 @@ class FreshTaxDeploymentCommand extends Command
         $employeeCount = Employee::query()->count();
 
         DB::transaction(function (): void {
-            MedicalRegistration::query()
-                ->with('beneficiaries')
+            MedicalRegistration::withTrashed()
+                ->with(['beneficiaries' => fn ($query) => $query->withTrashed()])
                 ->orderBy('id')
                 ->each(function (MedicalRegistration $registration): void {
                     $this->deleteRegistrationDocuments($registration);
-                    $registration->beneficiaries()->delete();
-                    $registration->delete();
+                    $registration->beneficiaries()->withTrashed()->get()->each->forceDelete();
+                    $registration->forceDelete();
                 });
 
-            Beneficiary::queryWithCancelled()->delete();
-            Employee::query()->delete();
+            Beneficiary::queryWithCancelled()->withTrashed()->get()->each->forceDelete();
+            Employee::withTrashed()->get()->each->forceDelete();
         });
 
         if (RegistrationDocuments::disk()->exists('registrations')) {

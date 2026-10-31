@@ -166,8 +166,8 @@ class InsuranceCardNumberAssigner
 
     private function cardNumberTaken(string $number): bool
     {
-        return Employee::query()->where('card_number', $number)->exists()
-            || Beneficiary::queryWithCancelled()->where('card_number', $number)->exists();
+        return Employee::withTrashed()->where('card_number', $number)->exists()
+            || Beneficiary::queryWithCancelled()->withTrashed()->where('card_number', $number)->exists();
     }
 
     private function employeeFor(Beneficiary $beneficiary): ?Employee

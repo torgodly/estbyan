@@ -49,13 +49,15 @@ class PurgeTestEmployeesCommand extends Command
         DB::transaction(function () use ($registrations, $employees, &$deletedFiles): void {
             foreach ($registrations as $registration) {
                 $deletedFiles += $this->deleteRegistrationDocuments($registration);
-                $registration->beneficiaries()->delete();
-                $registration->delete();
+                $registration->beneficiaries()->withTrashed()->get()->each->forceDelete();
+                $registration->forceDelete();
             }
 
-            Employee::query()
+            Employee::withTrashed()
                 ->whereKey($employees->modelKeys())
-                ->delete();
+                ->get()
+                ->each
+                ->forceDelete();
         });
 
         $this->info(sprintf(

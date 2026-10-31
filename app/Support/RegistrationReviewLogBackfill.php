@@ -15,14 +15,26 @@ class RegistrationReviewLogBackfill
     {
         $created = 0;
 
-        MedicalRegistration::query()
+        // Avoid SoftDeletes scopes: this runs during migrate before deleted_at exists.
+        MedicalRegistration::withoutGlobalScopes()
             ->whereIn('status', [
                 RegistrationStatus::Approved,
                 RegistrationStatus::Declined,
             ])
             ->whereNotNull('reviewed_by')
-            ->whereHas('reviewer')
-            ->whereDoesntHave('reviewLogs')
+            ->whereExists(function ($query): void {
+                $query->selectRaw('1')
+                    ->from('users')
+                    ->whereColumn('users.id', 'medical_registrations.reviewed_by');
+            })
+            ->whereNotExists(function ($query): void {
+                $query->selectRaw('1')
+                    ->from('registration_review_logs')
+                    ->whereColumn(
+                        'registration_review_logs.medical_registration_id',
+                        'medical_registrations.id',
+                    );
+            })
             ->orderBy('id')
             ->each(function (MedicalRegistration $registration) use (&$created): void {
                 $at = $registration->reviewed_at ?? $registration->updated_at ?? now();
@@ -35,7 +47,7 @@ class RegistrationReviewLogBackfill
                 ]);
                 $log->created_at = $at;
                 $log->updated_at = $at;
-                $log->save();
+                $log->saveQuietly();
 
                 $created++;
             });

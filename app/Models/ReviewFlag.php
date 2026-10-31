@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * A person (employee or family member) the system is not sure about and a human must check.
@@ -24,7 +25,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class ReviewFlag extends Model
 {
     /** @use HasFactory<ReviewFlagFactory> */
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected function casts(): array
     {

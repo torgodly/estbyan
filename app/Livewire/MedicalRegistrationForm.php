@@ -1162,7 +1162,7 @@ class MedicalRegistrationForm extends Component
 
         $preservedCardState = $this->preservedBeneficiaryCardState($registration);
 
-        $registration->beneficiaries()->delete();
+        $registration->beneficiaries()->withTrashed()->get()->each->forceDelete();
 
         foreach ($this->beneficiaries as $beneficiary) {
             $identityKey = InsuranceCardNumber::identityKey(

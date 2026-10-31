@@ -86,6 +86,13 @@ it('mirrors eloquent writes to the cutover target while dual-write is enabled', 
 
     $registration->delete();
 
-    expect(DB::connection('dual_target')->table('medical_registrations')->where('id', $registration->id)->exists())->toBeFalse()
+    expect(DB::connection('dual_target')->table('medical_registrations')->where('id', $registration->id)->value('deleted_at'))
+        ->not->toBeNull()
+        ->and(MedicalRegistration::query()->whereKey($registration->id)->exists())->toBeFalse()
+        ->and(MedicalRegistration::withTrashed()->whereKey($registration->id)->exists())->toBeTrue()
         ->and(Schema::connection('dual_target')->hasTable('employees'))->toBeTrue();
+
+    $registration->forceDelete();
+
+    expect(DB::connection('dual_target')->table('medical_registrations')->where('id', $registration->id)->exists())->toBeFalse();
 });
