@@ -189,3 +189,66 @@ it('finds a request by family member name', function () {
         ->assertCanSeeTableRecords([$familyMatch])
         ->assertCanNotSeeTableRecords([$other]);
 });
+
+it('finds a request by phone or whatsapp number', function () {
+    $admin = User::factory()->create();
+
+    $phoneMatch = MedicalRegistration::factory()->submitted()->create([
+        'phone' => '0912345678',
+        'whatsapp' => '0921111111',
+    ]);
+    $whatsappMatch = MedicalRegistration::factory()->submitted()->create([
+        'phone' => '0944444444',
+        'whatsapp' => '0918765432',
+    ]);
+    $other = MedicalRegistration::factory()->submitted()->create([
+        'phone' => '0955555555',
+        'whatsapp' => '0966666666',
+    ]);
+
+    $this->actingAs($admin);
+
+    Livewire::test(ListMedicalRegistrations::class)
+        ->set('activeTab', 'all')
+        ->searchTable('0912345678')
+        ->assertCanSeeTableRecords([$phoneMatch])
+        ->assertCanNotSeeTableRecords([$whatsappMatch, $other])
+        ->searchTable('091-876-5432')
+        ->assertCanSeeTableRecords([$whatsappMatch])
+        ->assertCanNotSeeTableRecords([$phoneMatch, $other]);
+});
+
+it('finds a request by employee or family member card number', function () {
+    $admin = User::factory()->create();
+
+    $employeeMatch = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'موظف ببطاقة',
+    ]);
+    $employeeMatch->employee->forceFill(['card_number' => '23456789'])->saveQuietly();
+
+    $familyMatch = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'موظف لعائلة ببطاقة',
+    ]);
+    $familyMatch->employee->forceFill(['card_number' => '34567890'])->saveQuietly();
+    Beneficiary::factory()->create([
+        'medical_registration_id' => $familyMatch->id,
+        'full_name' => 'فرد العائلة',
+        'card_number' => '45678901',
+    ]);
+
+    $other = MedicalRegistration::factory()->submitted()->create([
+        'full_name' => 'موظف آخر ببطاقة',
+    ]);
+    $other->employee->forceFill(['card_number' => '56789012'])->saveQuietly();
+
+    $this->actingAs($admin);
+
+    Livewire::test(ListMedicalRegistrations::class)
+        ->set('activeTab', 'all')
+        ->searchTable('SC-23456789')
+        ->assertCanSeeTableRecords([$employeeMatch])
+        ->assertCanNotSeeTableRecords([$familyMatch, $other])
+        ->searchTable('45678901')
+        ->assertCanSeeTableRecords([$familyMatch])
+        ->assertCanNotSeeTableRecords([$employeeMatch, $other]);
+});

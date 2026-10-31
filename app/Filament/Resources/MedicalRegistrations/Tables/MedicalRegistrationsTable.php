@@ -19,7 +19,7 @@ class MedicalRegistrationsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        return self::configureSearch($table)
             ->defaultSort('submitted_at', 'desc')
             ->columns(self::columns())
             ->filters([
@@ -62,7 +62,7 @@ class MedicalRegistrationsTable
 
     public static function configureReviewQueue(Table $table): Table
     {
-        return $table
+        return self::configureSearch($table)
             ->defaultSort('submitted_at', 'desc')
             ->columns(self::reviewQueueColumns())
             ->filters([
@@ -75,6 +75,16 @@ class MedicalRegistrationsTable
                     ->label('الملف'),
             ])
             ->toolbarActions([]);
+    }
+
+    public static function configureSearch(Table $table): Table
+    {
+        return $table
+            ->searchable()
+            ->searchPlaceholder('الاسم، الرقم الوطني، الهاتف، رقم البطاقة، رقم المرجع...')
+            ->searchUsing(function (Builder $query, string $search): void {
+                $query->matchingSearch($search);
+            });
     }
 
     public static function cityFilter(): SelectFilter
@@ -136,22 +146,23 @@ class MedicalRegistrationsTable
                 ->defaultImageUrl(url('/images/brand/tax-authority.png')),
             TextColumn::make('reference_number')
                 ->label('رقم المرجع')
-                ->searchable()
                 ->sortable()
                 ->placeholder('—')
                 ->copyable(),
             TextColumn::make('full_name')
                 ->label('الاسم')
-                ->searchable(query: fn (Builder $query, string $search): Builder => $query->matchingName($search))
                 ->sortable(),
             TextColumn::make('employee_number')
                 ->label('الرقم الوظيفي')
-                ->searchable()
                 ->sortable(),
             TextColumn::make('national_id')
                 ->label('الرقم الوطني')
-                ->searchable(query: fn (Builder $query, string $search): Builder => $query->matchingNationalId($search))
                 ->toggleable(isToggledHiddenByDefault: true)
+                ->copyable(),
+            TextColumn::make('phone')
+                ->label('الهاتف')
+                ->placeholder('—')
+                ->toggleable()
                 ->copyable(),
             TextColumn::make('workplace')
                 ->label('الإدارة')

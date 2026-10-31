@@ -6,6 +6,7 @@ use App\Enums\BloodType;
 use App\Enums\Gender;
 use App\Enums\MaritalStatus;
 use App\Enums\RegistrationStatus;
+use App\Support\InsuranceCardNumber;
 use App\Support\WorkplaceOptions;
 use Database\Factories\MedicalRegistrationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -145,6 +146,28 @@ class MedicalRegistration extends Model
      * @param  Builder<MedicalRegistration>  $query
      * @return Builder<MedicalRegistration>
      */
+    public function scopeMatchingSearch(Builder $query, string $search): Builder
+    {
+        $search = trim($search);
+
+        if ($search === '') {
+            return $query;
+        }
+
+        return $query->where(function (Builder $query) use ($search): void {
+            $query
+                ->where(fn (Builder $query): Builder => $query->matchingName($search))
+                ->orWhere(fn (Builder $query): Builder => $query->matchingNationalId($search))
+                ->orWhere(fn (Builder $query): Builder => $query->matchingPhone($search))
+                ->orWhere(fn (Builder $query): Builder => $query->matchingCardNumber($search))
+                ->orWhere(fn (Builder $query): Builder => $query->matchingReferenceOrEmployeeNumber($search));
+        });
+    }
+
+    /**
+     * @param  Builder<MedicalRegistration>  $query
+     * @return Builder<MedicalRegistration>
+     */
     public function scopeMatchingNationalId(Builder $query, string $search): Builder
     {
         $search = trim($search);
@@ -153,16 +176,31 @@ class MedicalRegistration extends Model
             return $query;
         }
 
+        $digits = preg_replace('/\D+/', '', $search) ?? '';
         $beneficiary = new Beneficiary;
 
-        return $query
-            ->where($query->qualifyColumn('national_id'), 'like', '%'.$search.'%')
-            ->orWhereIn(
-                $query->qualifyColumn('id'),
-                $beneficiary->newQuery()
-                    ->where($beneficiary->qualifyColumn('national_id'), 'like', '%'.$search.'%')
-                    ->select($beneficiary->qualifyColumn('medical_registration_id')),
-            );
+        return $query->where(function (Builder $query) use ($search, $digits, $beneficiary): void {
+            $nationalId = $query->qualifyColumn('national_id');
+
+            $query->where($nationalId, 'like', '%'.$search.'%')
+                ->orWhereIn(
+                    $query->qualifyColumn('id'),
+                    $beneficiary->newQuery()
+                        ->where(function (Builder $query) use ($search, $digits, $beneficiary): void {
+                            $query->where($beneficiary->qualifyColumn('national_id'), 'like', '%'.$search.'%')
+                                ->orWhere($beneficiary->qualifyColumn('passport_number'), 'like', '%'.$search.'%');
+
+                            if ($digits !== '' && $digits !== $search) {
+                                $query->orWhere($beneficiary->qualifyColumn('national_id'), 'like', '%'.$digits.'%');
+                            }
+                        })
+                        ->select($beneficiary->qualifyColumn('medical_registration_id')),
+                );
+
+            if ($digits !== '' && $digits !== $search) {
+                $query->orWhere($nationalId, 'like', '%'.$digits.'%');
+            }
+        });
     }
 
     /**
@@ -178,15 +216,131 @@ class MedicalRegistration extends Model
         }
 
         $beneficiary = new Beneficiary;
+        $employee = new Employee;
 
-        return $query
-            ->where($query->qualifyColumn('full_name'), 'like', '%'.$search.'%')
-            ->orWhereIn(
-                $query->qualifyColumn('id'),
-                $beneficiary->newQuery()
-                    ->where($beneficiary->qualifyColumn('full_name'), 'like', '%'.$search.'%')
-                    ->select($beneficiary->qualifyColumn('medical_registration_id')),
-            );
+        return $query->where(function (Builder $query) use ($search, $beneficiary, $employee): void {
+            $query
+                ->where($query->qualifyColumn('full_name'), 'like', '%'.$search.'%')
+                ->orWhereIn(
+                    $query->qualifyColumn('id'),
+                    $beneficiary->newQuery()
+                        ->where($beneficiary->qualifyColumn('full_name'), 'like', '%'.$search.'%')
+                        ->select($beneficiary->qualifyColumn('medical_registration_id')),
+                )
+                ->orWhereIn(
+                    $query->qualifyColumn('employee_id'),
+                    $employee->newQuery()
+                        ->where($employee->qualifyColumn('full_name'), 'like', '%'.$search.'%')
+                        ->select($employee->qualifyColumn('id')),
+                );
+        });
+    }
+
+    /**
+     * @param  Builder<MedicalRegistration>  $query
+     * @return Builder<MedicalRegistration>
+     */
+    public function scopeMatchingPhone(Builder $query, string $search): Builder
+    {
+        $search = trim($search);
+
+        if ($search === '') {
+            return $query;
+        }
+
+        $digits = preg_replace('/\D+/', '', $search) ?? '';
+
+        return $query->where(function (Builder $query) use ($search, $digits): void {
+            $phone = $query->qualifyColumn('phone');
+            $whatsapp = $query->qualifyColumn('whatsapp');
+
+            $query->where($phone, 'like', '%'.$search.'%')
+                ->orWhere($whatsapp, 'like', '%'.$search.'%');
+
+            if ($digits !== '' && $digits !== $search) {
+                $query->orWhere($phone, 'like', '%'.$digits.'%')
+                    ->orWhere($whatsapp, 'like', '%'.$digits.'%');
+            }
+        });
+    }
+
+    /**
+     * @param  Builder<MedicalRegistration>  $query
+     * @return Builder<MedicalRegistration>
+     */
+    public function scopeMatchingCardNumber(Builder $query, string $search): Builder
+    {
+        $search = trim($search);
+
+        if ($search === '') {
+            return $query;
+        }
+
+        $digits = preg_replace('/\D+/', '', $search) ?? '';
+        $normalized = InsuranceCardNumber::normalize($search);
+        $terms = array_values(array_unique(array_filter([
+            $search,
+            $normalized,
+            $digits !== '' ? $digits : null,
+        ], fn (?string $term): bool => filled($term))));
+
+        $beneficiary = new Beneficiary;
+        $employee = new Employee;
+
+        return $query->where(function (Builder $query) use ($terms, $beneficiary, $employee): void {
+            foreach ($terms as $term) {
+                $query
+                    ->orWhereIn(
+                        $query->qualifyColumn('employee_id'),
+                        $employee->newQuery()
+                            ->where($employee->qualifyColumn('card_number'), 'like', '%'.$term.'%')
+                            ->select($employee->qualifyColumn('id')),
+                    )
+                    ->orWhereIn(
+                        $query->qualifyColumn('id'),
+                        $beneficiary->newQuery()
+                            ->where($beneficiary->qualifyColumn('card_number'), 'like', '%'.$term.'%')
+                            ->select($beneficiary->qualifyColumn('medical_registration_id')),
+                    );
+            }
+        });
+    }
+
+    /**
+     * @param  Builder<MedicalRegistration>  $query
+     * @return Builder<MedicalRegistration>
+     */
+    public function scopeMatchingReferenceOrEmployeeNumber(Builder $query, string $search): Builder
+    {
+        $search = trim($search);
+
+        if ($search === '') {
+            return $query;
+        }
+
+        $digits = preg_replace('/\D+/', '', $search) ?? '';
+        $employee = new Employee;
+
+        return $query->where(function (Builder $query) use ($search, $digits, $employee): void {
+            $reference = $query->qualifyColumn('reference_number');
+            $employeeNumber = $query->qualifyColumn('employee_number');
+            $email = $query->qualifyColumn('email');
+
+            $query->where($reference, 'like', '%'.$search.'%')
+                ->orWhere($employeeNumber, 'like', '%'.$search.'%')
+                ->orWhere($email, 'like', '%'.$search.'%')
+                ->orWhereIn(
+                    $query->qualifyColumn('employee_id'),
+                    $employee->newQuery()
+                        ->where($employee->qualifyColumn('employee_number'), 'like', '%'.$search.'%')
+                        ->select($employee->qualifyColumn('id')),
+                );
+
+            if ($digits !== '' && $digits !== $search) {
+                $query->orWhere($reference, 'like', '%'.$digits.'%')
+                    ->orWhere($employeeNumber, 'like', '%'.$digits.'%');
+            }
+        });
     }
 
     /**
