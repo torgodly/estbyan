@@ -24,6 +24,19 @@ it('assigns the next reference from the highest sequence not the newest id', fun
     expect($next)->toBe('SC26-00011');
 });
 
+it('skips references still held by deleted registrations', function () {
+    MedicalRegistration::factory()->submitted()->create([
+        'reference_number' => 'SC'.now()->format('y').'-00010',
+    ]);
+    MedicalRegistration::factory()->submitted()->create([
+        'reference_number' => 'SC'.now()->format('y').'-00011',
+    ])->delete();
+
+    $next = DB::transaction(fn (): string => MedicalRegistration::generateReferenceNumber());
+
+    expect($next)->toBe('SC'.now()->format('y').'-00012');
+});
+
 it('submits without colliding when a lower reference exists on a newer row', function () {
     MedicalRegistration::factory()->submitted()->create([
         'reference_number' => 'SC26-00010',

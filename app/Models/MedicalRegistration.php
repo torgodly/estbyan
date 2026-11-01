@@ -437,7 +437,7 @@ class MedicalRegistration extends Model
     {
         $prefix = 'SC'.now()->format('y');
 
-        $lastReference = static::query()
+        $lastReference = static::withTrashed()
             ->whereNotNull('reference_number')
             ->where('reference_number', 'like', $prefix.'-%')
             ->lockForUpdate()

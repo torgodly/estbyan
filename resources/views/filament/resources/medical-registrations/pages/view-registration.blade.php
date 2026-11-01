@@ -170,6 +170,11 @@
                                     </button>
                                 @endif
                                 <span class="hr-chip">{{ $registration->beneficiaries->count() }} مستفيد</span>
+                                @if ($registration->employee)
+                                    <span @class(['hr-chip', 'hr-chip--approved' => $registration->employee->cardsAreDelivered(), 'hr-chip--draft' => ! $registration->employee->cardsAreDelivered()])>
+                                        {{ $registration->employee->cardsAreDelivered() ? 'تم التسليم' : 'لم تُسلَّم' }}
+                                    </span>
+                                @endif
                             </div>
 
                             <h2 class="hr-hero__name">{{ $registration->full_name ?: 'بدون اسم' }}</h2>
@@ -581,6 +586,22 @@
                                 <p class="mt-1 text-xs text-amber-800" dir="ltr">{{ $registration->submitted_at?->format('Y-m-d H:i') }}</p>
                             </div>
                         @endif
+                        <div class="hr-side-stat">
+                            <span class="hr-side-stat__label">تسليم البطاقات</span>
+                            @if ($registration->employee?->cardsAreDelivered())
+                                <div class="hr-side-stat__value">
+                                    تم التسليم إلى {{ $registration->employee->cards_delivered_to?->getLabel() ?? '—' }}
+                                </div>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    <span dir="ltr">{{ $registration->employee->cards_delivered_at?->timezone('Africa/Tripoli')->format('Y-m-d H:i') }}</span>
+                                    @if ($registration->employee->cardsDeliveredBy)
+                                        · بواسطة {{ $registration->employee->cardsDeliveredBy->name }}
+                                    @endif
+                                </p>
+                            @else
+                                <div class="hr-side-stat__value">لم تُسلَّم بعد</div>
+                            @endif
+                        </div>
                         <div class="hr-side-stat">
                             <span class="hr-side-stat__label">رقم المرجع</span>
                             <div class="hr-side-stat__value">{{ $registration->reference_number ?: '—' }}</div>
