@@ -6,6 +6,7 @@ use App\Enums\BloodType;
 use App\Enums\Gender;
 use App\Enums\MaritalStatus;
 use App\Enums\RegistrationStatus;
+use App\Rules\LibyanMobileNumber;
 use App\Support\RegistrationDocuments;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
@@ -73,8 +74,12 @@ class MedicalRegistrationForm
                             ->disabled()
                             ->dehydrated(false)
                             ->helperText('يُحسب تلقائياً من أفراد العائلة المسجلين'),
-                        TextInput::make('phone')->label('الهاتف')->tel(),
-                        TextInput::make('whatsapp')->label('واتساب')->tel(),
+                        TextInput::make('phone')->label('الهاتف')->tel()->placeholder('0910000000')
+                            ->dehydrateStateUsing(fn (?string $state): ?string => filled($state) ? LibyanMobileNumber::normalize($state) : null)
+                            ->rule(fn (): \Closure => fn (string $attribute, mixed $value, \Closure $fail) => (new LibyanMobileNumber)->validate($attribute, LibyanMobileNumber::normalize($value), $fail)),
+                        TextInput::make('whatsapp')->label('واتساب')->tel()->placeholder('0910000000')
+                            ->dehydrateStateUsing(fn (?string $state): ?string => filled($state) ? LibyanMobileNumber::normalize($state) : null)
+                            ->rule(fn (): \Closure => fn (string $attribute, mixed $value, \Closure $fail) => (new LibyanMobileNumber)->validate($attribute, LibyanMobileNumber::normalize($value), $fail)),
                         TextInput::make('email')->label('البريد')->email(),
                         Select::make('city')->label('المدينة')->options(config('registration.cities')),
                         TextInput::make('address')->label('العنوان')->columnSpanFull(),

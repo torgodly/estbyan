@@ -10,6 +10,7 @@ use App\Enums\RegistrationStatus;
 use App\Models\Beneficiary;
 use App\Models\Employee;
 use App\Models\MedicalRegistration;
+use App\Rules\LibyanMobileNumber;
 use App\Rules\LibyanNationalId;
 use App\Rules\UniqueBeneficiaryNationalId;
 use App\Support\InsuranceCardNumber;
@@ -187,6 +188,10 @@ class MedicalRegistrationForm extends Component
     {
         if ($this->isFormLocked()) {
             return;
+        }
+
+        if ($property === 'phone' || $property === 'whatsapp') {
+            $this->{$property} = LibyanMobileNumber::normalize($this->{$property});
         }
 
         if ($property === 'hasChronicConditions' && ! $this->hasChronicConditions) {
@@ -396,6 +401,8 @@ class MedicalRegistrationForm extends Component
         $this->gender = LibyanNationalIdSupport::isValid($this->nationalId)
             ? LibyanNationalIdSupport::gender($this->nationalId)->value
             : $this->gender;
+        $this->phone = LibyanMobileNumber::normalize($this->phone);
+        $this->whatsapp = LibyanMobileNumber::normalize($this->whatsapp);
 
         $this->validateRules([
             'dateOfBirth' => [
@@ -416,8 +423,8 @@ class MedicalRegistrationForm extends Component
             'gender' => ['required', Rule::in(array_map(fn (Gender $g) => $g->value, Gender::cases()))],
             'bloodType' => ['required', Rule::in(array_map(fn (BloodType $b) => $b->value, BloodType::cases()))],
             'maritalStatus' => ['required', Rule::in(array_map(fn (MaritalStatus $s) => $s->value, MaritalStatus::cases()))],
-            'phone' => ['required', 'string', 'min:9', 'max:15'],
-            'whatsapp' => ['nullable', 'string', 'max:15'],
+            'phone' => ['required', 'string', new LibyanMobileNumber],
+            'whatsapp' => ['nullable', 'string', new LibyanMobileNumber],
             'email' => ['nullable', 'email', 'max:255'],
             'city' => ['required', Rule::in(array_keys(config('registration.cities')))],
             'address' => ['required', 'string', 'max:500'],

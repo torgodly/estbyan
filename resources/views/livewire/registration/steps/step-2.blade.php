@@ -126,12 +126,13 @@
             <div class="reg-grid-2">
                 <div>
                     <label class="reg-label">رقم الهاتف <span class="reg-required">*</span></label>
-                    <input wire:model.blur="phone" type="tel" inputmode="tel" data-reg-field="phone" @class(['reg-input', 'reg-input-invalid' => $errors->has('phone')]) placeholder="09XXXXXXXX">
+                    <input wire:model.blur="phone" type="tel" inputmode="tel" maxlength="16" dir="ltr" data-reg-field="phone" @class(['reg-input', 'text-left', 'reg-input-invalid' => $errors->has('phone')]) placeholder="0910000000">
                     @error('phone') <p class="reg-field-error">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label class="reg-label">واتساب</label>
-                    <input wire:model.blur="whatsapp" type="tel" inputmode="tel" class="reg-input">
+                    <input wire:model.blur="whatsapp" type="tel" inputmode="tel" maxlength="16" dir="ltr" data-reg-field="whatsapp" @class(['reg-input', 'text-left', 'reg-input-invalid' => $errors->has('whatsapp')]) placeholder="0910000000">
+                    @error('whatsapp') <p class="reg-field-error">{{ $message }}</p> @enderror
                 </div>
             </div>
             <div>
