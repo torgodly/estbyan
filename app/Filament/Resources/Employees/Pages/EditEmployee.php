@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Employees\Pages;
 
+use App\Filament\Resources\Employees\Actions\DeleteEmployeeEntirelyAction;
 use App\Filament\Resources\Employees\EmployeeResource;
 use App\Support\EmployeeNumber;
 use Filament\Actions\ViewAction;
@@ -22,6 +23,7 @@ class EditEmployee extends EditRecord
         return [
             ViewAction::make()
                 ->label('الملف'),
+            DeleteEmployeeEntirelyAction::make(),
         ];
     }
 

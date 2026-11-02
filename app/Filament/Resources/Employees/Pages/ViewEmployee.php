@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Employees\Pages;
 
 use App\Enums\RegistrationStatus;
+use App\Filament\Resources\Employees\Actions\DeleteEmployeeEntirelyAction;
 use App\Filament\Resources\Employees\EmployeeResource;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
@@ -50,6 +51,7 @@ class ViewEmployee extends ViewRecord
         return [
             EditAction::make()
                 ->label('تعديل'),
+            DeleteEmployeeEntirelyAction::make(),
         ];
     }
 
