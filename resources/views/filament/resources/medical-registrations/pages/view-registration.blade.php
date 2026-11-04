@@ -434,6 +434,9 @@
                                                 <span>{{ $beneficiary->cardPrintedLabel() }}</span>
                                             </button>
                                         @endif
+                                        @if ($this->canDeleteFamilyMembers())
+                                            {{ ($this->deleteFamilyMemberAction)(['beneficiary' => $beneficiary->id]) }}
+                                        @endif
                                     </div>
 
                                     <div class="hr-kpis" style="margin-top: 0;">

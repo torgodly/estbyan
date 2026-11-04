@@ -7,6 +7,7 @@ use App\Filament\Resources\MedicalRegistrations\MedicalRegistrationResource;
 use App\Filament\Resources\PendingReviews\PendingReviewResource;
 use App\Models\Beneficiary;
 use App\Models\User;
+use App\Services\FamilyMemberDeleter;
 use App\Services\InsuranceCardPrintMarker;
 use App\Services\ReferenceCardGenerator;
 use App\Services\RegistrationReviewService;
@@ -16,6 +17,8 @@ use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Size;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -166,6 +169,58 @@ class ViewMedicalRegistration extends ViewRecord
                     );
                 }),
         ];
+    }
+
+    /**
+     * Support-only: permanently delete one family member with their photo.
+     * Rendered per family member in the view with `['beneficiary' => id]`.
+     */
+    public function deleteFamilyMemberAction(): Action
+    {
+        return Action::make('deleteFamilyMember')
+            ->label('حذف نهائي')
+            ->icon(Heroicon::OutlinedTrash)
+            ->color('danger')
+            ->size(Size::Small)
+            ->visible(fn (): bool => $this->canDeleteFamilyMembers())
+            ->requiresConfirmation()
+            ->modalHeading(fn (array $arguments): string => 'حذف '.($this->familyMemberFor($arguments)?->full_name ?? 'فرد العائلة').' نهائياً')
+            ->modalDescription('سيُحذف فرد العائلة وصورته وبطاقته بشكل نهائي. لا يمكن التراجع عن ذلك.')
+            ->modalSubmitActionLabel('نعم، احذف نهائياً')
+            ->action(function (array $arguments, FamilyMemberDeleter $deleter): void {
+                abort_unless($this->canDeleteFamilyMembers(), 403);
+
+                $familyMember = $this->familyMemberFor($arguments);
+                abort_if($familyMember === null, 404);
+
+                $result = $deleter->delete($familyMember->id);
+
+                Notification::make()
+                    ->title('تم حذف '.$result['name'].' نهائياً')
+                    ->success()
+                    ->send();
+
+                $this->refreshInsuranceCardRecords();
+            });
+    }
+
+    public function canDeleteFamilyMembers(): bool
+    {
+        $user = Auth::user();
+
+        return $user instanceof User && $user->isSmartCare();
+    }
+
+    /**
+     * Only family members of this registration can be targeted.
+     *
+     * @param  array<string, mixed>  $arguments
+     */
+    private function familyMemberFor(array $arguments): ?Beneficiary
+    {
+        return Beneficiary::queryWithCancelled()
+            ->where('medical_registration_id', $this->getRecord()->getKey())
+            ->find($arguments['beneficiary'] ?? null);
     }
 
     public function canManageInsuranceCards(): bool
