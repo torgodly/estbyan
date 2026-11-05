@@ -145,6 +145,12 @@ class DeliveredInsuranceCardsReport extends Page implements HasTable
                         default => 'gray',
                     })
                     ->sortable(),
+                TextColumn::make('cards_delivered_workplace')
+                    ->label('الإدارة المستلمة')
+                    ->formatStateUsing(fn (?string $state, Employee $record): string => $record->cardsDeliveredWorkplaceLabel() ?? '—')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('cardsDeliveredBy.name')
                     ->label('بواسطة')
                     ->placeholder('—')
@@ -177,6 +183,10 @@ class DeliveredInsuranceCardsReport extends Page implements HasTable
                 SelectFilter::make('workplace')
                     ->label('الإدارة')
                     ->options(fn (): array => config('registration.workplaces', [])),
+                SelectFilter::make('cards_delivered_workplace')
+                    ->label('الإدارة المستلمة')
+                    ->options(fn (): array => config('registration.workplaces', []))
+                    ->searchable(),
                 Filter::make('cards_delivered_at')
                     ->label('تاريخ التسليم')
                     ->schema([

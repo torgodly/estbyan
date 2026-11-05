@@ -6,6 +6,7 @@ use App\Enums\CardDeliveryRecipient;
 use App\Models\Employee;
 use App\Models\User;
 use App\Services\DeliveryListProcessor;
+use App\Support\WorkplaceOptions;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Radio;
@@ -116,6 +117,9 @@ class BulkDeliverCards extends Page
                         ->required()
                         ->live()
                         ->afterStateUpdated(fn () => $this->clearPreview()),
+                    DeliverInsuranceCards::deliveredWorkplaceSelect()
+                        ->live()
+                        ->afterStateUpdated(fn () => $this->clearPreview()),
                 ]),
         ]);
     }
@@ -170,7 +174,7 @@ class BulkDeliverCards extends Page
             ->modalDescription(fn (): string => sprintf(
                 'سيتم تسجيل تسليم %d عائلة إلى %s باسمك. لا يمكن التراجع من هذه الصفحة.',
                 count($this->preview['ready'] ?? []),
-                $this->recipient()->getLabel(),
+                $this->recipientLabel(),
             ))
             ->modalSubmitActionLabel('نعم، سلّم الكل')
             ->action(fn () => $this->deliverAll());
@@ -188,11 +192,18 @@ class BulkDeliverCards extends Page
         }
 
         $recipient = $this->recipient();
-        $result = app(DeliveryListProcessor::class)->process($this->rows(), $user, $recipient);
+
+        if ($recipient === CardDeliveryRecipient::Administration && $this->workplace() === null) {
+            Notification::make()->title('حدّد الإدارة التي استلمت البطاقات')->danger()->send();
+
+            return;
+        }
+
+        $result = app(DeliveryListProcessor::class)->process($this->rows(), $user, $recipient, workplace: $this->workplace());
 
         $this->deliveredNotice = [
             'count' => count($result['delivered']),
-            'recipient' => $recipient->getLabel(),
+            'recipient' => $this->recipientLabel(),
         ];
         $this->preview = self::summarize($result);
         $this->preview['delivered'] = $this->preview['ready'];
@@ -200,7 +211,7 @@ class BulkDeliverCards extends Page
 
         Notification::make()
             ->title('تم تسليم '.count($result['delivered']).' عائلة')
-            ->body('إلى '.$recipient->getLabel().' · بواسطة '.$user->name)
+            ->body('إلى '.$this->recipientLabel().' · بواسطة '.$user->name)
             ->success()
             ->send();
     }
@@ -246,6 +257,24 @@ class BulkDeliverCards extends Page
         return $value instanceof CardDeliveryRecipient
             ? $value
             : (CardDeliveryRecipient::tryFrom((string) $value) ?? CardDeliveryRecipient::Administration);
+    }
+
+    private function workplace(): ?string
+    {
+        $workplace = $this->data['delivered_workplace'] ?? null;
+
+        return WorkplaceOptions::isKnownKey($workplace) ? $workplace : null;
+    }
+
+    private function recipientLabel(): string
+    {
+        $recipient = $this->recipient();
+
+        if ($recipient !== CardDeliveryRecipient::Administration || $this->workplace() === null) {
+            return $recipient->getLabel();
+        }
+
+        return $recipient->getLabel().' · '.WorkplaceOptions::labelForKey($this->workplace());
     }
 
     /**

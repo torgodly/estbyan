@@ -270,3 +270,22 @@ it('finds rows without an employee number by exact unique name, and reports the 
     expect($withNumber->employee->fresh()->cardsAreDelivered())->toBeTrue()
         ->and($byName->employee->fresh()->cardsAreDelivered())->toBeTrue();
 });
+
+it('records the receiving administration given by key or Arabic name', function () {
+    $first = fullyPrintedFamily('001433', 'محبة نجيب احمد شنيب');
+    $second = fullyPrintedFamily('002521', 'عائشة فرج عبدالعزيز الورفلي');
+
+    deliverFromList(deliveryNumbersFile([['001433']]), ['--administration' => 'benghazi'])->assertSuccessful();
+    deliverFromList(deliveryNumbersFile([['002521']]), ['--administration' => 'مصراتة'])->assertSuccessful();
+
+    expect($first->employee->fresh()->cards_delivered_workplace)->toBe('benghazi')
+        ->and($second->employee->fresh()->cards_delivered_workplace)->toBe('misrata');
+});
+
+it('fails on an unknown administration without changing anything', function () {
+    $registration = fullyPrintedFamily('001433', 'محبة نجيب احمد شنيب');
+
+    deliverFromList(deliveryNumbersFile([['001433']]), ['--administration' => 'nowhere'])->assertFailed();
+
+    expect($registration->employee->fresh()->cardsAreDelivered())->toBeFalse();
+});

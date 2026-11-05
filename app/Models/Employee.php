@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'card_printed_at',
     'cards_delivered_at',
     'cards_delivered_to',
+    'cards_delivered_workplace',
     'cards_delivered_by',
     'national_id',
     'date_of_birth',
@@ -74,13 +75,37 @@ class Employee extends Model
         return $this->cards_delivered_at !== null;
     }
 
-    public function markCardsDelivered(User $by, CardDeliveryRecipient $to): void
+    /**
+     * @param  string|null  $workplace  Administration (workplace key) that received the cards; kept only for administration deliveries.
+     */
+    public function markCardsDelivered(User $by, CardDeliveryRecipient $to, ?string $workplace = null): void
     {
         $this->forceFill([
             'cards_delivered_at' => now(),
             'cards_delivered_to' => $to,
+            'cards_delivered_workplace' => $to === CardDeliveryRecipient::Administration ? $workplace : null,
             'cards_delivered_by' => $by->id,
         ])->save();
+    }
+
+    public function cardsDeliveredWorkplaceLabel(): ?string
+    {
+        return WorkplaceOptions::labelForKey($this->cards_delivered_workplace);
+    }
+
+    /**
+     * "الموظف", "الإدارة · بنغازي", or "الإدارة" for old deliveries without a recorded administration.
+     */
+    public function cardsDeliveredToLabel(): ?string
+    {
+        if ($this->cards_delivered_to === null) {
+            return null;
+        }
+
+        return implode(' · ', array_filter([
+            $this->cards_delivered_to->getLabel(),
+            $this->cards_delivered_to === CardDeliveryRecipient::Administration ? $this->cardsDeliveredWorkplaceLabel() : null,
+        ]));
     }
 
     /**

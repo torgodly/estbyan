@@ -137,7 +137,8 @@ class InsuranceCardScanService
                 'members' => $members,
                 'is_delivered' => $employee?->cardsAreDelivered() ?? false,
                 'delivered_to' => $deliveredTo?->value,
-                'delivered_to_label' => $deliveredTo?->getLabel(),
+                'delivered_to_label' => $employee?->cardsDeliveredToLabel(),
+                'employee_workplace' => $employee?->workplace,
                 'delivered_at' => $employee?->cards_delivered_at?->timezone('Africa/Tripoli')->format('Y-m-d H:i'),
                 'delivered_by_name' => $employee?->cardsDeliveredBy?->name,
             ];

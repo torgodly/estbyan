@@ -136,7 +136,7 @@ class NationalIdLookup extends Page
                 'delivered' => $employee->cardsAreDelivered(),
                 'delivery_label' => $employee->cardsAreDelivered()
                     ? trim(implode(' · ', array_filter([
-                        $employee->cards_delivered_to?->getLabel() ? 'إلى '.$employee->cards_delivered_to->getLabel() : null,
+                        $employee->cardsDeliveredToLabel() !== null ? 'إلى '.$employee->cardsDeliveredToLabel() : null,
                         $employee->cards_delivered_at?->format('Y-m-d'),
                     ])))
                     : null,

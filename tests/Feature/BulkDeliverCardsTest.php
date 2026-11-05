@@ -35,7 +35,7 @@ it('previews the pasted employee numbers and delivers only the ready families', 
     $this->actingAs($user);
 
     Livewire::test(BulkDeliverCards::class)
-        ->fillForm(['employee_numbers' => "001433\n017024, 999999\n001433"])
+        ->fillForm(['employee_numbers' => "001433\n017024, 999999\n001433", 'delivered_workplace' => 'benghazi'])
         ->call('previewList')
         ->assertSee('جاهز للتسليم')
         ->assertSee('محبة نجيب احمد شنيب')
@@ -50,6 +50,7 @@ it('previews the pasted employee numbers and delivers only the ready families', 
 
     expect($ready->fresh()->cardsAreDelivered())->toBeTrue()
         ->and($ready->fresh()->cards_delivered_to)->toBe(CardDeliveryRecipient::Administration)
+        ->and($ready->fresh()->cards_delivered_workplace)->toBe('benghazi')
         ->and($ready->fresh()->cards_delivered_by)->toBe($user->id)
         ->and($blocked->fresh()->cardsAreDelivered())->toBeFalse();
 });
@@ -63,7 +64,21 @@ it('records the chosen recipient', function () {
         ->call('previewList')
         ->callAction('deliverAll');
 
-    expect($employee->fresh()->cards_delivered_to)->toBe(CardDeliveryRecipient::Employee);
+    expect($employee->fresh()->cards_delivered_to)->toBe(CardDeliveryRecipient::Employee)
+        ->and($employee->fresh()->cards_delivered_workplace)->toBeNull();
+});
+
+it('requires the receiving administration when delivering to an administration', function () {
+    $this->actingAs(User::factory()->hr()->create());
+    $employee = bulkDeliveryFamily('001433', 'محبة نجيب احمد شنيب');
+
+    Livewire::test(BulkDeliverCards::class)
+        ->fillForm(['employee_numbers' => '001433', 'delivered_to' => CardDeliveryRecipient::Administration->value])
+        ->call('previewList')
+        ->assertHasFormErrors(['delivered_workplace' => 'required'])
+        ->assertActionHidden('deliverAll');
+
+    expect($employee->fresh()->cardsAreDelivered())->toBeFalse();
 });
 
 it('keeps leading zeros and hides the deliver button until something is ready', function () {
@@ -72,7 +87,7 @@ it('keeps leading zeros and hides the deliver button until something is ready', 
 
     Livewire::test(BulkDeliverCards::class)
         ->assertActionHidden('deliverAll')
-        ->fillForm(['employee_numbers' => '1433'])
+        ->fillForm(['employee_numbers' => '1433', 'delivered_workplace' => 'benghazi'])
         ->call('previewList')
         ->assertSee('ربما حُذفت الأصفار')
         ->assertActionHidden('deliverAll');
@@ -85,8 +100,9 @@ it('delivers exactly the previewed list, not text typed afterwards', function ()
     $previewed = bulkDeliveryFamily('001433', 'محبة نجيب احمد شنيب');
 
     Livewire::test(BulkDeliverCards::class)
-        ->fillForm(['employee_numbers' => '001433'])
+        ->fillForm(['employee_numbers' => '001433', 'delivered_workplace' => 'benghazi'])
         ->call('previewList')
+        ->assertActionVisible('deliverAll')
         ->set('data.employee_numbers', '002521')
         ->assertSet('preview', null)
         ->assertActionHidden('deliverAll');

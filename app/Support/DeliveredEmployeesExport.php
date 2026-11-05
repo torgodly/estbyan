@@ -23,12 +23,12 @@ class DeliveredEmployeesExport
      */
     public static function headings(): array
     {
-        return ['الاسم', 'الإدارة', 'المكتب', 'الحالة'];
+        return ['الاسم', 'الإدارة', 'المكتب', 'الحالة', 'جهة الاستلام'];
     }
 
     /**
      * @param  Builder<Employee>|Collection<int, Employee>|null  $employees
-     * @return list<array{name: string, workplace: string, office: string, status: string}>
+     * @return list<array{name: string, workplace: string, office: string, status: string, delivered_to: string}>
      */
     public static function rows(Builder|Collection|null $employees = null): array
     {
@@ -38,6 +38,7 @@ class DeliveredEmployeesExport
                 'workplace' => $employee->workplaceLabel() ?? '—',
                 'office' => $employee->officeLabel() ?? '—',
                 'status' => self::STATUS,
+                'delivered_to' => $employee->cardsDeliveredToLabel() ?? '—',
             ])
             ->values()
             ->all();
@@ -56,12 +57,12 @@ class DeliveredEmployeesExport
             $sheet->setCellValueExplicit(chr(ord('A') + $index).'1', $heading, DataType::TYPE_STRING);
         }
 
-        $sheet->getStyle('A1:D1')->getFont()->setBold(true);
-        $sheet->getStyle('A1:D1')->getFill()
+        $sheet->getStyle('A1:E1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:E1')->getFill()
             ->setFillType(Fill::FILL_SOLID)
             ->getStartColor()
             ->setRGB('1E3A5F');
-        $sheet->getStyle('A1:D1')->getFont()->getColor()->setRGB('FFFFFF');
+        $sheet->getStyle('A1:E1')->getFont()->getColor()->setRGB('FFFFFF');
 
         $rowNumber = 2;
 
@@ -70,16 +71,18 @@ class DeliveredEmployeesExport
             $sheet->setCellValueExplicit('B'.$rowNumber, $row['workplace'], DataType::TYPE_STRING);
             $sheet->setCellValueExplicit('C'.$rowNumber, $row['office'], DataType::TYPE_STRING);
             $sheet->setCellValueExplicit('D'.$rowNumber, $row['status'], DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('E'.$rowNumber, $row['delivered_to'], DataType::TYPE_STRING);
             $rowNumber++;
         }
 
         $lastRow = max(1, $rowNumber - 1);
         $sheet->getStyle('A1:A'.$lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-        $sheet->getStyle('B1:D'.$lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('B1:E'.$lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $sheet->getColumnDimension('A')->setWidth(36);
         $sheet->getColumnDimension('B')->setWidth(24);
         $sheet->getColumnDimension('C')->setWidth(24);
         $sheet->getColumnDimension('D')->setWidth(16);
+        $sheet->getColumnDimension('E')->setWidth(28);
 
         $writer = new Xlsx($spreadsheet);
 

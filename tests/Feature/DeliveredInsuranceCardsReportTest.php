@@ -112,3 +112,23 @@ it('filters delivered families by workplace', function () {
         ->assertCanSeeTableRecords([$tripoli])
         ->assertCanNotSeeTableRecords([$sebha]);
 });
+
+it('shows and filters by the administration that received the cards', function () {
+    $admin = User::factory()->hr()->create();
+    $courier = User::factory()->cardDelivery()->create();
+
+    $toBenghazi = Employee::factory()->create(['full_name' => 'سُلّمت لبنغازي', 'workplace' => 'sebha']);
+    $toBenghazi->markCardsDelivered($courier, CardDeliveryRecipient::Administration, 'benghazi');
+
+    $toTripoli = Employee::factory()->create(['full_name' => 'سُلّمت لطرابلس']);
+    $toTripoli->markCardsDelivered($courier, CardDeliveryRecipient::Administration, 'tripoli');
+
+    $this->actingAs($admin);
+
+    Livewire::test(DeliveredInsuranceCardsReport::class)
+        ->assertTableColumnExists('cards_delivered_workplace')
+        ->assertSee('بنغازي')
+        ->filterTable('cards_delivered_workplace', 'benghazi')
+        ->assertCanSeeTableRecords([$toBenghazi])
+        ->assertCanNotSeeTableRecords([$toTripoli]);
+});

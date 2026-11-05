@@ -26,7 +26,7 @@ it('exports delivered families to excel from the report page', function () {
         'medical_registration_id' => $registration->id,
         'relationship' => BeneficiaryRelationship::Spouse,
     ]);
-    $registration->employee->markCardsDelivered($courier, CardDeliveryRecipient::Administration);
+    $registration->employee->markCardsDelivered($courier, CardDeliveryRecipient::Administration, 'benghazi');
 
     $this->actingAs($admin);
 
@@ -49,7 +49,9 @@ it('exports delivered families to excel from the report page', function () {
         ->and($sheet->getCell('D1')->getValue())->toBe('الحالة')
         ->and($sheet->getCell('A2')->getValue())->toBe('عائلة مُسلَّمة للتصدير')
         ->and($sheet->getCell('B2')->getValue())->toBe('سبها')
-        ->and($sheet->getCell('D2')->getValue())->toBe('تم التسليم');
+        ->and($sheet->getCell('D2')->getValue())->toBe('تم التسليم')
+        ->and($sheet->getCell('E1')->getValue())->toBe('جهة الاستلام')
+        ->and($sheet->getCell('E2')->getValue())->toBe('الإدارة · بنغازي');
 
     @unlink($temp);
 });

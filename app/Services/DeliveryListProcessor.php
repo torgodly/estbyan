@@ -23,6 +23,7 @@ class DeliveryListProcessor
 {
     /**
      * @param  array<int, array{employee_number: string, name: ?string}>  $rows  Keyed by sheet row number.
+     * @param  string|null  $workplace  Administration (workplace key) that received the cards, for administration deliveries.
      * @return array{
      *     delivered: list<array{row: int, employee: Employee}>,
      *     already_delivered: list<array{row: int, employee: Employee}>,
@@ -31,7 +32,7 @@ class DeliveryListProcessor
      *     repeated: list<array{row: int, employee_number: string}>
      * }
      */
-    public function process(array $rows, ?User $by, CardDeliveryRecipient $to, bool $dryRun = false): array
+    public function process(array $rows, ?User $by, CardDeliveryRecipient $to, bool $dryRun = false, ?string $workplace = null): array
     {
         $result = [
             'delivered' => [],
@@ -87,9 +88,9 @@ class DeliveryListProcessor
         if (! $dryRun && $result['delivered'] !== []) {
             throw_if($by === null, 'InvalidArgumentException', 'A user is required to mark cards as delivered.');
 
-            DB::transaction(function () use ($result, $by, $to): void {
+            DB::transaction(function () use ($result, $by, $to, $workplace): void {
                 foreach ($result['delivered'] as $item) {
-                    $item['employee']->markCardsDelivered($by, $to);
+                    $item['employee']->markCardsDelivered($by, $to, $workplace);
                 }
             });
         }

@@ -7,12 +7,15 @@ use App\Models\Employee;
 use App\Models\User;
 use App\Services\InsuranceCardScanService;
 use App\Support\InsuranceCardNumber;
+use App\Support\WorkplaceOptions;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\ViewField;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
@@ -177,7 +180,10 @@ class DeliverInsuranceCards extends Page
         $this->scanned = [];
     }
 
-    public function markDelivered(string|CardDeliveryRecipient $deliveredTo): void
+    /**
+     * @param  string|null  $workplace  Administration (workplace key) that received the cards; required when delivered to an administration.
+     */
+    public function markDelivered(string|CardDeliveryRecipient $deliveredTo, ?string $workplace = null): void
     {
         abort_unless(static::canAccess(), 403);
 
@@ -216,6 +222,15 @@ class DeliverInsuranceCards extends Page
             return;
         }
 
+        if ($recipient === CardDeliveryRecipient::Administration && ! WorkplaceOptions::isKnownKey($workplace)) {
+            Notification::make()
+                ->title('حدّد الإدارة التي استلمت البطاقات')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
         $user = Auth::user();
         assert($user instanceof User);
 
@@ -240,24 +255,25 @@ class DeliverInsuranceCards extends Page
             return;
         }
 
-        DB::transaction(function () use ($employee, $user, $recipient): void {
+        DB::transaction(function () use ($employee, $user, $recipient, $workplace): void {
             app(InsuranceCardScanService::class)->markPrinted($this->scanned);
-            $employee->markCardsDelivered($user, $recipient);
+            $employee->markCardsDelivered($user, $recipient, $workplace);
         });
 
         $employee->refresh();
+        $recipientLabel = $employee->cardsDeliveredToLabel() ?? $recipient->getLabel();
 
         $this->reset(['scan', 'scanned']);
         $this->deliveryNotice = [
             'name' => $employee->full_name,
-            'recipient' => $recipient->getLabel(),
+            'recipient' => $recipientLabel,
         ];
 
         session()->flash('deliveryNotice', $this->deliveryNotice);
 
         Notification::make()
             ->title('تم تسليم بطاقات الموظف '.$employee->full_name.' بنجاح')
-            ->body('إلى '.$recipient->getLabel().' · بواسطة '.$user->name)
+            ->body('إلى '.$recipientLabel.' · بواسطة '.$user->name)
             ->success()
             ->send();
 
@@ -280,6 +296,9 @@ class DeliverInsuranceCards extends Page
                 ->extraModalWindowAttributes(['class' => 'hr-deliver-modal-window'])
                 ->fillForm(fn (): array => [
                     'delivered_to' => $this->family()['delivered_to'] ?? null,
+                    'delivered_workplace' => WorkplaceOptions::isKnownKey($this->family()['employee_workplace'] ?? null)
+                        ? $this->family()['employee_workplace']
+                        : null,
                 ])
                 ->schema([
                     ViewField::make('family_summary')
@@ -295,6 +314,7 @@ class DeliverInsuranceCards extends Page
                         ->options(CardDeliveryRecipient::class)
                         ->required()
                         ->live(),
+                    static::deliveredWorkplaceSelect(),
                 ])
                 ->modalSubmitActionLabel('تأكيد التسليم')
                 ->modalCancelActionLabel('إلغاء')
@@ -305,6 +325,7 @@ class DeliverInsuranceCards extends Page
                         $deliveredTo instanceof CardDeliveryRecipient
                             ? $deliveredTo
                             : (string) $deliveredTo,
+                        $data['delivered_workplace'] ?? null,
                     );
                 }),
             Action::make('clearScanned')
@@ -316,6 +337,27 @@ class DeliverInsuranceCards extends Page
                     $this->clearScanned();
                 }),
         ];
+    }
+
+    /**
+     * Which administration received the cards. Shown and required only when "الإدارة" is chosen.
+     */
+    public static function deliveredWorkplaceSelect(string $recipientField = 'delivered_to'): Select
+    {
+        $isAdministration = function (Get $get) use ($recipientField): bool {
+            $recipient = $get($recipientField);
+
+            return $recipient === CardDeliveryRecipient::Administration
+                || $recipient === CardDeliveryRecipient::Administration->value;
+        };
+
+        return Select::make('delivered_workplace')
+            ->label('أي إدارة استلمت البطاقات؟')
+            ->options(fn (): array => config('registration.workplaces', []))
+            ->searchable()
+            ->native(false)
+            ->visible($isAdministration)
+            ->required($isAdministration);
     }
 
     private function activeEmployeeId(): ?int

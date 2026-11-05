@@ -6,6 +6,7 @@ use App\Enums\CardDeliveryRecipient;
 use App\Models\Employee;
 use App\Models\User;
 use App\Services\DeliveryListProcessor;
+use App\Support\WorkplaceOptions;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -14,6 +15,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 #[Signature('cards:deliver-from-list
     {file : Excel file (path, or just its name inside database/data/delivery-lists) with a "الرقم الوظيفي" or "الاسم" column}
     {--to=administration : Who received the cards: administration or employee}
+    {--administration= : Which administration received the cards (workplace key such as benghazi, or its Arabic name)}
     {--by= : Email of the user recording the delivery (asked when missing)}
     {--dry-run : Show what would happen without changing data}
     {--force : Skip the confirmation prompt}')]
@@ -44,6 +46,21 @@ class DeliverCardsFromListCommand extends Command
             return self::FAILURE;
         }
 
+        $workplace = null;
+
+        if ($recipient === CardDeliveryRecipient::Administration && filled($this->option('administration'))) {
+            $administration = trim((string) $this->option('administration'));
+            $workplace = WorkplaceOptions::isKnownKey($administration)
+                ? $administration
+                : WorkplaceOptions::keyForLabel($administration);
+
+            if ($workplace === null) {
+                $this->components->error("Unknown administration: {$administration}");
+
+                return self::FAILURE;
+            }
+        }
+
         $rows = $this->readRows((string) $this->argument('file'), $processor);
 
         if ($rows === null) {
@@ -63,13 +80,15 @@ class DeliverCardsFromListCommand extends Command
             return self::FAILURE;
         }
 
-        if (! $this->option('force') && ! $this->confirm(sprintf('Mark %d famil(ies) as delivered to %s, recorded by %s?', count($preview['delivered']), $recipient->getLabel(), $user->name), false)) {
+        $recipientLabel = $recipient->getLabel().($workplace !== null ? ' · '.WorkplaceOptions::labelForKey($workplace) : '');
+
+        if (! $this->option('force') && ! $this->confirm(sprintf('Mark %d famil(ies) as delivered to %s, recorded by %s?', count($preview['delivered']), $recipientLabel, $user->name), false)) {
             $this->components->warn('Cancelled. Nothing was changed.');
 
             return self::SUCCESS;
         }
 
-        $result = $processor->process($rows, $user, $recipient);
+        $result = $processor->process($rows, $user, $recipient, workplace: $workplace);
 
         $this->components->info(sprintf('Delivered %d famil(ies).', count($result['delivered'])));
 

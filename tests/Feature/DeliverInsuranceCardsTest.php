@@ -8,6 +8,7 @@ use App\Filament\Pages\ExportPrintedCards;
 use App\Filament\Pages\ScanInsuranceCards;
 use App\Filament\Resources\Employees\Pages\ListEmployees;
 use App\Models\Beneficiary;
+use App\Models\Employee;
 use App\Models\MedicalRegistration;
 use App\Models\User;
 use Livewire\Livewire;
@@ -181,4 +182,76 @@ it('blocks scanning another family until the current one is delivered or cleared
 
     expect($page->instance()->scanned)->toHaveCount(1)
         ->and($page->instance()->family()['employee_name'])->toBe($first->employee->full_name);
+});
+
+it('asks which administration received the cards and stores it', function () {
+    $east = User::factory()->cardDelivery()->create();
+    $employee = Employee::factory()->create(['workplace' => 'sebha']);
+    $registration = MedicalRegistration::factory()->submitted()->create([
+        'employee_id' => $employee->id,
+        'gender' => Gender::Male,
+    ]);
+    markFamilyCardsPrinted($registration);
+
+    $this->actingAs($east);
+
+    $page = Livewire::test(DeliverInsuranceCards::class)
+        ->set('scan', $employee->fresh()->card_number)
+        ->call('scanCard')
+        ->mountAction('markDelivered')
+        ->assertSchemaStateSet(['delivered_workplace' => 'sebha'])
+        ->fillForm([
+            'delivered_to' => CardDeliveryRecipient::Administration->value,
+            'delivered_workplace' => null,
+        ])
+        ->callMountedAction()
+        ->assertHasFormErrors(['delivered_workplace' => 'required']);
+
+    expect($employee->fresh()->cardsAreDelivered())->toBeFalse();
+
+    $page->fillForm([
+        'delivered_to' => CardDeliveryRecipient::Administration->value,
+        'delivered_workplace' => 'benghazi',
+    ])
+        ->callMountedAction()
+        ->assertHasNoFormErrors()
+        ->assertNotified();
+
+    $employee->refresh();
+
+    expect($employee->cards_delivered_to)->toBe(CardDeliveryRecipient::Administration)
+        ->and($employee->cards_delivered_workplace)->toBe('benghazi')
+        ->and($employee->cardsDeliveredToLabel())->toBe('الإدارة · بنغازي');
+});
+
+it('does not store an administration when cards go to the employee', function () {
+    $east = User::factory()->cardDelivery()->create();
+    $registration = MedicalRegistration::factory()->submitted()->create(['gender' => Gender::Male]);
+    markFamilyCardsPrinted($registration);
+
+    $this->actingAs($east);
+
+    Livewire::test(DeliverInsuranceCards::class)
+        ->set('scan', $registration->employee->card_number)
+        ->call('scanCard')
+        ->call('markDelivered', CardDeliveryRecipient::Employee->value, 'benghazi');
+
+    expect($registration->employee->fresh()->cards_delivered_to)->toBe(CardDeliveryRecipient::Employee)
+        ->and($registration->employee->fresh()->cards_delivered_workplace)->toBeNull();
+});
+
+it('refuses an administration delivery without a known administration', function () {
+    $east = User::factory()->cardDelivery()->create();
+    $registration = MedicalRegistration::factory()->submitted()->create(['gender' => Gender::Male]);
+    markFamilyCardsPrinted($registration);
+
+    $this->actingAs($east);
+
+    Livewire::test(DeliverInsuranceCards::class)
+        ->set('scan', $registration->employee->card_number)
+        ->call('scanCard')
+        ->call('markDelivered', CardDeliveryRecipient::Administration->value, 'nowhere')
+        ->assertNotified('حدّد الإدارة التي استلمت البطاقات');
+
+    expect($registration->employee->fresh()->cardsAreDelivered())->toBeFalse();
 });
